@@ -496,6 +496,8 @@ def readCommand( argv ):
     parser.add_option('-p', '--pacman', dest='pacman',
                       help=default('the agent TYPE in the pacmanAgents module to use'),
                       metavar='TYPE', default='KeyboardAgent')
+    parser.add_option('-m', '--miniGraphics', action='store_true', dest='miniGraphics',
+                      help='Display output as text only', default=False)
     parser.add_option('-t', '--textGraphics', action='store_true', dest='textGraphics',
                       help='Display output as text only', default=False)
     parser.add_option('-q', '--quietTextGraphics', action='store_true', dest='quietGraphics',
@@ -563,6 +565,9 @@ def readCommand( argv ):
         import textDisplay
         textDisplay.SLEEP_TIME = options.frameTime
         args['display'] = textDisplay.PacmanGraphics()
+    elif options.miniGraphics:
+        import miniGraphicsDisplay
+        args['display'] = miniGraphicsDisplay.PacmanGraphics(options.zoom, frameTime=options.frameTime)
     else:
         import graphicsDisplay
         args['display'] = graphicsDisplay.PacmanGraphics(options.zoom, frameTime = options.frameTime)

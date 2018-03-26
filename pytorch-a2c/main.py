@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 
+from render_game import RenderAtari
 import gym
 import numpy as np
 import torch
@@ -112,6 +113,8 @@ def main():
 
     if args.cuda:
         actor_critic.cuda()
+
+    renderer = RenderAtari(args.env_name, actor_critic)
 
     if args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
@@ -281,6 +284,12 @@ def main():
 
         if j % args.vis_interval == 0:
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
+
+        if j % 500 == 0:
+            renderer.set_policy(actor_critic)
+            while (renderer.step() == False):
+                renderer.render()
+            renderer.reset()
 
 
 if __name__ == "__main__":

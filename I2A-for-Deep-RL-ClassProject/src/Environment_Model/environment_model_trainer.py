@@ -219,3 +219,127 @@ def train_em(atari_env="PongDeterministic-v4",
                                environment_model_name = environment_model_name,
                                environment_model = environment_model)
 
+
+
+
+
+
+
+#experimental
+def train_minipacman(env_name="RegularMiniPacman-v0",
+             EMModel = None,
+             policy_model = "PongDeterministic-v4_21",
+             load_policy_model_dir = "trained_models/",
+             environment_model_name = "pong_em",
+             save_environment_model_dir = "trained_models/environment_models/",
+             load_environment_model = False,
+             load_environment_model_dir="trained_models/environment_models/",
+             root_path="",
+             use_cuda=False):
+
+    import gym
+    import gym_minipacman
+    from A3C_model import SmallA3Clstm
+
+    FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+
+    env = gym.make(env_name)
+    action_space = env.action_space.n
+
+    #load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
+    #policy = load_policy(load_policy_model_dir,
+    #                     policy_model,
+    #                     action_space=action_space,
+    #                     use_cuda=use_cuda)
+    policy = SmallA3Clstm(num_inputs=3, action_space=action_space, use_cuda=use_cuda)
+    if use_cuda:
+        policy.cuda()
+
+    save_environment_model_dir = os.path.join(root_path, save_environment_model_dir)
+    if load_environment_model:
+        load_environment_model_dir = os.path.join(root_path, load_environment_model_dir)
+        environment_model = load_em_model(EMModel,
+                                          load_environment_model_dir,
+                                          environment_model_name,
+                                          action_space,
+                                          use_cuda)
+    else:
+        environment_model = EMModel(num_inputs = 3,
+                                    num_actions=env.action_space.n,
+                                    use_cuda=use_cuda)
+
+    if use_cuda:
+        environment_model.cuda()
+
+    optimizer = EnvironmentModelOptimizer(model=environment_model,
+                                          lstm_backward_steps= 3,
+                                          use_cuda=use_cuda)
+    optimizer.set_optimizer()
+
+    chance_of_random_action = 0.25
+
+    render = True
+
+    renderer = RenderTrainEM(environment_model_name, delete_log_file = load_environment_model==False)
+
+    for i_episode in range(10000):
+        print("Start episode ",i_episode)
+        #policy.repackage_lstm_hidden_variables()   #only for policies with lstm
+
+        state = env.reset()
+        state = torch.from_numpy(state).type(FloatTensor)
+        state = Variable(state.unsqueeze(0), requires_grad=False)
+
+        done = False
+        sum_reward = 0
+
+        while not done:
+
+            critic, actor = policy(state)
+
+            prob = F.softmax(actor, dim=1)
+            action = prob.multinomial().data
+            if random.random() < chance_of_random_action:
+                action = random.randint(0, env.action_space.n -1)
+
+            next_state, reward, done, _ = env.step(action)
+            next_state = torch.from_numpy(next_state).type(FloatTensor)
+            next_state = Variable(next_state.unsqueeze(0))
+
+            reward = Variable(FloatTensor([reward]))
+
+
+            np_action = np.zeros(env.action_space.n)
+            np_action[action] = 1
+            action = Variable(torch.from_numpy(np_action)).type(FloatTensor)
+
+            loss, prediction = optimizer.optimizer_step(state,
+                                                        action,
+                                                        next_state,
+                                                        reward)
+
+            (predicted_next_state, predicted_reward) = prediction
+            state = next_state
+
+            if render:
+                renderer.render_observation(next_state, predicted_next_state)
+
+            # log and print infos
+            (next_state_loss, next_reward_loss) = loss
+            renderer.log_loss_and_reward(i_episode, next_state_loss,
+                                         next_reward_loss,
+                                         predicted_reward,
+                                         reward)
+
+            r = reward.data.cpu().numpy()[0]
+            if r > 0.9 or r < -0.9:
+                sum_reward += r
+                #environment_model.repackage_lstm_hidden_variables()
+                print("Reward", r, "total reward", sum_reward)
+
+        #environment_model.repackage_lstm_hidden_variables()
+        print("Save model", save_environment_model_dir, environment_model_name)
+        save_environment_model(save_model_dir = save_environment_model_dir,
+                               environment_model_name = environment_model_name,
+                               environment_model = environment_model)
+

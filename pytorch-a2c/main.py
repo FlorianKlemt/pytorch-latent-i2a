@@ -14,7 +14,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
 from Models.model import ActorCritic
-from Models.MiniModel import MiniPacmanModel
+from Models.MiniModel import MiniModel
 from minipacman_envs import make_minipacman_env
 from vizualize_atari import visdom_plot
 
@@ -105,13 +105,19 @@ def main():
         viz = Visdom()
         win = None
 
+
+    if args.env_name == "RegularMiniPacmanNoFrameskip-v0":
+        make_environment = make_minipacman_env
+    else:
+        make_environment = make_env
+
     envs = SubprocVecEnv([
-        make_minipacman_env(args.env_name, args.seed, i, args.log_dir)
+        make_environment(args.env_name, args.seed, i, args.log_dir)
         for i in range(args.num_processes)
     ])
 
     if args.model == 'MiniModel':
-        actor_critic = MiniPacmanModel(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+        actor_critic = MiniModel(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
     elif args.model == 'Original':
         actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
     else:

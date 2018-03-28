@@ -21,7 +21,9 @@ class MiniModel(torch.nn.Module):
         self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1)
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2)
 
-        self.linear1 = nn.Linear(16 * 7 * 7, 256)
+        self.linear_input_size = 6144
+
+        self.linear1 = nn.Linear(self.linear_input_size, 256)
 
         num_outputs = action_space.n
         self.critic_linear = nn.Linear(256, 1)
@@ -40,7 +42,7 @@ class MiniModel(torch.nn.Module):
 
         x = F.relu(self.conv2(x))
 
-        x = x.view(-1, 64 * 7 * 7)
+        x = x.view(-1, self.linear_input_size)
         x = F.relu(self.linear1(x))
 
         return self.critic_linear(x), self.actor_linear(x)

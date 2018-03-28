@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 import torch.nn.functional as F
-from envs import make_minipacman_env_no_log
+from minipacman_envs import make_minipacman_env_no_log
 import collections
 
 class RenderAtari():

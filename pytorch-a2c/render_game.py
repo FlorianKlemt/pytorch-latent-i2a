@@ -32,6 +32,7 @@ class RenderAtari():
         action = probs.multinomial().data
         cpu_actions = action.cpu()
         cpu_actions = cpu_actions.numpy()
+        cpu_actions = cpu_actions[0][0]
 
         state, reward, done, info = self.env.step(cpu_actions)
         self.rewards.append(reward)

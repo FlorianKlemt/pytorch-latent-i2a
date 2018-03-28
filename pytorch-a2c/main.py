@@ -4,6 +4,7 @@ import os
 
 from render_game import RenderAtari
 import gym
+import gym_minipacman
 import numpy as np
 import torch
 import torch.nn as nn
@@ -285,10 +286,11 @@ def main():
         if j % args.vis_interval == 0:
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
 
-        if j % 500 == 0:
+        if j % 100 == 0:
             renderer.set_policy(actor_critic)
             while (renderer.step() == False):
                 renderer.render()
+            renderer.render()
             renderer.reset()
 
 

@@ -3,8 +3,6 @@ import glob
 import os
 
 from render_game import RenderAtari
-import gym
-import gym_minipacman
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,7 +13,8 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
-from model import ActorCritic
+from Models.model import ActorCritic
+from Models.MiniModel import MiniPacmanModel
 from vizualize_atari import visdom_plot
 
 parser = argparse.ArgumentParser(description='RL')
@@ -67,6 +66,8 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA training')
 parser.add_argument('--no-vis', action='store_true', default=False,
                     help='disables visdom visualization')
+parser.add_argument('--model', default='Original',
+                    help='specifies model to use (default: original model)')
 
 
 args = parser.parse_args()
@@ -108,7 +109,13 @@ def main():
         for i in range(args.num_processes)
     ])
 
-    actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+    if args.model == 'MiniModel':
+        actor_critic = MiniPacmanModel(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+    elif args.model == 'Original':
+        actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+    else:
+        raise NotImplementedError("Model does not exist!")
+
     if args.algo == 'ppo':
         actor_critic = nn.DataParallel(actor_critic)
 

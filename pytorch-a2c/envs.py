@@ -1,6 +1,7 @@
 import os
 
 import gym
+import gym_minipacman
 from gym.spaces.box import Box
 
 from baselines import bench

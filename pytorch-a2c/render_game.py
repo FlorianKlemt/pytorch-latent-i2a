@@ -1,4 +1,3 @@
-from model import ActorCritic
 from envs import WrapPyTorch
 from baselines.common.atari_wrappers import *
 import gym

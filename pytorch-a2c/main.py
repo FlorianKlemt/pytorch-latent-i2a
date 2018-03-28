@@ -15,6 +15,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
+from minipacman_envs import make_minipacman_env
 from model import ActorCritic
 from vizualize_atari import visdom_plot
 
@@ -104,7 +105,7 @@ def main():
         win = None
 
     envs = SubprocVecEnv([
-        make_env(args.env_name, args.seed, i, args.log_dir)
+        make_minipacman_env(args.env_name, args.seed, i, args.log_dir)
         for i in range(args.num_processes)
     ])
 

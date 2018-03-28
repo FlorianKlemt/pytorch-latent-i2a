@@ -5,15 +5,13 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 import torch.nn.functional as F
-
+from minipacman_envs import make_minipacman_env_no_log
 import collections
 
 class RenderAtari():
     def __init__(self, env_id, actor_critic):
         self.actor_critic = actor_critic
-        self.env = gym.make(env_id)
-        self.env = wrap_deepmind(self.env)
-        self.env = WrapPyTorch(self.env)
+        self.env = make_minipacman_env_no_log(env_id)
         self.states = collections.deque(maxlen=4)
         self.reset()
 

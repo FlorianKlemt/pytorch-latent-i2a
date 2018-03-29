@@ -18,10 +18,10 @@ def weights_init(m):
 class MiniModel(torch.nn.Module):
     def __init__(self, num_inputs, action_space):
         super(MiniModel, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1)
-        self.conv2 = nn.Conv2d(16, 16, 3, stride=2)
+        self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
+        self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8
 
-        self.linear_input_size = 6144
+        self.linear_input_size = 16*8*8 #never trust the output in the error message (for some reason eg. 6 batches are drawn together if size is 6144)
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 

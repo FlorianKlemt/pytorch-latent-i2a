@@ -190,8 +190,9 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             value, logits = actor_critic(Variable(states[step], volatile=True))
-            probs = F.softmax(logits)
-            log_probs = F.log_softmax(logits).data
+
+            probs = F.softmax(logits, dim=0)
+            log_probs = F.log_softmax(logits, dim=0).data
             actions[step] = probs.multinomial().data
 
             cpu_actions = actions[step].cpu()
@@ -239,13 +240,13 @@ def main():
         if args.algo == 'a2c':
             # Reshape to do in a single forward pass for all steps
             values, logits = actor_critic(Variable(states[:-1].view(-1, *states.size()[-3:])))
-            log_probs = F.log_softmax(logits)
+            log_probs = F.log_softmax(logits, dim= 0)
 
             # Unreshape
             logits_size = (args.num_steps, args.num_processes, logits.size(-1))
 
-            log_probs = F.log_softmax(logits).view(logits_size)
-            probs = F.softmax(logits).view(logits_size)
+            log_probs = F.log_softmax(logits, dim=0).view(logits_size)
+            probs = F.softmax(logits, dim=0).view(logits_size)
 
             values = values.view(args.num_steps, args.num_processes, 1)
             logits = logits.view(logits_size)

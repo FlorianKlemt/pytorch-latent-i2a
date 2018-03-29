@@ -43,7 +43,7 @@ class TestEnvironment():
     def step(self):
         states_torch = self.states_to_torch(self.states)
         value, logits = self.model(Variable(states_torch, volatile=True).cuda())
-        probs = F.softmax(logits)
+        probs = F.softmax(logits, dim=0)
         action = probs.multinomial().data
         cpu_actions = action.cpu()
         cpu_actions = cpu_actions.numpy()

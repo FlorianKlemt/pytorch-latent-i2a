@@ -11,18 +11,18 @@ import os
 class WrapPyTorchMiniPacman(gym.ObservationWrapper):
     def __init__(self, env=None, image_size = 19):
         super(WrapPyTorchMiniPacman, self).__init__(env)
-        self.observation_space = Box(0.0, 1.0, [1, 19, 19])
+        self.observation_space = Box(0.0, 1.0, shape=[1, 19, 19], dtype=np.float32)
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return observation.transpose(2, 0, 1)
 
 class WarpMiniPacmanFrame(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
         gym.ObservationWrapper.__init__(self, env)
         self.res = image_resize_size
-        self.observation_space = spaces.Box(low=0, high=255, shape=(19, 19, 1))
+        self.observation_space = spaces.Box(low=0, high=255, shape=(19, 19, 1), dtype=np.uint8)
 
-    def _observation(self, obs):
+    def observation(self, obs):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
         #frame = np.array(Image.fromarray(frame).resize((self.res, self.res),
         #    resample=Image.BILINEAR), dtype=np.uint8)

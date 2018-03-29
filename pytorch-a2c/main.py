@@ -1,8 +1,9 @@
 import argparse
 import glob
 import os
-
-from render_game import RenderAtari
+import copy
+import multiprocessing as mp
+from render_game import TestPolicy
 import numpy as np
 import torch
 import torch.nn as nn
@@ -55,6 +56,8 @@ parser.add_argument('--num-stack', type=int, default=4,
                     help='number of frames to stack (default: 4)')
 parser.add_argument('--log-interval', type=int, default=10,
                     help='log interval, one log per n updates (default: 10)')
+parser.add_argument('--save-interval', type=int, default=100,
+                    help='save interval, one save per n updates (default: 10)')
 parser.add_argument('--vis-interval', type=int, default=100,
                     help='vis interval, one log per n updates (default: 100)')
 parser.add_argument('--num-frames', type=int, default=10e6,
@@ -63,6 +66,8 @@ parser.add_argument('--env-name', default='PongNoFrameskip-v4',
                     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument('--log-dir', default='/tmp/gym/',
                     help='directory to save agent logs (default: /tmp/gym)')
+parser.add_argument('--save-dir', default='./trained_models/',
+                    help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='disables CUDA training')
 parser.add_argument('--no-vis', action='store_true', default=False,
@@ -98,6 +103,8 @@ def main():
     print("WARNING: All rewards are clipped so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
 
+    mp.set_start_method('spawn')
+
     os.environ['OMP_NUM_THREADS'] = '1'
 
     if args.vis:
@@ -105,8 +112,7 @@ def main():
         viz = Visdom()
         win = None
 
-
-    if args.env_name == "RegularMiniPacmanNoFrameskip-v0":
+    if args.model == "MiniModel":
         make_environment = make_minipacman_env
     else:
         make_environment = make_env
@@ -117,11 +123,13 @@ def main():
     ])
 
     if args.model == 'MiniModel':
-        actor_critic = MiniModel(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+        model_type = MiniModel
     elif args.model == 'Original':
-        actor_critic = ActorCritic(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+        model_type = ActorCritic
     else:
         raise NotImplementedError("Model does not exist!")
+
+    actor_critic = model_type(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
 
     if args.algo == 'ppo':
         actor_critic = nn.DataParallel(actor_critic)
@@ -129,7 +137,12 @@ def main():
     if args.cuda:
         actor_critic.cuda()
 
-    renderer = RenderAtari(args.env_name, actor_critic)
+    load_path = os.path.join(args.save_dir, args.algo)
+    test_process = TestPolicy(args.env_name,
+                              model_type,
+                              args.num_stack,
+                              load_path,
+                              args.cuda)
 
     if args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
@@ -288,6 +301,20 @@ def main():
 
         states[0].copy_(states[-1])
 
+        if j % args.save_interval == 0 and args.save_dir != "":
+            save_path = os.path.join(args.save_dir, args.algo)
+            try:
+                os.makedirs(save_path)
+            except OSError:
+                pass
+
+            # A really ugly way to save a model to CPU
+            save_model = actor_critic
+            if args.cuda:
+                save_model = copy.deepcopy(actor_critic).cpu()
+
+            torch.save(save_model.state_dict(), os.path.join(save_path, args.env_name + ".pt"))
+
         if j % args.log_interval == 0:
             print("Updates {}, num frames {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
                 format(j, j * args.num_processes * args.num_steps,
@@ -300,12 +327,9 @@ def main():
         if j % args.vis_interval == 0:
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
 
-        if j % 100 == 0:
-            renderer.set_policy(actor_critic)
-            while (renderer.step() == False):
-                renderer.render()
-            renderer.render()
-            renderer.reset()
+        # only start once
+        if j == 0:
+            test_process.start_test_process()
 
 
 if __name__ == "__main__":

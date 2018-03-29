@@ -1,10 +1,9 @@
-
-
 import math
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 
 
 def weights_init(m):
@@ -14,6 +13,12 @@ def weights_init(m):
         if m.bias is not None:
             m.bias.data.fill_(0)
 
+
+def xavier_weights_init(m):
+    if isinstance(m, nn.Conv2d):
+        init.xavier_uniform(m.weight.data)
+        if m.bias is not None:
+            m.bias.data.fill_(0)
 
 class MiniModel(torch.nn.Module):
     def __init__(self, num_inputs, action_space):

@@ -43,6 +43,11 @@ class MiniModel(torch.nn.Module):
         self.train()
 
     def forward(self, inputs):
+        #print("Input shape: ",inputs.shape)
+        #for layer in self.modules():
+        #    if isinstance(layer, nn.Linear):
+        #        print(layer.weight.shape)
+
         x = F.relu(self.conv1(inputs / 255.0))
 
         x = F.relu(self.conv2(x))

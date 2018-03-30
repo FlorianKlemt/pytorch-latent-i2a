@@ -138,11 +138,11 @@ def main():
         actor_critic.cuda()
 
     load_path = os.path.join(args.save_dir, args.algo)
-    test_process = TestPolicy(args.env_name,
-                              model_type,
-                              args.num_stack,
-                              load_path,
-                              args.cuda)
+    #test_process = TestPolicy(args.env_name,
+    #                          model_type,
+    #                          args.num_stack,
+    #                          load_path,
+    #                          args.cuda)
 
     if args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
@@ -329,8 +329,8 @@ def main():
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
 
         # only start once
-        if j == 0:
-            test_process.start_test_process()
+        #if j == 0:
+        #    test_process.start_test_process()
 
 
 if __name__ == "__main__":

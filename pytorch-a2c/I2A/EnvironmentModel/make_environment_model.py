@@ -13,10 +13,12 @@ from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
 from minipacman_envs import make_minipacman_env_no_log
-
+import os
+import collections
+import sys
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
-
+root_dir = "/home/meins/Studium/GuidedResearch/repo/pytorch-a2c/"
+#root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 def main():
     EMModel = MiniPacmanEnvModel
 
@@ -31,6 +33,15 @@ def main():
              root_path=root_dir,
              use_cuda=True)
 
+def states_to_torch(states, use_cuda):
+    states = np.stack(states)
+    states = torch.from_numpy(states).float()
+    states = states.permute(1, 0, 2, 3)
+    if use_cuda:
+        states = states.type(torch.cuda.FloatTensor)
+        states.cuda()
+    states = Variable(states)#, requires_grad=False)
+    return states
 
 def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
              EMModel = None,
@@ -50,13 +61,13 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
     action_space = env.action_space
 
     load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
-    #policy = load_policy(load_policy_model_dir,
-    #                     policy_model,
-    #                     action_space=action_space,
-    #                     use_cuda=use_cuda,
-    #                     policy_name='MiniModel')
-    policy = MiniModel(1,action_space)  #1?
-    if(use_cuda):
+    policy = load_policy(load_policy_model_dir,
+                         policy_model,
+                         action_space=action_space,
+                         use_cuda=use_cuda,
+                         policy_name='MiniModel')
+    #policy = MiniModel(1,action_space)  #1?
+    if use_cuda:
         policy.cuda()
 
     save_environment_model_dir = os.path.join(root_path, save_environment_model_dir)
@@ -68,7 +79,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
                                           action_space,
                                           use_cuda)
     else:
-        environment_model = EMModel(num_inputs = 3,
+        environment_model = EMModel(num_inputs = 1,
                                     num_actions=env.action_space.n,
                                     use_cuda=use_cuda)
 
@@ -76,22 +87,25 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         environment_model.cuda()
 
     optimizer = EnvironmentModelOptimizer(model=environment_model,
-                                          lstm_backward_steps= 3,
                                           use_cuda=use_cuda)
     optimizer.set_optimizer()
 
     chance_of_random_action = 0.25
+
+    num_frames = 4
+    states_deque = collections.deque(maxlen=num_frames)
 
     if render==True:
         renderer = RenderTrainEM(environment_model_name, delete_log_file = load_environment_model==False)
 
     for i_episode in range(10000):
         print("Start episode ",i_episode)
-        #policy.repackage_lstm_hidden_variables()   #only for policies with lstm
 
         state = env.reset()
+        for i in range(num_frames):
+            states_deque.append(state)
         #state = np.swapaxes(state, 0, 2)
-        print("SS: ",state.shape)
+        #print("SS: ",state.shape)
         state = torch.from_numpy(state).type(FloatTensor)
         state = Variable(state.unsqueeze(0), requires_grad=False)
 
@@ -99,25 +113,24 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         sum_reward = 0
 
         while not done:
-
-            critic, actor = policy(state)
+            states = states_to_torch(states_deque, use_cuda)
+            critic, actor = policy(states)
 
             prob = F.softmax(actor, dim=1)
             action = prob.multinomial().data
+            action = action[0][0]
             if random.random() < chance_of_random_action:
                 action = random.randint(0, env.action_space.n -1)
 
+
             next_state, reward, done, _ = env.step(action)
-            print(next_state.shape)
+
+            states_deque.append(next_state)
+            #print(next_state.shape)
             next_state = torch.from_numpy(next_state).type(FloatTensor)
             next_state = Variable(next_state.unsqueeze(0))
 
             reward = Variable(FloatTensor([reward]))
-
-
-            np_action = np.zeros(env.action_space.n)
-            np_action[action] = 1
-            action = Variable(torch.from_numpy(np_action)).type(FloatTensor)
 
             loss, prediction = optimizer.optimizer_step(state,
                                                         action,
@@ -126,6 +139,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
             (predicted_next_state, predicted_reward) = prediction
             state = next_state
+
 
             if render:
                 renderer.render_observation(next_state, predicted_next_state)
@@ -140,10 +154,8 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
             r = reward.data.cpu().numpy()[0]
             if r > 0.9 or r < -0.9:
                 sum_reward += r
-                #environment_model.repackage_lstm_hidden_variables()
                 print("Reward", r, "total reward", sum_reward)
 
-        #environment_model.repackage_lstm_hidden_variables()
         print("Save model", save_environment_model_dir, environment_model_name)
         save_environment_model(save_model_dir = save_environment_model_dir,
                                environment_model_name = environment_model_name,
@@ -161,7 +173,7 @@ def load_policy(load_policy_model_dir = "trained_models/",
         load_policy_model_dir, policy_file), map_location=lambda storage, loc: storage)
 
     if policy_name=="MiniModel":
-        policy_model = MiniModel(num_inputs=3, action_space=action_space)
+        policy_model = MiniModel(num_inputs=4, action_space=action_space)
     elif policy_name=="OriginalModel":
         policy_model = ActorCritic(num_inputs=1, action_space=action_space)
     else:

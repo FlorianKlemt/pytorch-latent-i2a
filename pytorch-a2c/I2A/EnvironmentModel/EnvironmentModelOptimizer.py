@@ -6,11 +6,9 @@ class EnvironmentModelOptimizer():
 
     def __init__(self,
                  model,
-                 lstm_backward_steps = 3,
                  use_cuda = True):
 
         self.use_cuda = use_cuda
-        self.lstm_backward_steps = lstm_backward_steps
         # State Input
         self.model = model
 
@@ -23,7 +21,6 @@ class EnvironmentModelOptimizer():
         #self.loss_function_frame = nn.CrossEntropyLoss()
 
         self.optimizer = torch.optim.Adam
-        self.last_states_actions = deque(maxlen=self.lstm_backward_steps)
 
     def set_optimizer(self, optimizer_args_adam = {"lr": 1e-4,
                                                    "betas": (0.9, 0.999),
@@ -39,13 +36,9 @@ class EnvironmentModelOptimizer():
         Make a single gradient update.
         """
         self.optimizer.zero_grad()
-        _, executed_action_index = env_action.max(0)
-
-        self.last_states_actions.append((env_state_frame, env_action))
 
         # Compute loss and gradient
-        for state, action in self.last_states_actions:
-            next_frame, next_reward = self.model(state, action)
+        next_frame, next_reward = self.model(env_state_frame, env_action)
 
 
         next_frame_loss = self.loss_function_frame(next_frame, env_state_frame_target)
@@ -62,7 +55,5 @@ class EnvironmentModelOptimizer():
         #torch.autograd.backward(losses, retain_graph=True)
 
         self.optimizer.step()
-
-        self.model.repackage_lstm_hidden_variables()
 
         return (next_frame_loss, next_reward_loss), (next_frame, next_reward)

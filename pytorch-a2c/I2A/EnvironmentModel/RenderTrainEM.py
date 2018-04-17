@@ -34,7 +34,8 @@ class RenderTrainEM():
 
         drawable_state = drawable_state.numpy()
 
-        frame_data = (drawable_state * 255.0)
+        #frame_data = (drawable_state * 255.0)
+        frame_data = drawable_state
 
         frame_data[frame_data < 0] = 0
         frame_data[frame_data > 255] = 255
@@ -70,7 +71,7 @@ class RenderTrainEM():
         if self.iteration % 10 == 0 or reward < -0.9 or reward > 0.9:
             print(summary)
 
-    def get_step_summary(episode, iteration,
+    def get_step_summary(self, episode, iteration,
                          frame_loss, reward_loss,
                          pred_reward, reward,
                          duration, total_time):

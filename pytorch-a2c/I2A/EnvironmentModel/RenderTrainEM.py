@@ -68,7 +68,7 @@ class RenderTrainEM():
                                    reward_prediction, reward,
                                    duration, self.train_total_time)
         self.logger_prediction.info(summary)
-        if self.iteration % 10 == 0 or reward < -0.9 or reward > 0.9:
+        if self.iteration % 10 == 0:# or reward < -0.9 or reward > 0.9:
             print(summary)
 
     def get_step_summary(self, episode, iteration,

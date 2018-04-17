@@ -62,8 +62,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('flatten',      Flatten()),
           # TODO why do they use 5 output rewards??
           #('reward_fc',    nn.Linear(64*W*H, 5)),
-          ('reward_fc', nn.Linear(64 * W * H, 1)),
-          ('softmax',      nn.Softmax())
+          ('reward_fc', nn.Linear(64 * W * H, 1))#,
+          #('softmax',      nn.Softmax())
         ]))
         self.img_head = nn.Conv2d(64, 1, kernel_size=1)        #input size is n3 of basic-block2
 

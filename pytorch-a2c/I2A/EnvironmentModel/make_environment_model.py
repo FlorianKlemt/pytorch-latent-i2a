@@ -154,7 +154,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
             r = reward.data.cpu().numpy()[0]
             if r > 0.9 or r < -0.9:
                 sum_reward += r
-                print("Reward", r, "total reward", sum_reward)
+                #print("Reward", r, "total reward", sum_reward)
 
         print("Save model", save_environment_model_dir, environment_model_name)
         save_environment_model(save_model_dir = save_environment_model_dir,

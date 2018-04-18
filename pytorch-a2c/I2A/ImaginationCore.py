@@ -8,9 +8,9 @@ from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.load_utils import load_policy, load_em_model
 
 class ImaginationCore(nn.Module):
-    def __init__(self, env=None, policy=None, use_cuda=False):
+    def __init__(self, env_model=None, policy=None, use_cuda=False):
         super(ImaginationCore, self).__init__()
-        self.env = env
+        self.env_model = env_model
         self.policy = policy
         if policy != None:
             self.num_actions = policy.num_actions
@@ -28,14 +28,14 @@ class ImaginationCore(nn.Module):
             raise IndexError("You passed an invalid action." +
                              "Expected to be < {}, but was {}".format(self.num_actions, action))
 
-        np_action = np.zeros(self.num_actions)
-        np_action[action] = 1
-        action = Variable(torch.from_numpy(np_action), requires_grad=False).type(self.FloatTensor)
 
-        state, reward = self.env(state, action)
-        #reward = Variable(torch.from_numpy(np.ones(shape=(1)))).type(FloatTensor)
+        next_state, reward = self.env_model(state, action)
+        np_state = state.data.cpu().numpy()
+        np_state = np_state[:,1:]
+        end_state = np.concatenate((np_state,next_state.data.cpu().numpy()),axis=1)
+        end_state = Variable(torch.from_numpy(end_state)).type(self.FloatTensor)
 
-        return state, reward
+        return end_state, reward
 
 
 
@@ -65,7 +65,7 @@ class MiniPacmanImaginationCore(ImaginationCore):
             param.requires_grad = False
         self.policy.eval()
 
-        #self.num_actions = self.policy.num_actions
+        self.num_actions = 5 #TODO: make dynamic
 
         if use_cuda:
             self.env_model.cuda()

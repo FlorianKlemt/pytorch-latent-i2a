@@ -54,12 +54,12 @@ class TestEnvironment():
 
         return done
 
-    def states_to_torch(self, states):
-        states = np.stack(states)
-        states = torch.from_numpy(states).float()
-        states = states.permute(1, 0, 2, 3)
-        states.cuda()
-        return states
+#    def states_to_torch(self, states):
+#        states = np.stack(states)
+#        states = torch.from_numpy(states).float()
+#        states = states.permute(1, 0, 2, 3)
+#        states.cuda()
+#        return states
 
     def reset(self):
         state = self.env.reset()

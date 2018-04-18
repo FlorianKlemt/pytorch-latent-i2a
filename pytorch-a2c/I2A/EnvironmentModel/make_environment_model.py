@@ -34,16 +34,6 @@ def main():
              root_path=root_dir,
              use_cuda=True)
 
-def states_to_torch(states, use_cuda):
-    states = np.stack(states)
-    states = torch.from_numpy(states).float()
-    states = states.permute(1, 0, 2, 3)
-    if use_cuda:
-        states = states.type(torch.cuda.FloatTensor)
-        states.cuda()
-    states = Variable(states)#, requires_grad=False)
-    return states
-
 def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
              EMModel = None,
              policy_model = "PongDeterministic-v4_21",
@@ -93,9 +83,6 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
     chance_of_random_action = 0.25
 
-    #num_frames = 4
-    #states_deque = collections.deque(maxlen=num_frames)
-
     if render==True:
         renderer = RenderTrainEM(environment_model_name, delete_log_file = load_environment_model==False)
 
@@ -103,17 +90,13 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         print("Start episode ",i_episode)
 
         state = env.reset()
-        #state = torch.from_numpy(state).type(FloatTensor)
-        #state = Variable(state)
-        #state = Variable(state.unsqueeze(0), requires_grad=False)
 
         done = False
         sum_reward = 0
 
         while not done:
-            #states = states_to_torch(states_deque, use_cuda)
             state_variable = Variable(torch.from_numpy(state).type(FloatTensor))
-            critic, actor = policy(state_variable)   #was states
+            critic, actor = policy(state_variable)
 
             prob = F.softmax(actor, dim=1)
             action = prob.multinomial().data

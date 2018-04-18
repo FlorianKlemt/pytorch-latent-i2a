@@ -22,7 +22,7 @@ class ActorCritic(torch.nn.Module):
 
         self.linear1 = nn.Linear(64 * 7 * 7, 512)
 
-        num_outputs = action_space.n
+        num_outputs = action_space
         self.critic_linear = nn.Linear(512, 1)
         self.actor_linear = nn.Linear(512, num_outputs)
 

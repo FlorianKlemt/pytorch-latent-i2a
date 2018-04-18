@@ -32,7 +32,7 @@ class TestEnvironment():
         self.reset()
 
     def load_model(self, model_type, load_path, num_stack, cuda):
-        self.model = model_type(self.env.observation_space.shape[0] * num_stack, self.env.action_space)
+        self.model = model_type(self.env.observation_space.shape[0] * num_stack, self.env.action_space.n)
         self.model.load_state_dict(torch.load(load_path))
         if cuda:
             self.model.cuda()

@@ -129,7 +129,7 @@ def main():
     else:
         raise NotImplementedError("Model does not exist!")
 
-    actor_critic = model_type(envs.observation_space.shape[0] * args.num_stack, envs.action_space)
+    actor_critic = model_type(envs.observation_space.shape[0] * args.num_stack, envs.action_space.n)
 
     if args.algo == 'ppo':
         actor_critic = nn.DataParallel(actor_critic)

@@ -30,7 +30,7 @@ class MiniModel(torch.nn.Module):
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 
-        num_outputs = action_space.n
+        num_outputs = action_space
         self.critic_linear = nn.Linear(256, 1)
         self.actor_linear = nn.Linear(256, num_outputs)
 

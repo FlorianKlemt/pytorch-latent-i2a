@@ -1,5 +1,4 @@
 import os
-import sys
 import random
 import numpy as np
 import torch
@@ -7,8 +6,6 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import gym
 import gym_minipacman
-from Models.MiniModel import MiniModel
-from Models.model import ActorCritic
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
@@ -16,15 +13,19 @@ from minipacman_envs import make_minipacman_env_no_log
 import os
 import collections
 import sys
+
+from I2A.load_utils import load_policy, load_em_model
+
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-root_dir = "/home/meins/Studium/GuidedResearch/repo/pytorch-a2c/"
+root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+
 def main():
     EMModel = MiniPacmanEnvModel
 
     train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
              EMModel=EMModel,
-             policy_model="RegularMiniPacmanNoFrameskip-v0",
+             policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
              load_policy_model_dir="trained_models/a2c/",
              environment_model_name="RegularMiniPacman_EnvModel_0",
              save_environment_model_dir="trained_models/environment_models/",
@@ -58,7 +59,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     env = make_minipacman_env_no_log(env_name)#gym.make(env_name)
-    action_space = env.action_space
+    action_space = env.action_space.n
 
     load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
     policy = load_policy(load_policy_model_dir,
@@ -79,7 +80,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
                                           action_space,
                                           use_cuda)
     else:
-        environment_model = EMModel(num_inputs = 1,
+        environment_model = EMModel(num_inputs = 4,
                                     num_actions=env.action_space.n,
                                     use_cuda=use_cuda)
 
@@ -92,8 +93,8 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
     chance_of_random_action = 0.25
 
-    num_frames = 4
-    states_deque = collections.deque(maxlen=num_frames)
+    #num_frames = 4
+    #states_deque = collections.deque(maxlen=num_frames)
 
     if render==True:
         renderer = RenderTrainEM(environment_model_name, delete_log_file = load_environment_model==False)
@@ -102,19 +103,17 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         print("Start episode ",i_episode)
 
         state = env.reset()
-        for i in range(num_frames):
-            states_deque.append(state)
-        #state = np.swapaxes(state, 0, 2)
-        #print("SS: ",state.shape)
-        state = torch.from_numpy(state).type(FloatTensor)
-        state = Variable(state.unsqueeze(0), requires_grad=False)
+        #state = torch.from_numpy(state).type(FloatTensor)
+        #state = Variable(state)
+        #state = Variable(state.unsqueeze(0), requires_grad=False)
 
         done = False
         sum_reward = 0
 
         while not done:
-            states = states_to_torch(states_deque, use_cuda)
-            critic, actor = policy(states)
+            #states = states_to_torch(states_deque, use_cuda)
+            state_variable = Variable(torch.from_numpy(state).type(FloatTensor))
+            critic, actor = policy(state_variable)   #was states
 
             prob = F.softmax(actor, dim=1)
             action = prob.multinomial().data
@@ -125,16 +124,14 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
             next_state, reward, done, _ = env.step(action)
 
-            states_deque.append(next_state)
-            #print(next_state.shape)
-            next_state = torch.from_numpy(next_state).type(FloatTensor)
-            next_state = Variable(next_state.unsqueeze(0))
+            next_state_variable = torch.from_numpy(next_state[:,-1]).type(FloatTensor)
+            next_state_variable = Variable(next_state_variable.unsqueeze(0))
 
             reward = Variable(FloatTensor([reward]))
 
-            loss, prediction = optimizer.optimizer_step(state,
+            loss, prediction = optimizer.optimizer_step(state_variable,
                                                         action,
-                                                        next_state,
+                                                        next_state_variable,
                                                         reward)
 
             (predicted_next_state, predicted_reward) = prediction
@@ -142,7 +139,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
 
             if render:
-                renderer.render_observation(next_state, predicted_next_state)
+                renderer.render_observation(next_state_variable, predicted_next_state)
 
             # log and print infos
             (next_state_loss, next_reward_loss) = loss
@@ -160,54 +157,6 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         save_environment_model(save_model_dir = save_environment_model_dir,
                                environment_model_name = environment_model_name,
                                environment_model = environment_model)
-
-
-
-
-def load_policy(load_policy_model_dir = "trained_models/",
-                policy_file = None,
-                action_space = None,
-                use_cuda = True,
-                policy_name="MiniModel"):
-    saved_state = torch.load('{0}{1}.pt'.format(
-        load_policy_model_dir, policy_file), map_location=lambda storage, loc: storage)
-
-    if policy_name=="MiniModel":
-        policy_model = MiniModel(num_inputs=4, action_space=action_space)
-    elif policy_name=="OriginalModel":
-        policy_model = ActorCritic(num_inputs=1, action_space=action_space)
-    else:
-        raise NotImplementedError("Model ",policy_name, " does not exist")
-    policy_model.load_state_dict(saved_state)
-    if use_cuda:
-        policy_model.cuda()
-
-    for param in policy_model.parameters():
-        param.requires_grad = False
-
-    policy_model.eval()
-    return policy_model
-
-
-def load_em_model(EMModel,
-                  load_environment_model_dir = "trained_models/environment_models/",
-                  environment_model_name = None,
-                  action_space = None,
-                  use_cuda = True):
-
-    saved_state = torch.load('{0}{1}.pt'.format(
-        load_environment_model_dir, environment_model_name), map_location=lambda storage, loc: storage)
-
-
-    environment_model = EMModel(name=environment_model_name,
-                                    num_input_actions=action_space,
-                                    use_cuda=use_cuda)
-    environment_model.load_state_dict(saved_state)
-    if use_cuda:
-        environment_model.cuda()
-
-    return environment_model
-
 
 def save_environment_model(save_model_dir, environment_model_name, environment_model):
     state_to_save = environment_model.state_dict()

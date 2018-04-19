@@ -14,8 +14,9 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from envs import make_env
-from Models.model import ActorCritic
-from Models.MiniModel import MiniModel
+from A2C_Models.model import ActorCritic
+from A2C_Models.MiniModel import MiniModel
+from I2A.I2A_Agent import I2A
 from minipacman_envs import make_minipacman_env
 from vizualize_atari import visdom_plot
 
@@ -78,7 +79,7 @@ parser.add_argument('--model', default='Original',
 
 args = parser.parse_args()
 
-assert args.algo in ['a2c', 'ppo']
+assert args.algo in ['i2a', 'a2c', 'ppo']
 if args.algo == 'ppo':
     assert args.num_processes * args.num_steps % args.batch_size == 0
 args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -107,12 +108,30 @@ def main():
 
     os.environ['OMP_NUM_THREADS'] = '1'
 
+    if args.model == 'I2A':
+        model_type = I2A
+    elif args.model == 'MiniModel':
+        model_type = MiniModel
+    elif args.model == 'Original':
+        model_type = ActorCritic
+    else:
+        raise NotImplementedError("Model does not exist!")
+
+    load_path = os.path.join(args.save_dir, args.algo)
+    #test_process = TestPolicy(args.env_name,
+    #                          model_type,
+    #                          args.num_stack,
+    #                          load_path,
+    #                          args.cuda)
+
     if args.vis:
         from visdom import Visdom
         viz = Visdom()
         win = None
 
-    if args.model == "MiniModel":
+    if args.model == 'I2A':
+        make_environment = make_minipacman_env
+    elif args.model == 'MiniModel':
         make_environment = make_minipacman_env
     else:
         make_environment = make_env
@@ -122,14 +141,7 @@ def main():
         for i in range(args.num_processes)
     ])
 
-    if args.model == 'MiniModel':
-        model_type = MiniModel
-    elif args.model == 'Original':
-        model_type = ActorCritic
-    else:
-        raise NotImplementedError("Model does not exist!")
-
-    actor_critic = model_type(envs.observation_space.shape[0] * args.num_stack, envs.action_space.n)
+    actor_critic = model_type(envs.observation_space.shape[0] * args.num_stack, envs.action_space.n, use_cuda=args.cuda)
 
     if args.algo == 'ppo':
         actor_critic = nn.DataParallel(actor_critic)
@@ -137,14 +149,15 @@ def main():
     if args.cuda:
         actor_critic.cuda()
 
-    load_path = os.path.join(args.save_dir, args.algo)
-    test_process = TestPolicy(args.env_name,
-                              model_type,
-                              args.num_stack,
-                              load_path,
-                              args.cuda)
-
-    if args.algo == 'a2c':
+    #load_path = os.path.join(args.save_dir, args.algo)
+    #test_process = TestPolicy(args.env_name,
+    #                          model_type,
+    #                          args.num_stack,
+    #                          load_path,
+    #                          args.cuda)
+    if args.algo == 'i2a':
+        optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
+    elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
         optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
@@ -157,9 +170,14 @@ def main():
     counts = 0
 
     def update_current_state(state):
-        state = torch.from_numpy(np.stack(state)).float()
-        current_state[:, :-1] = current_state[:, 1:]
-        current_state[:, -1] = state
+        #in the new version the logic of the old version is already implemented through the 4 frame stack
+        state = torch.from_numpy(state).float()
+        current_state = state
+
+        #old version
+        # state = torch.from_numpy(np.stack(state)).float()
+        #current_state[:, :-1] = current_state[:, 1:]
+        #current_state[:, -1] = state
 
     state = envs.reset()
     update_current_state(state)
@@ -329,8 +347,8 @@ def main():
             win = visdom_plot(viz, win, args.log_dir, args.env_name, args.algo)
 
         # only start once
-        if j == 0:
-            test_process.start_test_process()
+        #if j == 0:
+        #    test_process.start_test_process()
 
 
 if __name__ == "__main__":

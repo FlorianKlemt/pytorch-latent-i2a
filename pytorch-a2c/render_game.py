@@ -24,15 +24,15 @@ def make_test_env(env_id, model_name):
 
 class TestEnvironment():
     def __init__(self, env, model_type, num_stack, load_path, cuda):
+        self.FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
         self.num_stack = num_stack
         self.env = env
         self.load_model(model_type, load_path, num_stack, cuda)
 
-        self.states = collections.deque(maxlen=num_stack)
         self.reset()
 
     def load_model(self, model_type, load_path, num_stack, cuda):
-        self.model = model_type(self.env.observation_space.shape[0] * num_stack, self.env.action_space.n)
+        self.model = model_type(self.env.observation_space.shape[0] * num_stack, self.env.action_space.n, cuda)
         self.model.load_state_dict(torch.load(load_path))
         if cuda:
             self.model.cuda()
@@ -41,8 +41,7 @@ class TestEnvironment():
         self.env.render()
 
     def step(self):
-        states_torch = self.states_to_torch(self.states)
-        value, logits = self.model(Variable(states_torch, volatile=True).cuda())
+        value, logits = self.model(Variable(torch.from_numpy(self.state).type(self.FloatTensor), volatile=True).cuda())
         probs = F.softmax(logits, dim=0)
         action = probs.multinomial().data
         cpu_actions = action.cpu()
@@ -54,17 +53,8 @@ class TestEnvironment():
 
         return done
 
-#    def states_to_torch(self, states):
-#        states = np.stack(states)
-#        states = torch.from_numpy(states).float()
-#        states = states.permute(1, 0, 2, 3)
-#        states.cuda()
-#        return states
-
     def reset(self):
-        state = self.env.reset()
-        for i in range(self.num_stack):
-            self.states.append(state)
+        self.state = self.env.reset()
         self.reward = 0
 
     def play_game(self):
@@ -98,10 +88,15 @@ class TestPolicy():
         self.load_path = os.path.join(load_path, env_id + ".pt")
         self.cuda = cuda
         self.env_id = env_id
+        self.p = Process(target = test_policy,
+                    args=(self.env_id, self.model_type, self.num_stack, self.load_path, self.cuda))
+        self.p.start()
 
     def start_test_process(self):
+        pass
+        #self.p.start()
         #test_policy(self.env_id, self.model_type, self.num_stack, self.load_path, self.cuda)
-        p = Process(target = test_policy,
-                    args=(self.env_id, self.model_type, self.num_stack, self.load_path, self.cuda))
-        p.start()
+        #p = Process(target = test_policy,
+        #            args=(self.env_id, self.model_type, self.num_stack, self.load_path, self.cuda))
+        #self.p.start()
         #p.join()

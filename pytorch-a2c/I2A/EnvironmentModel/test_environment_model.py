@@ -85,6 +85,6 @@ env = make_minipacman_env_no_log(env_name)
 # small model which only predicts one reward
 EMModel = MiniPacmanEnvModel
 
-imagination_core = MiniPacmanImaginationCore(num_inputs=4, use_cuda=use_cuda)
+imagination_core = MiniPacmanImaginationCore(num_inputs=4, use_cuda=use_cuda, require_policy_grad=False)    #no policy grads required for this
 
 play_with_imagination_core(imagination_core, env=env, use_cuda=use_cuda)

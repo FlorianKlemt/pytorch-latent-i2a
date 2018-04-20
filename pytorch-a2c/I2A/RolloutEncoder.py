@@ -86,10 +86,11 @@ class RolloutEncoder():
                 Variable(torch.zeros(
                     cnn_output.data.shape[2],
                     cnn_output.data.shape[3],
-                    cnn_output.data.shape[0])
+                    1)#cnn_output.data.shape[0])
                 ).type(self.FloatTensor) + \
                 reward
             broadcasted_reward = torch.unsqueeze(broadcasted_reward.permute(2,0,1),0)
+            broadcasted_reward = broadcasted_reward.repeat(cnn_output.data.shape[0], 1, 1, 1)
             if self.use_cuda:
                 broadcasted_reward = broadcasted_reward.cuda()
             aggregated_cnn_reward = torch.cat((cnn_output, broadcasted_reward), 1)

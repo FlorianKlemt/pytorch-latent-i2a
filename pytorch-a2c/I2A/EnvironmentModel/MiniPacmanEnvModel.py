@@ -91,8 +91,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
             ).type(self.FloatTensor) + \
             one_hot
         broadcasted_action = torch.unsqueeze(broadcasted_action, 0).permute(0,3,1,2)
-        #broadcasted_action = np.broadcast_to(one_hot, (self.num_actions, 15, 19))
-        #broadcasted_action = Variable(torch.from_numpy(input_action)).type(self.FloatTensor)
+        broadcasted_action = broadcasted_action.repeat(input_frame.data.shape[0], 1, 1, 1)
 
         x = torch.cat((input_frame,broadcasted_action),1)
 

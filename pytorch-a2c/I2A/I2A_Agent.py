@@ -15,7 +15,9 @@ class I2A(torch.nn.Module):
         self.input_channels = 4
         self.rollout_steps = 2
         self.number_lstm_cells = 256
-        self.output_policy_input_size = 2048
+        self.model_free_output_size = 512
+        self.model_based_output_size = self.number_lstm_cells * self.action_space
+        self.output_policy_input_size = self.model_based_output_size + self.model_free_output_size
         self.use_cuda = use_cuda
 
         self.output_policy_network = OutputPolicyNetwork(self.output_policy_input_size,

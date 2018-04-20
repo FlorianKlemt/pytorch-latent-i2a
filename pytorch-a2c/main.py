@@ -163,7 +163,7 @@ def main():
         optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
 
     obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0] * args.num_stack, obs_shape[1], obs_shape[2])
+    obs_shape = (obs_shape[0], obs_shape[1], obs_shape[2])
 
     states = torch.zeros(args.num_steps + 1, args.num_processes, *obs_shape)
     current_state = torch.zeros(args.num_processes, *obs_shape)
@@ -255,7 +255,7 @@ def main():
                 returns[step] = returns[step + 1] * \
                     args.gamma * masks[step] + rewards[step]
 
-        if args.algo == 'a2c':
+        if args.algo == 'a2c' or args.algo == 'i2a':
             # Reshape to do in a single forward pass for all steps
             values, logits = actor_critic(Variable(states[:-1].view(-1, *states.size()[-3:])))
             log_probs = F.log_softmax(logits)

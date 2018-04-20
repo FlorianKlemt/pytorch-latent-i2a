@@ -60,7 +60,7 @@ class RenderTrainEM():
 
         state_loss = state_loss.data.cpu().numpy()[0]
         reward_loss = reward_loss.data.cpu().numpy()[0]
-        reward_prediction = reward_prediction.data.cpu().numpy()[0][0]
+        reward_prediction = reward_prediction.data.cpu().numpy()[0]#[0]
         reward = reward.data.cpu().numpy()[0]
 
         summary = self.get_step_summary(episode, self.iteration,

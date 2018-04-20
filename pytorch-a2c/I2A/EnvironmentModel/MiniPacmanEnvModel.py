@@ -49,6 +49,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
+        self.reward_bins = Variable(torch.FloatTensor([-1., 0., 1., 2., 5.]).type(self.FloatTensor))
+
         W=19    #TODO: 15
         H=19
         self.conv1 = nn.Conv2d(num_inputs+self.num_actions, 64, kernel_size=1, stride=1, padding=0)    #input size is channels of input frame +1 for the broadcasted action
@@ -61,9 +63,9 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
           # TODO why do they use 5 output rewards??
-          #('reward_fc',    nn.Linear(64*W*H, 5)),
-          ('reward_fc', nn.Linear(64 * W * H, 1))#,
-          #('softmax',      nn.Softmax())
+          #('reward_fc', nn.Linear(64 * W * H, 1))
+          ('reward_fc',    nn.Linear(64*W*H, 5)),
+          ('softmax',      nn.Softmax())
         ]))
         self.img_head = nn.Conv2d(64, 1, kernel_size=1)        #input size is n3 of basic-block2
 
@@ -117,7 +119,9 @@ class MiniPacmanEnvModel(torch.nn.Module):
         image_out = F.relu(self.img_head(x))    #maybe remove relu?
 
         #output reward head
-        reward_out = self.reward_head(x)
+        reward_probability = self.reward_head(x)
+        # TODO why not just use the value of the max probability
+        reward_out = torch.sum(reward_probability * self.reward_bins)
         #x.view(x.size())
 
         return image_out,reward_out

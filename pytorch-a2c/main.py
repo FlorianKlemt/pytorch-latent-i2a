@@ -257,7 +257,8 @@ def main():
 
         if args.algo == 'a2c' or args.algo == 'i2a':
             # Reshape to do in a single forward pass for all steps
-            values, logits = actor_critic(Variable(states[:-1].view(-1, *states.size()[-3:])))
+            states_model_input = Variable(states[:-1].view(-1, *states.size()[-3:]))
+            values, logits = actor_critic(states_model_input)
             log_probs = F.log_softmax(logits)
 
             # Unreshape
@@ -329,8 +330,8 @@ def main():
 
             # A really ugly way to save a model to CPU
             save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
+            #if args.cuda:
+            #    save_model = copy.deepcopy(actor_critic).cpu()
 
             torch.save(save_model.state_dict(), os.path.join(save_path, args.env_name + ".pt"))
 

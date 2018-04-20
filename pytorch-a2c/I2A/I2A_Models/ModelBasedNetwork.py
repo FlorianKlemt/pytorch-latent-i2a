@@ -46,13 +46,23 @@ class ModelBasedNetwork(torch.nn.Module):
 
     def forward(self, input_state):
         # model-based side
-        # compute rollout encoder final results
-        rollout_results = []
-        for rollout_encoder in self.rollout_encoder_list:
-            rollout_results.append(rollout_encoder.forward(input_state))
+        model_based_results = []
+
+        # for each process
+        for i in range(input_state.data.shape[0]):
+            self.repackage_lstm_hidden_variables()
+            state = input_state[i].unsqueeze(0)
+            # compute rollout encoder final results
+            rollout_results = []
+            for rollout_encoder in self.rollout_encoder_list:
+                rollout_results.append(rollout_encoder.forward(state))
+
+            # Aggregator: aggregate all lstm outputs
+            process_result = torch.cat(rollout_results, 1)
+            model_based_results.append(process_result)
 
         # Aggregator: aggregate all lstm outputs
-        model_based_result = torch.cat(rollout_results, 1)
+        model_based_result = torch.cat(model_based_results, 0)
 
         return model_based_result
 

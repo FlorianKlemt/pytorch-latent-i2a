@@ -14,7 +14,7 @@ def weights_init(m):
 
 
 class ActorCritic(torch.nn.Module):
-    def __init__(self, num_inputs, action_space):
+    def __init__(self, num_inputs, action_space, use_cuda):   #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(ActorCritic, self).__init__()
         self.conv1 = nn.Conv2d(num_inputs, 32, 8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, 4, stride=2)

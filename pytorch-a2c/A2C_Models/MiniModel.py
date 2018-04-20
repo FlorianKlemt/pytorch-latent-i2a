@@ -21,7 +21,7 @@ def xavier_weights_init(m):
             m.bias.data.fill_(0)
 
 class MiniModel(torch.nn.Module):
-    def __init__(self, num_inputs, action_space):
+    def __init__(self, num_inputs, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(MiniModel, self).__init__()
         self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8

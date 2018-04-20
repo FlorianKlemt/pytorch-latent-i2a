@@ -43,12 +43,13 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
         gym.ObservationWrapper.__init__(self, env)
         self.num_frames = num_frames
         self.res = image_resize_size
-        self.observation_space = spaces.Box(low=0, high=255, shape=(19, 19, 1), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0., high=1., shape=(19, 19, 1), dtype=np.float)
         self.states_deque = collections.deque(maxlen=self.num_frames)
 
     def frame_from_observation(self, obs):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
-        frame = np.array(Image.fromarray(frame*255), dtype=np.uint8)
+        #frame = np.array(Image.fromarray(frame*255), dtype=np.uint8)
+        frame = np.array(Image.fromarray(frame), dtype=np.float)
         zeros = np.zeros((19,4))
         frame = np.append(frame, zeros)
         #frame = frame.reshape((19, 19, 1)) #???

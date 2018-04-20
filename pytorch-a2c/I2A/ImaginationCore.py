@@ -6,6 +6,7 @@ import numpy as np
 
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.load_utils import load_policy, load_em_model
+import os
 
 class ImaginationCore(nn.Module):
     def __init__(self, env_model=None, policy=None, use_cuda=False):
@@ -44,9 +45,11 @@ class MiniPacmanImaginationCore(ImaginationCore):
 
         action_space = 5
 
+        load_environment_model_dir = os.path.join(os.getcwd(), 'trained_models/environment_models/')
+        #load_environment_model_dir = '/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/environment_models/',
         self.env_model = load_em_model(EMModel=MiniPacmanEnvModel,
-                                 load_environment_model_dir='/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/environment_models/',
-                                 environment_model_name="RegularMiniPacman_EnvModel_1.dat",
+                                 load_environment_model_dir=load_environment_model_dir,
+                                 environment_model_name="RegularMiniPacman_EnvModel_0.dat",
                                  num_inputs=num_inputs,
                                  action_space=action_space,
                                  use_cuda=use_cuda)
@@ -58,7 +61,9 @@ class MiniPacmanImaginationCore(ImaginationCore):
         else:
             self.env_model.train()
 
-        self.policy = load_policy(load_policy_model_dir="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/a2c/",
+        load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
+        #load_policy_model_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/a2c/"
+        self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
                                   policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
                                   action_space=action_space,
                                   use_cuda=use_cuda,

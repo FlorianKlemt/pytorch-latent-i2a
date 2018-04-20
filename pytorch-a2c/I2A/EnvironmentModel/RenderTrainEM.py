@@ -11,8 +11,6 @@ class RenderTrainEM():
         cv2.resizeWindow('target', render_window_sizes)
         cv2.namedWindow('prediction', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('prediction', render_window_sizes)
-        #cv2.namedWindow('differnece', cv2.WINDOW_NORMAL)
-        #cv2.resizeWindow('differnece', render_window_sizes)
 
         # this logger will both print to the console as well as the file
 
@@ -28,14 +26,11 @@ class RenderTrainEM():
         self.train_total_time = 0
 
     def render_observation_in_window(self, window_name, observation):
-        drawable_state = observation.data[0]
-        drawable_state = np.swapaxes(drawable_state, 0, 1)
-        drawable_state = np.swapaxes(drawable_state, 1, 2)
+        drawable_state = observation.permute(1,2,0)
 
-        drawable_state = drawable_state.numpy()
+        drawable_state = drawable_state.data.cpu().numpy()
 
-        #frame_data = (drawable_state * 255.0)
-        frame_data = drawable_state
+        frame_data = (drawable_state * 255.0)
 
         frame_data[frame_data < 0] = 0
         frame_data[frame_data > 255] = 255

@@ -17,7 +17,8 @@ import sys
 from I2A.load_utils import load_policy, load_em_model
 
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
+#root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
+root_dir = os.path.join(os.getcwd(), '../../')
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def main():
@@ -95,7 +96,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
         sum_reward = 0
 
         while not done:
-            state_variable = Variable(torch.from_numpy(state).type(FloatTensor))
+            state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
             critic, actor = policy(state_variable)
 
             prob = F.softmax(actor, dim=1)
@@ -107,7 +108,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
             next_state, reward, done, _ = env.step(action)
 
-            next_state_variable = torch.from_numpy(next_state[:,-1]).type(FloatTensor)
+            next_state_variable = torch.from_numpy(next_state[-1]).type(FloatTensor)
             next_state_variable = Variable(next_state_variable.unsqueeze(0))
 
             reward = Variable(FloatTensor([reward]))
@@ -122,7 +123,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
 
             if render:
-                renderer.render_observation(next_state_variable, predicted_next_state)
+                renderer.render_observation(next_state_variable, predicted_next_state[0])
 
             # log and print infos
             (next_state_loss, next_reward_loss) = loss

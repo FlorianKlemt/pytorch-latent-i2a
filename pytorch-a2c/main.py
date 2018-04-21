@@ -18,7 +18,7 @@ from A2C_Models.model import ActorCritic
 from A2C_Models.MiniModel import MiniModel
 from I2A.I2A_Agent import I2A
 from minipacman_envs import make_minipacman_env
-from vizualize_atari import visdom_plot
+from visualize_atari import visdom_plot
 
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument('--algo', default='a2c',

@@ -16,53 +16,98 @@ from visdom import Visdom
 import matplotlib.pyplot as plt
 
 def main():
+    #magic do not change
+    plt.switch_backend('TKAgg')
+    plt.ion()
+    #matplotlib init
+    smooth_loss_plot, loss_plot = init_loss_plot()
+
+    #cv init
     render_window_sizes = (400, 400)
     cv2.namedWindow('target', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('target', render_window_sizes)
     cv2.namedWindow('prediction', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('prediction', render_window_sizes)
+    cv2.namedWindow('target_substract_mean', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('target_substract_mean', render_window_sizes)
+    cv2.namedWindow('prediction_substract_mean', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('prediction_substract_mean', render_window_sizes)
 
-    train_autoencoder(env_name="RegularMiniPacmanNoFrameskip-v0",
-                      policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
-                      load_policy_model_dir="trained_models/a2c/",
-                      root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
+    use_cuda = True
+
+    env, encoder_model, policy = init_autoencoder_training(env_name="RegularMiniPacmanNoFrameskip-v0",
+                              root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
+                              policy_model_name="RegularMiniPacmanNoFrameskip-v0.pt",
+                              load_policy_model_dir="trained_models/a2c/",
+                              use_cuda=use_cuda)
+
+    mean_image = get_mean_image(env=env,policy=policy,use_cuda=use_cuda)
+    mean_image = np.squeeze(mean_image)
+
+    train_autoencoder(env=env,
+                      encoder_model=encoder_model,
+                      policy=policy,
+                      mean_image=mean_image,
                       save_encoder_model_freq=100,
                       save_encoder_model_dir="trained_autoencoder_models/",
                       save_encoder_model_name="RegularMiniPacmanAutoencoder_v1",
-                      use_cuda=True)
+                      use_cuda=use_cuda,
+                      loss_plot=loss_plot,
+                      smooth_loss_plot=smooth_loss_plot)
 
 
-def train_autoencoder(env_name="RegularMiniPacmanNoFrameskip-v0",
-             policy_model = "POLICY_MODEL_NAME",
-             load_policy_model_dir = "trained_models/",
-             root_path="",
-             save_encoder_model_freq = 100,
-             save_encoder_model_dir = "",
-             save_encoder_model_name = "",
-             use_cuda=False):
-
-    visdom_log_dir = "/tmp/gym/autoencoder"
-    viz = Visdom()
-    win = None
-    try:
-        os.makedirs(visdom_log_dir)
-    except OSError:
-        files = glob.glob(os.path.join(visdom_log_dir, '*.monitor.json'))
-        for f in files:
-            os.remove(f)
-
+def get_mean_image(env,policy,use_cuda):
+    frame_list = []
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+    state = env.reset()
+    games_to_play = 50
+    p = 0.2
+    for i in range(games_to_play):
+        print("Game ",i)
+        done = False
+        while not done:
+            if random.random() < p:
+                frame_list.append(state[-1]) #append last frame of the frame stack of the current state to frame_list
+            state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
+            critic, actor = policy(state_variable)
+            prob = F.softmax(actor, dim=1)
+            action = prob.multinomial().data
+            action = action[0][0]
+            next_state, reward, done, _ = env.step(action)
+            state = next_state
 
+    N = len(frame_list)
+    print(N)
+
+    arr = np.zeros((19, 19, 1), np.float)
+
+    # Build up average pixel intensities, casting each image as an array of floats
+    for im in frame_list:
+        imarr = np.array(im, dtype=np.float)
+        imarr = np.expand_dims(imarr, axis=2)
+        arr = arr + imarr / N
+
+    # draw resulting mean image
+    drawable_state = arr
+    frame_data = (drawable_state * 255.0)
+    frame_data = frame_data.astype(np.uint8)
+    cv2.imshow('target', frame_data)
+    cv2.waitKey(0)
+
+    return arr
+
+
+def init_autoencoder_training(env_name, root_path, load_policy_model_dir, policy_model_name, use_cuda):
     #create environment to train on
-    #env = make_minipacman_env_no_log(env_name)
-    make_method = make_minipacman_env(env_name,seed=1,rank=0,log_dir=visdom_log_dir)
-    env = make_method()
+    env = make_minipacman_env_no_log(env_name)
+    #make_method = make_minipacman_env(env_name,seed=1,rank=0,log_dir=visdom_log_dir)
+    #env = make_method()
     action_space = env.action_space.n
 
     #load policy to use to generate training states
     load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
     #policy = load_policy(load_policy_model_dir,
-    #                     policy_model,
+    #                     policy_model_name,
     #                     action_space=action_space,
     #                     use_cuda=use_cuda)
     policy = MiniModel(num_inputs=4, action_space=action_space, use_cuda=use_cuda)
@@ -82,15 +127,32 @@ def train_autoencoder(env_name="RegularMiniPacmanNoFrameskip-v0",
     encoder_model = EncoderModel(num_inputs = 4)
     if use_cuda:
         encoder_model.cuda()
+    return env, encoder_model, policy
+
+
+def train_autoencoder(
+             env = None,
+             encoder_model = None,
+             policy = None,
+             mean_image=None,
+             save_encoder_model_freq = 100,
+             save_encoder_model_dir = "",
+             save_encoder_model_name = "",
+             use_cuda=False,
+             loss_plot=None,
+             smooth_loss_plot=None):
+
+    FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+    mean_image_variable = Variable(torch.from_numpy(mean_image).type(FloatTensor))
 
     #initialize optimizer
-    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.00001, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.00001, weight_decay=1e-4)
 
     chance_of_random_action = 0.25
 
     #start training loop
+    loss_list = []
     for i_episode in range(10000):
-        #print("Start episode ",i_episode)
         state = env.reset()
 
         done = False
@@ -104,7 +166,15 @@ def train_autoencoder(env_name="RegularMiniPacmanNoFrameskip-v0",
             state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
             encoder_output = encoder_model(state_variable)
             criterion = torch.nn.MSELoss()
-            loss = criterion(encoder_output, state_variable)
+            #criterion = torch.nn.NLLLoss()
+
+            #TODO: this approach is bad, the structure we want to remove is still there
+            #TODO: make it as a mask that zeros input where the mask has a greyscale value of over x
+            prediction = encoder_output[0][-1] - mean_image_variable
+            target = state_variable[0][-1] - mean_image_variable
+            loss = criterion(prediction, target)
+            #loss = criterion(encoder_output,state_variable)       #make loss count on the full frame stack
+            #loss = criterion(encoder_output[0][-1], state_variable[0][-1])      #make loss count only on the last frame of the frame stack
             total_game_loss += loss.data[0]
 
             #encoder backward
@@ -127,11 +197,12 @@ def train_autoencoder(env_name="RegularMiniPacmanNoFrameskip-v0",
             state = next_state
 
             #render last of the frame_stack for ground truth and for encoder
-            render_observation(state_variable, encoder_output)
+            render_observation(state_variable, encoder_output, mean_image)
 
         print("Episode ",i_episode," loss: ", total_game_loss/game_step_counter)
-        ##!!! currently logs something else --> TODO: log loss
-        win = visdom_plot(viz, win,visdom_log_dir,"RegularMiniPacman","Autoencoder", smooth=0)
+        loss_list.append(loss.data[0])
+        plot_loss(i_episode,loss_list,smooth_loss_plot)
+        plot_smooth_loss(i_episode,loss_list,loss_plot)
 
         if i_episode % save_encoder_model_freq == 0:
             print("Save model", save_encoder_model_dir, save_encoder_model_name)
@@ -143,6 +214,7 @@ def save_encoder_model(save_model_dir, encoder_model_name, encoder_model):
     state_to_save = encoder_model.state_dict()
     save_model_path = '{0}{1}.dat'.format(save_model_dir, encoder_model_name)
     torch.save(state_to_save, save_model_path)
+
 
 def load_policy(load_policy_model_dir="trained_models/",
                 policy_file=None,
@@ -162,9 +234,14 @@ def load_policy(load_policy_model_dir="trained_models/",
     policy_model.eval()
     return policy_model
 
-def render_observation_in_window(window_name, observation):
+
+
+def render_observation_in_window(window_name, observation, mean_image=None):
     drawable_state = observation[0][-1]
     drawable_state = drawable_state.data.cpu().numpy()
+
+    if mean_image is not None:
+        drawable_state -= mean_image
 
     frame_data = (drawable_state * 255.0)
 
@@ -176,37 +253,50 @@ def render_observation_in_window(window_name, observation):
     cv2.waitKey(1)
 
 
-def render_observation(target, prediction):
-    render_observation_in_window('target', target)
-    render_observation_in_window('prediction', prediction)
+def render_observation(target, prediction,mean_image):
+    if mean_image is not None:
+        render_observation_in_window('target_substract_mean', target, mean_image)
+        render_observation_in_window('prediction_substract_mean', prediction, mean_image)
+    render_observation_in_window('target', target, None)
+    render_observation_in_window('prediction', prediction, None)
 
 
-def visdom_plot(viz, win, folder, game, name, bin_size=100, smooth=1):
-    tx, ty = load_data(folder, smooth, bin_size)
-    if tx is None or ty is None:
-        return win
 
+def init_loss_plot():
     fig = plt.figure()
-    plt.plot(tx, ty, label="{}".format(name))
-    plt.xticks([1e2, 2e2, 4e2, 6e2, 8e2, 10e2],
-               ["100", "200", "400", "600", "800", "1000"])
+
+    smooth_loss_plot = plt.subplot(121)
+    smooth_loss_plot.set_yscale('log')     #gca for get_current_axis
+    plt.xlabel('Number of Episodes')
+    plt.ylabel('Smoothed Loss')
+    plt.autoscale(enable=True, axis='x', tight=None)
+    plt.title("MiniPacman")
+    plt.legend(loc=4)
+
+    loss_plot = plt.subplot(122)
+    loss_plot.set_yscale('log')  # gca for get_current_axis
     plt.xlabel('Number of Episodes')
     plt.ylabel('Loss')
-
-    plt.xlim(0, 10e2)
-
-    plt.title(game)
+    plt.autoscale(enable=True, axis='x', tight=None)
+    plt.title("MiniPacman")
     plt.legend(loc=4)
+    return smooth_loss_plot, loss_plot
+
+def plot_smooth_loss(episode, loss_list, subplot):
+    plt.cla()
+    k = list(range(0, episode+1))
+    plot_list = [0]*len(loss_list)
+    for i in range(len(loss_list)):
+        plot_list[i] = np.mean(loss_list[max(i-5,0):min(i+5,len(loss_list))])
+    subplot.plot(k, plot_list, 'r')
     plt.show()
-    plt.draw()
+    plt.pause(0.001)
 
-    image = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    image = image.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
-    plt.close(fig)
-
-    # Show it in visdom
-    image = np.transpose(image, (2, 0, 1))
-    return viz.image(image, win=win)
+def plot_loss(episode, loss_list, subplot):
+    k = list(range(0, episode+1))
+    subplot.plot(k, loss_list, 'r')
+    plt.show()
+    plt.pause(0.001)
 
 
 

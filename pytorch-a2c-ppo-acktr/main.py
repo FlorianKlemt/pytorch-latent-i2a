@@ -4,6 +4,7 @@ import os
 import time
 
 import gym
+import gym_minipacman
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,6 +21,8 @@ from kfac import KFACOptimizer
 from model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
 from visualize import visdom_plot
+
+from A2C_Models.MiniModel import MiniModel
 
 args = get_args()
 
@@ -68,7 +71,9 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if len(envs.observation_space.shape) == 3:
+    if 'MiniPacman' in args.env_name:
+        actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=True)
+    elif len(envs.observation_space.shape) == 3:
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
         assert not args.recurrent_policy, \

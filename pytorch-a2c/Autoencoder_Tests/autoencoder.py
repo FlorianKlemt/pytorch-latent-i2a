@@ -44,9 +44,13 @@ def main():
     mean_image = get_mean_image(env=env,policy=policy,use_cuda=use_cuda)
     mean_image = np.squeeze(mean_image)
 
+    loss_criterion = torch.nn.MSELoss()
+    #loss_criterion = torch.nn.BCEWithLogitsLoss()  # BCELoss gives weird cuda device assert error
+
     train_autoencoder(env=env,
                       encoder_model=encoder_model,
                       policy=policy,
+                      loss_criterion=loss_criterion,
                       mean_image=mean_image,
                       save_encoder_model_freq=100,
                       save_encoder_model_dir="trained_autoencoder_models/",
@@ -60,7 +64,7 @@ def get_mean_image(env,policy,use_cuda):
     frame_list = []
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
     state = env.reset()
-    games_to_play = 50
+    games_to_play = 1000
     p = 0.2
     for i in range(games_to_play):
         print("Game ",i)
@@ -134,6 +138,7 @@ def train_autoencoder(
              env = None,
              encoder_model = None,
              policy = None,
+             loss_criterion = torch.nn.MSELoss(),
              mean_image=None,
              save_encoder_model_freq = 100,
              save_encoder_model_dir = "",
@@ -146,7 +151,8 @@ def train_autoencoder(
     mean_image_variable = Variable(torch.from_numpy(mean_image).type(FloatTensor))
 
     #initialize optimizer
-    optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.00001, weight_decay=1e-4)
+    #optimizer = torch.optim.Adam(encoder_model.parameters(), lr=0.00001, weight_decay=1e-5)
+    optimizer = torch.optim.RMSprop(encoder_model.parameters(), lr=0.00001, weight_decay=1e-5)
 
     chance_of_random_action = 0.25
 
@@ -164,17 +170,19 @@ def train_autoencoder(
 
             #encoder forward
             state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
+            #TODO: only last frame
             encoder_output = encoder_model(state_variable)
-            criterion = torch.nn.MSELoss()
-            #criterion = torch.nn.NLLLoss()
 
-            #TODO: this approach is bad, the structure we want to remove is still there
-            #TODO: make it as a mask that zeros input where the mask has a greyscale value of over x
-            prediction = encoder_output[0][-1] - mean_image_variable
-            target = state_variable[0][-1] - mean_image_variable
-            loss = criterion(prediction, target)
-            #loss = criterion(encoder_output,state_variable)       #make loss count on the full frame stack
-            #loss = criterion(encoder_output[0][-1], state_variable[0][-1])      #make loss count only on the last frame of the frame stack
+            if mean_image is not None:
+                prediction = encoder_output[0][-1] - mean_image_variable
+                target = state_variable[0][-1] - mean_image_variable
+            else:
+                # make loss count only on the last frame of the frame stack
+                prediction = encoder_output[0][-1]
+                target = state_variable[0][-1]
+                # prediction=encoder_output, target=state_variable)       #make loss count on the full frame stack
+
+            loss = loss_criterion(prediction, target)
             total_game_loss += loss.data[0]
 
             #encoder backward

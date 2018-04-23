@@ -11,15 +11,13 @@ import collections
 
 import torch
 
-class WrapPyTorchMiniPacman(gym.ObservationWrapper):
-    def __init__(self, env=None, image_size = 19):
-        super(WrapPyTorchMiniPacman, self).__init__(env)
-        self.observation_space = Box(0.0, 1.0, shape=[4, 19, 19], dtype=np.float32)
-
-    def observation(self, observation):
-        #print(observation.shape)
-        return observation
-        #return observation.transpose(3, 0, 1, 2)
+#class WrapPyTorchMiniPacman(gym.ObservationWrapper):
+#    def __init__(self, env=None, image_size = 19):
+#        super(WrapPyTorchMiniPacman, self).__init__(env)
+#        self.observation_space = Box(0.0, 1.0, shape=[4, 19, 19], dtype=np.float32)
+#
+#    def observation(self, observation):
+#        return observation
 
 '''class WarpMiniPacmanFrame(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
@@ -38,15 +36,41 @@ class WrapPyTorchMiniPacman(gym.ObservationWrapper):
         frame = frame.reshape((19, 19, 1))
         return frame'''
 
-class WarpMiniPacmanFrame(gym.ObservationWrapper):
-    def __init__(self, env, image_resize_size = 19, num_frames=4):
-        gym.ObservationWrapper.__init__(self, env)
+class MiniFrameStack(gym.Wrapper):
+    def __init__(self, env, num_frames, low = 0., high = 1.):
+        """Buffer observations and stack across channels (last axis)."""
+        gym.Wrapper.__init__(self, env)
         self.num_frames = num_frames
-        self.res = image_resize_size
-        self.observation_space = spaces.Box(low=0., high=1., shape=(19, 19, 1), dtype=np.float)
-        self.states_deque = collections.deque(maxlen=self.num_frames)
+        self.frames = collections.deque(maxlen=self.num_frames)
+        shp = env.observation_space.shape
+        #assert shp[2] == 1  # can only stack 1-channel frames
+        self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames, *shp), dtype=np.float32)
 
-    def frame_from_observation(self, obs):
+    def reset(self):
+        self.frames.clear()
+        obs = self.env.reset()
+        for i in range(self.num_frames):
+            self.frames.append(obs)
+        return self.observation()
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        self.frames.append(obs)
+        return self.observation(), reward, done, info
+
+    def observation(self):
+        return np.stack(self.frames)
+
+
+
+class WarpMiniPacmanFrame(gym.ObservationWrapper):
+    def __init__(self, env, image_resize_size = 19):
+        gym.ObservationWrapper.__init__(self, env)
+        self.res = image_resize_size
+        self.observation_space = spaces.Box(low=0., high=1., shape=(self.res, self.res), dtype=np.float)
+        #self.states_deque = collections.deque(maxlen=self.num_frames)
+
+    def observation(self, obs):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
         #frame = np.array(Image.fromarray(frame*255), dtype=np.uint8)
         frame = np.array(Image.fromarray(frame), dtype=np.float)
@@ -56,30 +80,19 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
         frame = frame.reshape((19, 19))
         return frame
 
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        obs = self.frame_from_observation(obs)
-        self.states_deque.append(obs)
-        return np.stack(self.states_deque), reward, done, info
+    #def step(self, action):
+    #    obs, reward, done, info = self.env.step(action)
+    #    obs = self.frame_from_observation(obs)
+    #    self.states_deque.append(obs)
+    #    return np.stack(self.states_deque), reward, done, info
 
-    def reset(self):
-        self.states_deque.clear()
-        obs = self.env.reset()
-        obs = self.frame_from_observation(obs)
-        for i in range(self.num_frames):
-            self.states_deque.append(obs)
-        return np.stack(self.states_deque)
-
-    #def states_to_torch(self, states, use_cuda):
-    #    states = np.stack(states)
-    #    states = torch.from_numpy(states).float()
-    #    states = states.permute(1, 0, 2, 3)
-    #    if use_cuda:
-    #        states = states.type(torch.cuda.FloatTensor)
-    #        states.cuda()
-    #    states = Variable(states)  # , requires_grad=False)
-    #    return states
-
+    #def reset(self):
+    #    self.states_deque.clear()
+    #    obs = self.env.reset()
+    #    obs = self.frame_from_observation(obs)
+    #    for i in range(self.num_frames):
+    #        self.states_deque.append(obs)
+    #    return np.stack(self.states_deque)
 
 def make_minipacman_env(env_id, seed, rank, log_dir):
     def _thunk():
@@ -111,7 +124,7 @@ def make_minipacman_env(env_id, seed, rank, log_dir):
         if clip_rewards:
             env = ClipRewardEnv(env)
 
-        env = WrapPyTorchMiniPacman(env)
+        env = MiniFrameStack(env, 4)
         return env
 
     return _thunk
@@ -139,5 +152,5 @@ def make_minipacman_env_no_log(env_id):
     if clip_rewards:
         env = ClipRewardEnv(env)
 
-    env = WrapPyTorchMiniPacman(env)
+    env = MiniFrameStack(env, 4)
     return env

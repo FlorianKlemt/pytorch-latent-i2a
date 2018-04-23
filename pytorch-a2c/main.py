@@ -163,7 +163,8 @@ def main():
         optimizer = optim.Adam(actor_critic.parameters(), eps=args.eps)
 
     obs_shape = envs.observation_space.shape
-    obs_shape = (obs_shape[0], obs_shape[1], obs_shape[2])
+    #obs_shape = (obs_shape[0], obs_shape[1], obs_shape[2])
+    obs_shape = (4, obs_shape[1], obs_shape[2])
 
     states = torch.zeros(args.num_steps + 1, args.num_processes, *obs_shape)
     current_state = torch.zeros(args.num_processes, *obs_shape)
@@ -172,7 +173,7 @@ def main():
     def update_current_state(state):
         #in the new version the logic of the old version is already implemented through the 4 frame stack
         state = torch.from_numpy(state).float()
-        current_state = state
+        current_state[:] = state
 
         #old version
         # state = torch.from_numpy(np.stack(state)).float()

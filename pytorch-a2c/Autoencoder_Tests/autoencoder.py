@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
-from Autoencoder_Tests.EncoderModel import EncoderModel
+from Autoencoder_Tests.AutoEncoderModel import AutoEncoderModel
 from A2C_Models.MiniModel import MiniModel
 from minipacman_envs import make_minipacman_env_no_log, make_minipacman_env
 import gym_minipacman
@@ -64,7 +64,7 @@ def get_mean_image(env,policy,use_cuda):
     frame_list = []
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
     state = env.reset()
-    games_to_play = 1000
+    games_to_play = 500
     p = 0.2
     for i in range(games_to_play):
         print("Game ",i)
@@ -128,7 +128,7 @@ def init_autoencoder_training(env_name, root_path, load_policy_model_dir, policy
     #                                      action_space,
     #                                      use_cuda)
     #else:
-    encoder_model = EncoderModel(num_inputs = 4)
+    encoder_model = AutoEncoderModel(num_inputs = 1)
     if use_cuda:
         encoder_model.cuda()
     return env, encoder_model, policy
@@ -171,14 +171,14 @@ def train_autoencoder(
             #encoder forward
             state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
             #TODO: only last frame
-            encoder_output = encoder_model(state_variable)
+            encoder_output = encoder_model(state_variable[0][-1])
 
             if mean_image is not None:
-                prediction = encoder_output[0][-1] - mean_image_variable
+                prediction = encoder_output - mean_image_variable
                 target = state_variable[0][-1] - mean_image_variable
             else:
                 # make loss count only on the last frame of the frame stack
-                prediction = encoder_output[0][-1]
+                prediction = encoder_output
                 target = state_variable[0][-1]
                 # prediction=encoder_output, target=state_variable)       #make loss count on the full frame stack
 
@@ -205,7 +205,7 @@ def train_autoencoder(
             state = next_state
 
             #render last of the frame_stack for ground truth and for encoder
-            render_observation(state_variable, encoder_output, mean_image)
+            render_observation(state_variable[0][-1], encoder_output, mean_image)
 
         print("Episode ",i_episode," loss: ", total_game_loss/game_step_counter)
         loss_list.append(loss.data[0])
@@ -245,7 +245,7 @@ def load_policy(load_policy_model_dir="trained_models/",
 
 
 def render_observation_in_window(window_name, observation, mean_image=None):
-    drawable_state = observation[0][-1]
+    drawable_state = observation#[0][-1]
     drawable_state = drawable_state.data.cpu().numpy()
 
     if mean_image is not None:
@@ -291,7 +291,8 @@ def init_loss_plot():
     return smooth_loss_plot, loss_plot
 
 def plot_smooth_loss(episode, loss_list, subplot):
-    plt.cla()
+    subplot.cla()
+    #plt.cla()
     k = list(range(0, episode+1))
     plot_list = [0]*len(loss_list)
     for i in range(len(loss_list)):

@@ -25,7 +25,7 @@ class MiniModel(Policy):
     def __init__(self, num_inputs, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(MiniModel, self).__init__()
 
-        self.dist = Categorical(num_inputs, action_space)
+        self.dist = Categorical(256, action_space)       #übernimmmt actor linear
 
         self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8
@@ -34,9 +34,9 @@ class MiniModel(Policy):
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 
-        num_outputs = action_space
+        #num_outputs = action_space
         self.critic_linear = nn.Linear(256, 1)
-        self.actor_linear = nn.Linear(256, num_outputs)
+        #self.actor_linear = nn.Linear(256, num_outputs)
 
         self.apply(weights_init)
 
@@ -75,4 +75,5 @@ class MiniModel(Policy):
         x = x.view(-1, self.linear_input_size)
         x = F.relu(self.linear1(x))
 
-        return self.critic_linear(x), self.actor_linear(x), states
+        #return self.critic_linear(x), self.actor_linear(x), states
+        return x, x, states

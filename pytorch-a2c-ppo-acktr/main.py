@@ -57,8 +57,11 @@ def main():
         viz = Visdom(port=args.port)
         win = None
 
-    envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-                for i in range(args.num_processes)]
+    #envs = [make_env(args.env_name, args.seed, i, args.log_dir)
+    #            for i in range(args.num_processes)]
+    from custom_envs import make_custom_env
+    envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir)
+            for i in range(args.num_processes)]
 
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)

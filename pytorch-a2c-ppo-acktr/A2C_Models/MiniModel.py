@@ -1,10 +1,9 @@
 import math
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from model import Policy
+from A2C_Models.model import Policy
 from distributions import Categorical
 
 def weights_init(m):
@@ -62,13 +61,13 @@ class MiniModel(Policy):
         if self.dist.__class__.__name__ == "DiagGaussian":
             self.dist.fc_mean.weight.data.mul_(0.01)
 
-    def forward(self, inputs, states, masks):
+    def forward(self, inputs, states=None, masks=None):
         #print("Input shape: ",inputs.shape)
         #for layer in self.modules():
         #    if isinstance(layer, nn.Linear):
         #        print(layer.weight.shape)
 
-        x = F.relu(self.conv1(inputs / 255.0))
+        x = F.relu(self.conv1(inputs))# / 255.0))
 
         x = F.relu(self.conv2(x))
 

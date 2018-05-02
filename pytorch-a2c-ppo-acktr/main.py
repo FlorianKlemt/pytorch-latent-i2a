@@ -3,26 +3,25 @@ import glob
 import os
 import time
 
-import gym
-import gym_minipacman
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
+
+import gym_minipacman
 
 from arguments import get_args
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
-from envs import make_env
 from kfac import KFACOptimizer
-from model import CNNPolicy, MLPPolicy
+from A2C_Models.model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
-from visualize import visdom_plot
+from visualize import visdom_plot, plot_information
 
 from A2C_Models.MiniModel import MiniModel
+from I2A.I2A_Agent import I2A
 
 args = get_args()
 
@@ -52,16 +51,22 @@ def main():
 
     os.environ['OMP_NUM_THREADS'] = '1'
 
+    dist_entropy_history = []
+
     if args.vis:
         from visdom import Visdom
         viz = Visdom(port=args.port)
         win = None
+        dist_plot_win = None
 
-    #envs = [make_env(args.env_name, args.seed, i, args.log_dir)
-    #            for i in range(args.num_processes)]
-    from custom_envs import make_custom_env
-    envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir)
+    if 'MiniPacman' in args.env_name:
+        from custom_envs import make_custom_env
+        envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir)
             for i in range(args.num_processes)]
+    else:
+        from envs import make_env
+        envs = [make_env(args.env_name, args.seed, i, args.log_dir)
+                for i in range(args.num_processes)]
 
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
@@ -74,9 +79,13 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if 'MiniPacman' in args.env_name:
-        actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=True)
+    if args.model == 'I2A':
+        actor_critic = I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda)
+    #elif 'MiniPacman' in args.env_name:
+    elif args.model == 'MiniModel':
+        actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
     elif len(envs.observation_space.shape) == 3:
+        #obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
         assert not args.recurrent_policy, \
@@ -91,7 +100,9 @@ def main():
     if args.cuda:
         actor_critic.cuda()
 
-    if args.algo == 'a2c':
+    if args.model == 'I2A':
+        optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+    elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
         optimizer = optim.Adam(actor_critic.parameters(), args.lr, eps=args.eps)
@@ -246,13 +257,12 @@ def main():
 
             # A really ugly way to save a model to CPU
             save_model = actor_critic
-            if args.cuda:
-                save_model = copy.deepcopy(actor_critic).cpu()
-
-            save_model = [save_model,
-                            hasattr(envs, 'ob_rms') and envs.ob_rms or None]
-
-            torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+            torch.save(save_model.state_dict(), os.path.join(save_path, args.env_name + ".pt"))
+            #if args.cuda:
+            #    save_model = copy.deepcopy(actor_critic).cpu()
+            #save_model = [save_model,
+            #                hasattr(envs, 'ob_rms') and envs.ob_rms or None]
+            #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
             end = time.time()
@@ -265,6 +275,7 @@ def main():
                        final_rewards.min(),
                        final_rewards.max(), dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
+            dist_entropy_history.append(dist_entropy.data[0])
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
@@ -272,6 +283,7 @@ def main():
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+            dist_plot_win = plot_information(viz, dist_plot_win, dist_entropy_history)
 
 if __name__ == "__main__":
     main()

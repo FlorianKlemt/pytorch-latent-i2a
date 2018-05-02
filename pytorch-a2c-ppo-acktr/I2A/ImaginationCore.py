@@ -18,11 +18,14 @@ class ImaginationCore(nn.Module):
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     def forward(self, state, action=None):
+    #def forward(self, inputs, states, masks):
         if action == None:
-            # TODO policy return order was wrong used -> there may be more errors like this!!
-            critic, actor = self.policy(state)
-            prob = F.softmax(actor, dim=1)
-            action = prob.multinomial().data
+            #TODO: HOW THE FUCK IS THIS SUPPOSED TO BE WITH THE RETARDED ACT FUNCTION IN THIS REPO??
+            #critic, actor = self.policy(state)
+            value, action, action_log_probs, states = self.policy.act(state, None, None)
+            #prob = F.softmax(actor, dim=1)
+            action = action.cpu().data[0][0]
+            #action = prob.multinomial().data
         elif type(action) != int:
             raise IndexError("You passed an invalid action." +
                              "Expected to be < {}, but was {}".format(self.num_actions, action))
@@ -46,10 +49,9 @@ class MiniPacmanImaginationCore(ImaginationCore):
         action_space = 5
 
         load_environment_model_dir = os.path.join(os.getcwd(), 'trained_models/environment_models/')
-        #load_environment_model_dir = '/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/environment_models/',
         self.env_model = load_em_model(EMModel=MiniPacmanEnvModel,
                                  load_environment_model_dir=load_environment_model_dir,
-                                 environment_model_name="RegularMiniPacman_EnvModel_1.dat",
+                                 environment_model_name="RegularMiniPacman_EnvModel_0.dat",
                                  num_inputs=num_inputs,
                                  action_space=action_space,
                                  use_cuda=use_cuda)
@@ -62,7 +64,6 @@ class MiniPacmanImaginationCore(ImaginationCore):
             self.env_model.train()
 
         load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
-        #load_policy_model_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/trained_models/a2c/"
         self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
                                   policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
                                   action_space=action_space,

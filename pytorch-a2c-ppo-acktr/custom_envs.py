@@ -37,7 +37,7 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
         gym.ObservationWrapper.__init__(self, env)
         self.res = image_resize_size
-        self.observation_space = spaces.Box(low=0., high=1., shape=(self.res, self.res), dtype=np.float)
+        self.observation_space = spaces.Box(low=0., high=1., shape=(1, self.res, self.res), dtype=np.float)
         #self.states_deque = collections.deque(maxlen=self.num_frames)
 
     def observation(self, obs):
@@ -47,7 +47,7 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
         zeros = np.zeros((19,4))
         frame = np.append(frame, zeros)
         #frame = frame.reshape((19, 19, 1)) #???
-        frame = frame.reshape((19, 19))
+        frame = frame.reshape((1, 19, 19))
         return frame
 
 
@@ -77,7 +77,7 @@ def make_custom_env(env_id, seed, rank, log_dir):
         if clip_rewards:
             env = ClipRewardEnv(env)
 
-        env = MiniFrameStack(env, 4)
+        #env = MiniFrameStack(env, 4)
         return env
 
     return _thunk

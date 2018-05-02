@@ -54,7 +54,7 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
 def make_custom_env(env_id, seed, rank, log_dir):
     def _thunk():
         episodic_life = True
-        clip_rewards = True
+        clip_rewards = False
         image_resize_size = 19
 
         env = gym.make(env_id)

@@ -132,24 +132,46 @@ def visdom_plot(viz, win, folder, game, name, num_steps, bin_size=100, smooth=1)
     return viz.image(image, win=win)
 
 
-def plot_information(viz, dist_plot_win, dist_entropy_history):
-    #print("LENGTH: ",len(dist_entropy_history), dist_entropy_history)
-    if dist_plot_win is None:
-        dist_plot_win = viz.line(np.column_stack((np.array(range(len(dist_entropy_history))), dist_entropy_history)))
+def plot_line(viz, plot_window, opts_dict, data_point, count):
+    if plot_window is None:
+        plot_window = viz.line(X=np.array([count]),
+                               Y=np.array([data_point]),
+                               opts=opts_dict
+                               )
     else:
-        viz.line(X=np.array(range(0, len(dist_entropy_history))), Y=np.array(dist_entropy_history), win=dist_plot_win, update='append')
-    return dist_plot_win
-    #old_scatter = viz.scatter(
-    #    X=dist_entropy_history,#list(range(len(dist_entropy_history))),
-    #    Y=dist_entropy_history,
-    #    opts=dict(
-    #        legend=['Entropy'],
-    #        markersymbol='cross-thin-open',
-    #    ),
-    #)
+        viz.line(X=np.array([count]),
+                 Y=np.array([data_point]),
+                 opts=opts_dict,
+                 win=plot_window,
+                 update='append')
+    return plot_window
 
-    # vis._send({'data': [trace], 'layout': layout, 'win': 'mywin'})
+def plot_multi_lines(viz, plot_window, opts_dict, data_point, count):
+    if plot_window is None:
+        plot_window = viz.line(X=np.array([count]),
+                               Y=data_point,
+                               opts=opts_dict)
+    else:
+        viz.line(X=np.array([count]),
+                 Y=data_point,
+                 opts=opts_dict,
+                 win=plot_window,
+                 update='append')
+    return plot_window
 
+def get_legends():
+    dist_entropy_opts = dict(
+        xlabel="Frames in Mio.",
+        ylabel="Entropy",
+        title="Distribution Entropy"
+    )
+    reward_opts = dict(
+        xlabel="Frames in Mio.",
+        ylabel="Reward",
+        title="Rewards",
+        legend=["Mean Reward", "Median Reward"]
+    )
+    return dist_entropy_opts, reward_opts
 
 if __name__ == "__main__":
     from visdom import Visdom

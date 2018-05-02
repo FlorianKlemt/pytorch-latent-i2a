@@ -2,6 +2,7 @@ import copy
 import glob
 import os
 import time
+from collections import deque
 
 import numpy as np
 import torch
@@ -18,7 +19,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 from kfac import KFACOptimizer
 from A2C_Models.model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
-from visualize import visdom_plot, plot_information
+from visualize import visdom_plot, plot_line, plot_multi_lines, get_legends
 
 from A2C_Models.MiniModel import MiniModel
 from I2A.I2A_Agent import I2A
@@ -51,13 +52,14 @@ def main():
 
     os.environ['OMP_NUM_THREADS'] = '1'
 
-    dist_entropy_history = []
-
     if args.vis:
         from visdom import Visdom
         viz = Visdom(port=args.port)
         win = None
-        dist_plot_win = None
+        dist_plot_win, reward_plot_win, loss_plot_win = (None for _ in range(3))
+        dist_plot_legend, reward_plot_legend = get_legends()
+        dist_entropy_history = deque(maxlen=200)
+        reward_history = deque(maxlen=200)
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
@@ -246,6 +248,9 @@ def main():
 
         rollouts.after_update()
 
+        dist_entropy_history.append(dist_entropy.data[0])
+        reward_history.extend(final_rewards.numpy().flatten())
+
         if j % args.save_interval == 0 and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.algo)
             try:
@@ -273,7 +278,6 @@ def main():
                        final_rewards.min(),
                        final_rewards.max(), dist_entropy.data[0],
                        value_loss.data[0], action_loss.data[0]))
-            dist_entropy_history.append(dist_entropy.data[0])
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
@@ -281,7 +285,13 @@ def main():
                                   args.algo, args.num_frames)
             except IOError:
                 pass
-            dist_plot_win = plot_information(viz, dist_plot_win, dist_entropy_history)
+            frames = j*args.num_processes*args.num_steps
+            frames_in_mio = frames/1000000
+            dist_plot_win = plot_line(viz, dist_plot_win, dist_plot_legend, np.array(dist_entropy_history).mean(), frames_in_mio)
+            if len(reward_history) >= reward_history.maxlen-1:
+                reward_mean_smooth = np.mean(reward_history)
+                reward_median_smooth = np.median(reward_history)
+                reward_plot_win = plot_multi_lines(viz, reward_plot_win, reward_plot_legend, np.array([[reward_mean_smooth,reward_median_smooth]]), frames_in_mio)
 
 if __name__ == "__main__":
     main()

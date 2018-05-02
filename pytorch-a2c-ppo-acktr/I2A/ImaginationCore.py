@@ -17,12 +17,12 @@ class ImaginationCore(nn.Module):
             self.num_actions = policy.num_actions
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-    def forward(self, state, action=None):
+    def forward(self, input_state, action=None):
     #def forward(self, inputs, states, masks):
         if action == None:
             #TODO: HOW THE FUCK IS THIS SUPPOSED TO BE WITH THE RETARDED ACT FUNCTION IN THIS REPO??
             #critic, actor = self.policy(state)
-            value, action, action_log_probs, states = self.policy.act(state, None, None)
+            value, action, action_log_probs, states = self.policy.act(input_state, None, None)
             #prob = F.softmax(actor, dim=1)
             action = action.cpu().data[0][0]
             #action = prob.multinomial().data
@@ -31,8 +31,8 @@ class ImaginationCore(nn.Module):
                              "Expected to be < {}, but was {}".format(self.num_actions, action))
 
         # TODO predict the next state for all states in the batch
-        next_state, reward = self.env_model(state, action)
-        np_state = state.data.cpu().numpy()
+        next_state, reward = self.env_model(input_state, action)
+        np_state = input_state.data.cpu().numpy()
         np_state = np_state[:,1:]
         end_state = np.concatenate((np_state,next_state.data.cpu().numpy()),axis=1)
         end_state = Variable(torch.from_numpy(end_state)).type(self.FloatTensor)

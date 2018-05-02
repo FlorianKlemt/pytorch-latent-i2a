@@ -6,9 +6,7 @@ import torch
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--algo', default='a2c',
-                        help='algorithm to use: a2c | ppo | acktr')
-    parser.add_argument('--model', default='MiniModel',
-                        help='model to use: original models, MiniModel, I2A')
+                        help='algorithm to use: a2c | ppo | acktr | i2a')
     parser.add_argument('--lr', type=float, default=7e-4,
                         help='learning rate (default: 7e-4)')
     parser.add_argument('--eps', type=float, default=1e-5,

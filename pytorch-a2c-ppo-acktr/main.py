@@ -25,7 +25,7 @@ from I2A.I2A_Agent import I2A
 
 args = get_args()
 
-assert args.algo in ['a2c', 'ppo', 'acktr']
+assert args.algo in ['a2c', 'ppo', 'acktr', 'i2a']
 if args.recurrent_policy:
     assert args.algo in ['a2c', 'ppo'], \
         'Recurrent policy is not implemented for ACKTR'
@@ -79,13 +79,11 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if args.model == 'I2A':
+    if args.algo == 'i2a':
         actor_critic = I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda)
-    #elif 'MiniPacman' in args.env_name:
-    elif args.model == 'MiniModel':
+    elif 'MiniPacman' in args.env_name:
         actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
     elif len(envs.observation_space.shape) == 3:
-        #obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
         assert not args.recurrent_policy, \
@@ -100,7 +98,7 @@ def main():
     if args.cuda:
         actor_critic.cuda()
 
-    if args.model == 'I2A':
+    if args.algo == 'i2a':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
@@ -170,7 +168,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.algo in ['a2c', 'acktr']:
+        if args.algo in ['a2c', 'acktr', 'i2a']:
             values, action_log_probs, dist_entropy, states = actor_critic.evaluate_actions(
                     Variable(rollouts.observations[:-1].view(-1, *obs_shape)),
                     Variable(rollouts.states[0].view(-1, actor_critic.state_size)),
@@ -205,7 +203,7 @@ def main():
             optimizer.zero_grad()
             (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
 
-            if args.algo == 'a2c':
+            if args.algo == 'a2c' or args.algo == 'i2a':
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()

@@ -146,6 +146,22 @@ def main():
                     Variable(rollouts.masks[step], volatile=True))
             cpu_actions = action.data.squeeze(1).cpu().numpy()
 
+            if args.algo  == 'i2a':
+                # we need to calculate the destillation loss for the I2A Rollout Policy
+                rollout_policy = actor_critic.model_based_network.imagination_core.policy
+                value_rp, action_rp, action_log_prob_rp, _ = rollout_policy.act(
+                    Variable(rollouts.observations[step], volatile=True),
+                    Variable(rollouts.states[step], volatile=True),
+                    Variable(rollouts.masks[step], volatile=True))
+
+                rp_log_probs = F.log_softmax(action_rp, dim=1)
+                a = action * rp_log_probs
+                b = torch.sum(a, dim=0)
+
+                _, rollout_logits = rollout_policy(tf.expand_dims(input_frame, axis=0))
+                distill_loss = tf.nn.softmax_cross_entropy_with_logits(logits=rollout_logits,
+                                labels=tf.stop_gradient(tf.nn.softmax(policy_logits)))
+
             # Obser reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
             reward = torch.from_numpy(np.expand_dims(np.stack(reward), 1)).float()

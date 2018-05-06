@@ -24,6 +24,8 @@ from visualize import visdom_plot, plot_line, plot_multi_lines, get_legends
 from A2C_Models.MiniModel import MiniModel
 from I2A.I2A_Agent import I2A
 
+import time
+
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr', 'i2a']
@@ -101,7 +103,9 @@ def main():
         actor_critic.cuda()
 
     if args.algo == 'i2a':
-        optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+        param = [p for p in actor_critic.parameters() if p.requires_grad]
+        optimizer = optim.RMSprop(param, args.lr, eps=args.eps, alpha=args.alpha)
+        #optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
@@ -270,14 +274,15 @@ def main():
         if j % args.log_interval == 0:
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}".
+
+            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}, time {:.5f}".
                 format(j, total_num_steps,
                        int(total_num_steps / (end - start)),
                        final_rewards.mean(),
                        final_rewards.median(),
                        final_rewards.min(),
                        final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0]))
+                       value_loss.data[0], action_loss.data[0], end-start))
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs

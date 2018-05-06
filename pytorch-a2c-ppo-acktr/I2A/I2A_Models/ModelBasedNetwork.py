@@ -29,7 +29,9 @@ class ModelBasedNetwork(torch.nn.Module):
         self.number_actions = number_actions
         self.use_cuda = use_cuda
 
-        self.imagination_core = MiniPacmanImaginationCore(num_inputs=input_channels, use_cuda=self.use_cuda, require_grad=True)  #here policy grads are required
+        self.imagination_core = MiniPacmanImaginationCore(num_inputs=input_channels,
+                                                          use_cuda=self.use_cuda,
+                                                          require_grad=False)
 
         self.encoder_cnn = EncoderCNNNetwork(self.input_channels)
         self.encoder_lstm = EncoderLSTMNetwork(self.number_lstm_cells, use_cuda=self.use_cuda)

@@ -1,5 +1,7 @@
 import torch
 from A2C_Models.MiniModel import MiniModel
+from A2C_Models.I2A_MiniModel import I2A_MiniModel
+from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 
 def load_policy(load_policy_model_dir = "trained_models/",
                 policy_file = None,
@@ -10,7 +12,8 @@ def load_policy(load_policy_model_dir = "trained_models/",
         load_policy_model_dir, policy_file), map_location=lambda storage, loc: storage)
 
     if policy_name=="MiniModel":
-        policy_model = MiniModel(num_inputs=4, action_space=action_space, use_cuda=use_cuda)
+        policy_model = A2C_PolicyWrapper(I2A_MiniModel(num_inputs=4, action_space=action_space, use_cuda=use_cuda))
+        #policy_model = MiniModel(num_inputs=4, action_space=action_space, use_cuda=use_cuda)
     #elif policy_name=="OriginalModel":     #TODO: does currently not exist
     #    policy_model = ActorCritic(num_inputs=1, action_space=action_space, use_cuda=use_cuda)
     else:

@@ -49,26 +49,3 @@ class I2A(torch.nn.Module):
         aggregated_results = torch.cat((model_free_result, model_based_result), 1)
         policy, value = self.output_policy_network.forward(aggregated_results)
         return value, policy
-
-    #new
-    def act(self, inputs, states, masks, deterministic=False):
-        value, policy = self(inputs)
-
-        action = self.output_policy_network.sample(policy, deterministic=deterministic)
-        action_log_probs, dist_entropy = self.output_policy_network.logprobs_and_entropy(policy, action)
-
-        return value, action, action_log_probs, states
-
-#######
-    def get_value(self, inputs, states, masks):
-        value, policy = self(inputs)
-        return value
-
-    @property
-    def state_size(self):
-        return 1
-
-    def evaluate_actions(self, inputs, states, masks, actions):
-        value, policy = self(inputs)
-        action_log_probs, dist_entropy = self.output_policy_network.logprobs_and_entropy(policy, actions)
-        return value, action_log_probs, dist_entropy, states

@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 import gym_minipacman
 
@@ -22,6 +23,8 @@ from storage import RolloutStorage
 from visualize import visdom_plot, plot_line, plot_multi_lines, get_legends
 
 from A2C_Models.MiniModel import MiniModel
+from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+from A2C_Models.I2A_MiniModel import I2A_MiniModel
 from I2A.I2A_Agent import I2A
 
 import time
@@ -84,9 +87,13 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a':
-        actor_critic = I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda)
+        distill_loss_scaling = 0.01     #given in the I2A paper page 12
+        actor_critic = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda))
+        rollout_policy = actor_critic.policy.model_based_network.imagination_core.policy.policy  # what the fuck
+        distill_loss_list = np.empty(0)
     elif 'MiniPacman' in args.env_name:
-        actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
+        #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
+        actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda))
     elif len(envs.observation_space.shape) == 3:
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
@@ -103,9 +110,19 @@ def main():
         actor_critic.cuda()
 
     if args.algo == 'i2a':
+        #param = [p for p in actor_critic.parameters() if (p.requires_grad and not p in rollout_policy.parameters())]
+        #nope = [k for k in rollout_policy.parameters()]
+        #param = [p for p in param if not p in nope]
+        #for p in actor_critic.parameters():
+        #    if p.requires_grad:
+        #        for a in rollout_policy.parameters():
+        #            if p.data.shape==a.data.shape and p.data.eq(a.data):
+        #                print("mkay")
+
         param = [p for p in actor_critic.parameters() if p.requires_grad]
         optimizer = optim.RMSprop(param, args.lr, eps=args.eps, alpha=args.alpha)
-        #optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
+        rollout_policy_param = [p for p in rollout_policy.parameters() if p.requires_grad]
+        rollout_policy_optimizer = optim.RMSprop(rollout_policy_param, args.lr, eps=args.eps, alpha=args.alpha)    #necessary for backpropping the distillation loss
     elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
@@ -139,28 +156,30 @@ def main():
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
-            # Sample actions
-            value, action, action_log_prob, states = actor_critic.act(
-                    Variable(rollouts.observations[step], volatile=True),
-                    Variable(rollouts.states[step], volatile=True),
-                    Variable(rollouts.masks[step], volatile=True))
-            cpu_actions = action.data.squeeze(1).cpu().numpy()
-
             if args.algo  == 'i2a':
+                # Sample actions
+                value, actor = actor_critic.policy(Variable(rollouts.observations[step], volatile=True))
+                action = actor_critic.sample(actor, deterministic=False)
+                action_log_probs, _ = actor_critic.logprobs_and_entropy(actor, action)
+                states = Variable(rollouts.states[step], volatile=True)
+
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                rollout_policy = actor_critic.model_based_network.imagination_core.policy
-                value_rp, action_rp, action_log_prob_rp, _ = rollout_policy.act(
-                    Variable(rollouts.observations[step], volatile=True),
-                    Variable(rollouts.states[step], volatile=True),
-                    Variable(rollouts.masks[step], volatile=True))
+                _, action_rp = rollout_policy(Variable(rollouts.observations[step], volatile=True))  #volatile will be deprecated in pytorch 0.4
 
                 rp_log_probs = F.log_softmax(action_rp, dim=1)
-                a = action * rp_log_probs
-                b = torch.sum(a, dim=0)
+                distill_loss = distill_loss_scaling * torch.sum(actor * rp_log_probs, dim=1)    #element-wise multiplication in the sum
+                np.append(distill_loss_list, distill_loss)
 
-                _, rollout_logits = rollout_policy(tf.expand_dims(input_frame, axis=0))
-                distill_loss = tf.nn.softmax_cross_entropy_with_logits(logits=rollout_logits,
-                                labels=tf.stop_gradient(tf.nn.softmax(policy_logits)))
+                #_, rollout_logits = rollout_policy(tf.expand_dims(input_frame, axis=0))
+                #distill_loss = tf.nn.softmax_cross_entropy_with_logits(logits=rollout_logits,
+                #                labels=tf.stop_gradient(tf.nn.softmax(policy_logits)))
+            else:
+                # Sample actions
+                value, action, action_log_prob, states = actor_critic.act(
+                    Variable(rollouts.observations[step], volatile=True),
+                    Variable(rollouts.states[step], volatile=True),
+                    Variable(rollouts.masks[step], volatile=True))
+            cpu_actions = action.data.squeeze(1).cpu().numpy()  #invariant to the algo
 
             # Obser reward and next obs
             obs, reward, done, info = envs.step(cpu_actions)
@@ -229,6 +248,15 @@ def main():
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
+
+            if args.algo == 'i2a':
+                # rollout policy optimizer
+                rollout_policy_optimizer.zero_grad()
+                mean_distill_loss = distill_loss_list.mean()
+                mean_distill_loss.backward()
+                rollout_policy_optimizer.step()
+                distill_loss_list = np.empty(0)
+
         elif args.algo == 'ppo':
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5)

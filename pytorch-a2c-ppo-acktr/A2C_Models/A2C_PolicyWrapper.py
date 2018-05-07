@@ -45,7 +45,7 @@ class A2C_PolicyWrapper(Policy):
         dist_entropy = -(log_probs * probs).sum(-1).mean()
         return action_log_probs, dist_entropy
 
-    def sample(self, x, deterministic):
+    def sample(self, x, deterministic=False):
         probs = F.softmax(x, dim=1)
         if deterministic is False:
             action = probs.multinomial(num_samples=1)

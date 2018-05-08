@@ -99,7 +99,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
         #output reward head
         reward_probability = self.reward_head(x)
         # TODO why not just use the value of the max probability
-        reward_out = torch.sum(reward_probability * self.reward_bins)
+        # TODO is this correct??
+        reward_out = torch.sum(reward_probability * self.reward_bins, 1)
         #x.view(x.size())
 
         return image_out,reward_out

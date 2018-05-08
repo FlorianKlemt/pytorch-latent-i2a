@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 class EncoderCNNNetwork(nn.Module):
     def __init__(self, input_channels=1):
         super(EncoderCNNNetwork, self).__init__()
@@ -33,8 +34,9 @@ class EncoderLSTMNetwork(nn.Module):
         self.number_lstm_cells = number_lstm_cells
 
         #TODO replace magic number 5 (batch size (mini pacman count of different actions))
-        self.lstm_h = Variable(torch.zeros(5, self.number_lstm_cells)).type(FloatTensor)
-        self.lstm_c = Variable(torch.zeros(5, self.number_lstm_cells)).type(FloatTensor)
+        batch_size = 5
+        self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(FloatTensor)
+        self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(FloatTensor)
 
         #self.lstm = nn.LSTMCell(2520, self.number_lstm_cells, True)  # true for bias
         self.lstm = nn.LSTMCell(1700, self.number_lstm_cells, True)  # true for bias   10x10x16 + 1x10x10 (output size cnn + broadcasted reward)
@@ -67,31 +69,42 @@ class RolloutEncoder():
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     def imagine_future(self,input_state, start_action):
-        imagined_states_and_rewards = []
+        imagined_states = []
+        imagined_rewards = []
 
         next_state, reward = self.imagination_core.forward(input_state, start_action)
-        imagined_states_and_rewards.append((next_state, reward))
+        imagined_states.append(next_state)
+        imagined_rewards.append(reward)
 
         for i in range(self.rollout_steps-1):
             current_state = next_state
             action = self.imagination_core.sample(current_state)
             next_state, reward = self.imagination_core.forward(current_state, action)
-            imagined_states_and_rewards.append((next_state,reward))
-        return imagined_states_and_rewards
+            imagined_states.append(next_state)
+            imagined_rewards.append(reward)
+
+        imagined_states = torch.stack(imagined_states, 1)
+        imagined_rewards = torch.stack(imagined_rewards, 1)
+        return imagined_states, imagined_rewards
 
     def encode(self, imagined_states_and_rewards):
-        cnn_outputs = []
-        #reversed input for lstm, for cnn it doesnt matter which way
-        for (state,reward) in reversed(imagined_states_and_rewards):
-            cnn_output = self.encoder_network.forward(state)
+        (states, rewards) = imagined_states_and_rewards
 
-            broadcasted_reward = reward.repeat(cnn_output.data.shape[0], 1, cnn_output.data.shape[2], cnn_output.data.shape[3])
+        shape = states.shape
+        states = states.view((int)(shape[0] * shape[1]), shape[2], shape[3], shape[4])
+        latent_space = self.encoder_network(states)
+        latent_space = latent_space.view(shape[0], shape[1], latent_space.data.shape[1], latent_space.data.shape[2], latent_space.data.shape[3])
+        #broadcasted_reward = rewards.view(-1)
+        #broadcasted_reward = rewards.repeat(1, latent_space.data.shape[2], latent_space.data.shape[3], 1)
+        #broadcasted_reward = broadcasted_reward.permute(3, 0, 1, 2)
+        broadcasted_reward = rewards.repeat(1, latent_space.data.shape[3], latent_space.data.shape[4], 1, 1)
+        broadcasted_reward = broadcasted_reward.permute(3, 4, 0, 1, 2)
 
-            aggregated_cnn_reward = torch.cat((cnn_output, broadcasted_reward), 1)
-            cnn_outputs.append(aggregated_cnn_reward)
-
-        for output in cnn_outputs:
-            lstm_output = self.lstm_network.forward(output)
+        aggregated = torch.cat((latent_space, broadcasted_reward), 2)
+        aggregated = aggregated.permute(1, 0, 2, 3, 4)
+        for i in range(aggregated.data.shape[0]):
+            lstm_input = aggregated[i].contiguous()#torch.split(aggregated, aggregated.data.shape[0], 0)
+            lstm_output = self.lstm_network.forward(lstm_input)
 
         return lstm_output   #it is an [1x256] vector
 

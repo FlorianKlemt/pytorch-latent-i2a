@@ -131,7 +131,7 @@ def main():
     current_obs = torch.zeros(args.num_processes, *obs_shape)
     policy_action_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
     # shouldn't it be a Variable??
-    rollout_policy_action_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
+    rollout_policy_action_probs = []
 
     def update_current_obs(obs):
         shape_dim0 = envs.observation_space.shape[0]
@@ -153,7 +153,6 @@ def main():
         current_obs = current_obs.cuda()
         rollouts.cuda()
         policy_action_probs = policy_action_probs.cuda()
-        rollout_policy_action_probs = rollout_policy_action_probs.cuda()
 
     start = time.time()
     for j in range(num_updates):
@@ -166,10 +165,11 @@ def main():
                 states = Variable(rollouts.states[step], volatile=True)
 
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, rollout_action_prob = rollout_policy(Variable(rollouts.observations[step], volatile=True))  #volatile will be deprecated in pytorch 0.4
+                _, rollout_action_prob = rollout_policy(Variable(rollouts.observations[step]))  #NO volatile here, because of distillation loss backprop
 
                 policy_action_probs[step].copy_(action_prob.data)
-                rollout_policy_action_probs[step].copy_(rollout_action_prob.data)
+                #rollout_policy_action_probs[step].copy_(rollout_action_prob.data)
+                rollout_policy_action_probs.append(rollout_action_prob)
             else:
                 # Sample actions
                 value, action, action_log_prob, states = actor_critic.act(
@@ -241,7 +241,7 @@ def main():
 
             if args.algo == 'i2a':
                 # rollout policy optimizer
-                rollout_policy_action_probs_var = Variable(rollout_policy_action_probs) # ???
+                rollout_policy_action_probs_var = torch.stack(rollout_policy_action_probs)
                 policy_action_probs_var = Variable(policy_action_probs) # backprob gradients only through rollout policy
                 rollout_policy_action_log_probs_var = F.log_softmax(rollout_policy_action_probs_var, dim=2)
                 distill_loss = torch.sum(policy_action_probs_var * rollout_policy_action_log_probs_var, dim=2) #element-wise multiplication in the sum
@@ -257,7 +257,7 @@ def main():
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
-
+            rollout_policy_action_probs = []
 
 
         elif args.algo == 'ppo':

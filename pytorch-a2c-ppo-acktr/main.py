@@ -87,10 +87,9 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a':
-        distill_loss_scaling = 0.01     #given in the I2A paper page 12
+        distill_loss_coef = 0.01     #given in the I2A paper page 12
         actor_critic = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda))
         rollout_policy = actor_critic.policy.model_based_network.imagination_core.policy.policy  # what the fuck
-        distill_loss_list = np.empty(0)
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
         actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda))
@@ -121,8 +120,6 @@ def main():
 
         param = [p for p in actor_critic.parameters() if p.requires_grad]
         optimizer = optim.RMSprop(param, args.lr, eps=args.eps, alpha=args.alpha)
-        rollout_policy_param = [p for p in rollout_policy.parameters() if p.requires_grad]
-        rollout_policy_optimizer = optim.RMSprop(rollout_policy_param, args.lr, eps=args.eps, alpha=args.alpha)    #necessary for backpropping the distillation loss
     elif args.algo == 'a2c':
         optimizer = optim.RMSprop(actor_critic.parameters(), args.lr, eps=args.eps, alpha=args.alpha)
     elif args.algo == 'ppo':
@@ -132,6 +129,9 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
+    policy_action_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
+    # shouldn't it be a Variable??
+    rollout_policy_action_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
 
     def update_current_obs(obs):
         shape_dim0 = envs.observation_space.shape[0]
@@ -152,27 +152,24 @@ def main():
     if args.cuda:
         current_obs = current_obs.cuda()
         rollouts.cuda()
+        policy_action_probs = policy_action_probs.cuda()
+        rollout_policy_action_probs = rollout_policy_action_probs.cuda()
 
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
             if args.algo  == 'i2a':
                 # Sample actions
-                value, actor = actor_critic.policy(Variable(rollouts.observations[step], volatile=True))
-                action = actor_critic.sample(actor, deterministic=False)
-                action_log_probs, _ = actor_critic.logprobs_and_entropy(actor, action)
+                value, action_prob = actor_critic.policy(Variable(rollouts.observations[step], volatile=True))
+                action = actor_critic.sample(action_prob, deterministic=False)
+                action_log_prob, _ = actor_critic.logprobs_and_entropy(action_prob, action)
                 states = Variable(rollouts.states[step], volatile=True)
 
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, action_rp = rollout_policy(Variable(rollouts.observations[step], volatile=True))  #volatile will be deprecated in pytorch 0.4
+                _, rollout_action_prob = rollout_policy(Variable(rollouts.observations[step], volatile=True))  #volatile will be deprecated in pytorch 0.4
 
-                rp_log_probs = F.log_softmax(action_rp, dim=1)
-                distill_loss = distill_loss_scaling * torch.sum(actor * rp_log_probs, dim=1)    #element-wise multiplication in the sum
-                np.append(distill_loss_list, distill_loss)
-
-                #_, rollout_logits = rollout_policy(tf.expand_dims(input_frame, axis=0))
-                #distill_loss = tf.nn.softmax_cross_entropy_with_logits(logits=rollout_logits,
-                #                labels=tf.stop_gradient(tf.nn.softmax(policy_logits)))
+                policy_action_probs[step].copy_(action_prob.data)
+                rollout_policy_action_probs[step].copy_(rollout_action_prob.data)
             else:
                 # Sample actions
                 value, action, action_log_prob, states = actor_critic.act(
@@ -241,21 +238,27 @@ def main():
                 fisher_loss.backward(retain_graph=True)
                 optimizer.acc_stats = False
 
+
+            if args.algo == 'i2a':
+                # rollout policy optimizer
+                rollout_policy_action_probs_var = Variable(rollout_policy_action_probs) # ???
+                policy_action_probs_var = Variable(policy_action_probs) # backprob gradients only through rollout policy
+                rollout_policy_action_log_probs_var = F.log_softmax(rollout_policy_action_probs_var, dim=2)
+                distill_loss = torch.sum(policy_action_probs_var * rollout_policy_action_log_probs_var, dim=2) #element-wise multiplication in the sum
+                distill_loss = distill_loss.mean()
+
             optimizer.zero_grad()
-            (value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef).backward()
+            loss = value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef
+            if args.algo == 'i2a':
+                loss = loss + distill_loss * distill_loss_coef
+            loss.backward()
 
             if args.algo == 'a2c' or args.algo == 'i2a':
                 nn.utils.clip_grad_norm(actor_critic.parameters(), args.max_grad_norm)
 
             optimizer.step()
 
-            if args.algo == 'i2a':
-                # rollout policy optimizer
-                rollout_policy_optimizer.zero_grad()
-                mean_distill_loss = distill_loss_list.mean()
-                mean_distill_loss.backward()
-                rollout_policy_optimizer.step()
-                distill_loss_list = np.empty(0)
+
 
         elif args.algo == 'ppo':
             advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]

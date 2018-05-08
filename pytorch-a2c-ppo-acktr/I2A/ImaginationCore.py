@@ -6,6 +6,8 @@ import numpy as np
 
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.load_utils import load_policy, load_em_model
+from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+from A2C_Models.I2A_MiniModel import I2A_MiniModel
 import os
 
 class ImaginationCore(nn.Module):
@@ -63,20 +65,17 @@ class MiniPacmanImaginationCore(ImaginationCore):
         else:
             self.env_model.train()
 
-        load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
-        self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
-                                  policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
-                                  action_space=action_space,
-                                  use_cuda=use_cuda,
-                                  policy_name="MiniModel")
-        if require_grad == False:
-            for param in self.policy.parameters():
-                param.requires_grad = False
-            self.policy.eval()
-        else:
-            for param in self.policy.parameters():
-                param.requires_grad = True
-            self.policy.train()
+        #load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
+        #self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
+        #                          policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
+        #                          action_space=action_space,
+        #                          use_cuda=use_cuda,
+        #                          policy_name="MiniModel")
+
+        self.policy = A2C_PolicyWrapper(I2A_MiniModel(num_inputs=4, action_space=action_space, use_cuda=use_cuda))
+        for param in self.policy.parameters():
+            param.requires_grad = True
+        self.policy.train()
 
         self.num_actions = action_space
 

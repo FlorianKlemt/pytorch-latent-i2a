@@ -27,16 +27,11 @@ class EncoderLSTMNetwork(nn.Module):
     def __init__(self, number_lstm_cells, use_cuda=False):
         super(EncoderLSTMNetwork, self).__init__()
 
-        FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+        self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
         # reward broadcasted = 6x6
         # lstm input = 6x6x64 + reward broadcast = 2340
         self.number_lstm_cells = number_lstm_cells
-
-        #TODO replace magic number 5 (batch size (mini pacman count of different actions))
-        batch_size = 5
-        self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(FloatTensor)
-        self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(FloatTensor)
 
         #self.lstm = nn.LSTMCell(2520, self.number_lstm_cells, True)  # true for bias
         self.lstm = nn.LSTMCell(1700, self.number_lstm_cells, True)  # true for bias   10x10x16 + 1x10x10 (output size cnn + broadcasted reward)
@@ -48,15 +43,21 @@ class EncoderLSTMNetwork(nn.Module):
     def forward(self,x):
         x = x.view(x.size(0), -1)
 
+        # TODO hack ....
+        if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
+            print("Abort mission!")
+
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h
 
         #x = self.fc(x)
         return x
 
-    def repackage_lstm_hidden_variables(self):
-        self.lstm_h = Variable(self.lstm_h.data)
-        self.lstm_c = Variable(self.lstm_c.data)
+    def repackage_lstm_hidden_variables(self, batch_size):
+        #self.lstm_h = Variable(self.lstm_h.data)
+        #self.lstm_c = Variable(self.lstm_c.data)
+        self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
+        self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
 
 
 class RolloutEncoder():
@@ -112,6 +113,3 @@ class RolloutEncoder():
 
     def forward(self, input_state, action):
         return self.encode(self.imagine_future(input_state, action))
-
-    def repackage_lstm_hidden_variables(self):
-        self.lstm_network.repackage_lstm_hidden_variables()

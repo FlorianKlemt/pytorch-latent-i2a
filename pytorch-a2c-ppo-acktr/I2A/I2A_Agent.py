@@ -36,9 +36,6 @@ class I2A(torch.nn.Module):
 
 
     def forward(self, input_state):
-        #print(input_state.shape)
-        self.model_based_network.repackage_lstm_hidden_variables()
-
         # model-free path
         model_free_result = self.model_free_network(input_state)
 

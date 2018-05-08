@@ -46,30 +46,22 @@ class ModelBasedNetwork(torch.nn.Module):
 
     def forward(self, input_state):
         # model-based side
-        model_based_results = []
+        states = input_state.repeat(self.number_actions, 1, 1, 1, 1)
+        states = states.permute(1, 0, 2, 3, 4).contiguous()
+        actions = Variable(torch.arange(self.number_actions).long()).unsqueeze(1)
+        actions = actions.repeat(input_state.data.shape[0], 1, 1)
+        if self.use_cuda:
+            actions = actions.cuda()
+        # compute rollout encoder final results
 
-        # for each process
-        for i in range(input_state.data.shape[0]):
-            self.repackage_lstm_hidden_variables()
-            state = input_state[i].unsqueeze(0)
+        states_shape = states.data.shape
+        batch_size = states_shape[0] * states_shape[1]
+        states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])
+        actions = actions.view(actions.data.shape[0] * actions.data.shape[1], -1)
+        self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=batch_size)
+        rollout_results = self.rollout_encoder.forward(states, actions)
 
-            # batch the number of actions
-            states = state.repeat(self.number_actions, 1, 1, 1)
-            actions = Variable(torch.from_numpy(np.arange(self.number_actions))).unsqueeze(1)
-            if self.use_cuda:
-                actions = actions.cuda()
-
-            # compute rollout encoder final results
-            rollout_results = self.rollout_encoder.forward(states, actions)
-
-            # Aggregator: aggregate all action rollouts
-            process_result = rollout_results.view(1, -1)
-            model_based_results.append(process_result)
-
-        # Concat all process results into a single tensor
-        model_based_result = torch.cat(model_based_results, 0)
+        # Aggregator: aggregate all lstm outputs
+        model_based_result = rollout_results.view(states_shape[0], -1)
 
         return model_based_result
-
-    def repackage_lstm_hidden_variables(self):
-        self.rollout_encoder.repackage_lstm_hidden_variables()

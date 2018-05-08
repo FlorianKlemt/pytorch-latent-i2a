@@ -19,9 +19,8 @@ class PoolAndInject(torch.nn.Module):
 
     def forward(self,input):
         x = F.relu(self.pool(input))   #max-pool
-        x = Variable(torch.from_numpy(np.tile(x.data,(self.W,self.H)))).type(self.FloatTensor)    #tile
+        x = x.repeat(1, 1, self.W, self.H)  #tile
         return x + input
-        #return torch.cat((x,input),1)  #skip-connection
 
 class BasicBlock(torch.nn.Module):
     def __init__(self,num_inputs,n1,n2,n3,W,H,use_cuda):
@@ -39,7 +38,6 @@ class BasicBlock(torch.nn.Module):
         right_side = F.relu(self.right_conv2(F.relu(self.right_conv1(x))))
         x = torch.cat((left_side,right_side),1)
         x = F.relu(self.conv3(x))
-        #return torch.cat((x,input),1)
         return x + input
 
 class MiniPacmanEnvModel(torch.nn.Module):
@@ -84,8 +82,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
         # make one hot vector
         one_hot.scatter_(1, input_action.data, 1)
         # breoadcast action
-        broadcasted_action = one_hot.repeat(input_frame.data.shape[2], input_frame.data.shape[3], 1, 1)
-        broadcasted_action = Variable(broadcasted_action.permute(2, 3, 0, 1)).type(self.FloatTensor)
+        one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
+        broadcasted_action = Variable(one_hot.repeat(1, 1, input_frame.data.shape[2], input_frame.data.shape[3]))
 
         # concatinate observation and broadcasted action
         x = torch.cat((input_frame,broadcasted_action),1)

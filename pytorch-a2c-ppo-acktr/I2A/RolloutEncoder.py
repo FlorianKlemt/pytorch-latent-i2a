@@ -43,9 +43,9 @@ class EncoderLSTMNetwork(nn.Module):
     def forward(self,x):
         x = x.view(x.size(0), -1)
 
-        # TODO hack ....
-        if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
-            print("Abort mission!")
+        # safety
+        #if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
+        #print("Abort mission!")
 
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h
@@ -98,8 +98,8 @@ class RolloutEncoder():
         latent_space = self.encoder_network(states)
         latent_space = latent_space.view(shape[0], shape[1], latent_space.data.shape[1], latent_space.data.shape[2], latent_space.data.shape[3])
 
-        broadcasted_reward = rewards.repeat(1, latent_space.data.shape[3], latent_space.data.shape[4], 1, 1)
-        broadcasted_reward = broadcasted_reward.permute(3, 4, 0, 1, 2)
+        broadcasted_reward = rewards.view(rewards.data.shape[0], rewards.data.shape[1],1,1,1)\
+                                     .repeat(1, 1, 1, latent_space.data.shape[3], latent_space.data.shape[4])
 
         aggregated = torch.cat((latent_space, broadcasted_reward), 2)
         # forward batchwise over the rollouts steps (permute to rollout_steps first, different action second)

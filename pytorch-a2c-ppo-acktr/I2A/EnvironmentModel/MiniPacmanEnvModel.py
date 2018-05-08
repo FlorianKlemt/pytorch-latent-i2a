@@ -79,36 +79,15 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
     def forward(self,input_frame,input_action):
         #print("INPUT ACTION SHAPE inside env_model forward: ", input_action)
-        #preprocess input action
-        one_hot = np.zeros(self.num_actions)
-        one_hot[input_action] = 1
-        one_hot = Variable(torch.from_numpy(one_hot)).type(self.FloatTensor)
-        broadcasted_action = \
-            Variable(torch.zeros(
-                input_frame.data.shape[2],
-                input_frame.data.shape[3],
-                self.num_actions)
-            ).type(self.FloatTensor) + \
-            one_hot
-        broadcasted_action = torch.unsqueeze(broadcasted_action, 0).permute(0,3,1,2)
-        broadcasted_action = broadcasted_action.repeat(input_frame.data.shape[0], 1, 1, 1)
+        one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
+        # make one hot vector
+        one_hot.scatter_(1, input_action.data, 1)
+        # breoadcast action
+        broadcasted_action = one_hot.repeat(input_frame.data.shape[2], input_frame.data.shape[3], 1, 1)
+        broadcasted_action = Variable(broadcasted_action.permute(2, 3, 0, 1)).type(self.FloatTensor)
 
+        # concatinate observation and broadcasted action
         x = torch.cat((input_frame,broadcasted_action),1)
-
-        '''#ugly and probably wrong: only for purpose of getting a basic version to run
-        tmp = np.where(input_action.data==1)
-        broadcasted_input_action = np.tile(tmp,(19,19))       #tile    TODO
-
-        #broadcasted_input_action = np.tile(input_action.data,(19,3))       #tile    TODO
-        print("Broadcaster Shape: ", broadcasted_input_action.shape)
-        broadcasted_input_action = Variable(torch.from_numpy(broadcasted_input_action)).type(self.FloatTensor)
-        broadcasted_input_action = torch.unsqueeze(broadcasted_input_action, 0)
-
-        print("MKAY: ", input_frame.shape, " ", broadcasted_input_action.shape)
-        x = torch.cat((input_frame[0], broadcasted_input_action),0)
-        x = torch.cat((x, x), 0)    #remove this
-        x = torch.unsqueeze(x, 0)
-        #-----------------------'''
 
         x = F.relu(self.conv1(x))
         x = self.basic_block1(x)

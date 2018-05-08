@@ -1,6 +1,8 @@
 import torch
 from I2A.RolloutEncoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
 from I2A.ImaginationCore import MiniPacmanImaginationCore
+from torch.autograd import Variable
+import numpy as np
 
 class ModelBasedNetwork(torch.nn.Module):
     """
@@ -36,15 +38,11 @@ class ModelBasedNetwork(torch.nn.Module):
         self.encoder_cnn = EncoderCNNNetwork(self.input_channels)
         self.encoder_lstm = EncoderLSTMNetwork(self.number_lstm_cells, use_cuda=self.use_cuda)
 
-        self.rollout_encoder_list = []
-        for i in range(self.number_actions):
-            rollout = RolloutEncoder(self.imagination_core,
-                                     self.encoder_cnn,
-                                     self.encoder_lstm,
-                                     self.rollout_steps,
-                                     i,
-                                     self.use_cuda)
-            self.rollout_encoder_list.append(rollout)
+        self.rollout_encoder = RolloutEncoder(self.imagination_core,
+                                              self.encoder_cnn,
+                                              self.encoder_lstm,
+                                              self.rollout_steps,
+                                              self.use_cuda)
 
     def forward(self, input_state):
         # model-based side
@@ -54,13 +52,19 @@ class ModelBasedNetwork(torch.nn.Module):
         for i in range(input_state.data.shape[0]):
             self.repackage_lstm_hidden_variables()
             state = input_state[i].unsqueeze(0)
+
+            # batch the number of actions
+            states = state.repeat(self.number_actions, 1, 1, 1)
+            actions = Variable(torch.from_numpy(np.arange(self.number_actions))).unsqueeze(1)
+            if self.use_cuda:
+                actions = actions.cuda()
+
             # compute rollout encoder final results
-            rollout_results = []
-            for rollout_encoder in self.rollout_encoder_list:
-                rollout_results.append(rollout_encoder.forward(state))
+            rollout_results = self.rollout_encoder.forward(states, actions)
 
             # Aggregator: aggregate all lstm outputs
-            process_result = torch.cat(rollout_results, 1)
+            #process_result = torch.cat(rollout_results, 1)
+            process_result = rollout_results.view(1, -1)
             model_based_results.append(process_result)
 
         # Aggregator: aggregate all lstm outputs
@@ -69,5 +73,4 @@ class ModelBasedNetwork(torch.nn.Module):
         return model_based_result
 
     def repackage_lstm_hidden_variables(self):
-        for rollout_encoder in self.rollout_encoder_list:
-            rollout_encoder.repackage_lstm_hidden_variables()
+        self.rollout_encoder.repackage_lstm_hidden_variables()

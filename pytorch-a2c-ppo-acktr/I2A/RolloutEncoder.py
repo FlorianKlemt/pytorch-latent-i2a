@@ -32,9 +32,9 @@ class EncoderLSTMNetwork(nn.Module):
         # lstm input = 6x6x64 + reward broadcast = 2340
         self.number_lstm_cells = number_lstm_cells
 
-
-        self.lstm_h = Variable(torch.zeros(1, self.number_lstm_cells)).type(FloatTensor)
-        self.lstm_c = Variable(torch.zeros(1, self.number_lstm_cells)).type(FloatTensor)
+        #TODO replace magic number 5 (batch size (mini pacman count of different actions))
+        self.lstm_h = Variable(torch.zeros(5, self.number_lstm_cells)).type(FloatTensor)
+        self.lstm_c = Variable(torch.zeros(5, self.number_lstm_cells)).type(FloatTensor)
 
         #self.lstm = nn.LSTMCell(2520, self.number_lstm_cells, True)  # true for bias
         self.lstm = nn.LSTMCell(1700, self.number_lstm_cells, True)  # true for bias   10x10x16 + 1x10x10 (output size cnn + broadcasted reward)
@@ -58,22 +58,24 @@ class EncoderLSTMNetwork(nn.Module):
 
 
 class RolloutEncoder():
-    def __init__(self, imagination_core, encoder_network, lstm_network, rollout_steps, start_action, use_cuda):
+    def __init__(self, imagination_core, encoder_network, lstm_network, rollout_steps, use_cuda):
         self.imagination_core = imagination_core
         self.encoder_network = encoder_network
         self.lstm_network = lstm_network
         self.rollout_steps = rollout_steps
-        self.start_action = start_action
         self.use_cuda = use_cuda
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-    def imagine_future(self,input_state):
+    def imagine_future(self,input_state, start_action):
         imagined_states_and_rewards = []
-        next_state, reward = self.imagination_core.forward(input_state,self.start_action)
-        imagined_states_and_rewards.append((next_state,reward))
+
+        next_state, reward = self.imagination_core.forward(input_state, start_action)
+        imagined_states_and_rewards.append((next_state, reward))
+
         for i in range(self.rollout_steps-1):
             current_state = next_state
-            next_state, reward = self.imagination_core.forward(current_state)
+            action = self.imagination_core.sample(current_state)
+            next_state, reward = self.imagination_core.forward(current_state, action)
             imagined_states_and_rewards.append((next_state,reward))
         return imagined_states_and_rewards
 
@@ -82,17 +84,9 @@ class RolloutEncoder():
         #reversed input for lstm, for cnn it doesnt matter which way
         for (state,reward) in reversed(imagined_states_and_rewards):
             cnn_output = self.encoder_network.forward(state)
-            broadcasted_reward = \
-                Variable(torch.zeros(
-                    cnn_output.data.shape[2],
-                    cnn_output.data.shape[3],
-                    1)#cnn_output.data.shape[0])
-                ).type(self.FloatTensor) + \
-                reward
-            broadcasted_reward = torch.unsqueeze(broadcasted_reward.permute(2,0,1),0)
-            broadcasted_reward = broadcasted_reward.repeat(cnn_output.data.shape[0], 1, 1, 1)
-            if self.use_cuda:
-                broadcasted_reward = broadcasted_reward.cuda()
+
+            broadcasted_reward = reward.repeat(cnn_output.data.shape[0], 1, cnn_output.data.shape[2], cnn_output.data.shape[3])
+
             aggregated_cnn_reward = torch.cat((cnn_output, broadcasted_reward), 1)
             cnn_outputs.append(aggregated_cnn_reward)
 
@@ -101,8 +95,8 @@ class RolloutEncoder():
 
         return lstm_output   #it is an [1x256] vector
 
-    def forward(self,input_state):
-        return self.encode(self.imagine_future(input_state))
+    def forward(self, input_state, action):
+        return self.encode(self.imagine_future(input_state, action))
 
     def repackage_lstm_hidden_variables(self):
 

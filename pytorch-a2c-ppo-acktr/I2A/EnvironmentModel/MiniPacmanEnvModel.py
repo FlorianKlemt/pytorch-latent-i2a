@@ -49,7 +49,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        self.reward_bins = Variable(torch.FloatTensor([-1., 0., 1., 2., 5.]).type(self.FloatTensor))
+        #TODO: for regular only
+        self.reward_bins = Variable(torch.FloatTensor([0., 1., 2., 5., 0.]).type(self.FloatTensor))
 
         W=19    #TODO: 15
         H=19

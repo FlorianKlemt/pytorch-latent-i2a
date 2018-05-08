@@ -62,12 +62,11 @@ class ModelBasedNetwork(torch.nn.Module):
             # compute rollout encoder final results
             rollout_results = self.rollout_encoder.forward(states, actions)
 
-            # Aggregator: aggregate all lstm outputs
-            #process_result = torch.cat(rollout_results, 1)
+            # Aggregator: aggregate all action rollouts
             process_result = rollout_results.view(1, -1)
             model_based_results.append(process_result)
 
-        # Aggregator: aggregate all lstm outputs
+        # Concat all process results into a single tensor
         model_based_result = torch.cat(model_based_results, 0)
 
         return model_based_result

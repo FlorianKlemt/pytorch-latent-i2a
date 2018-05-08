@@ -91,19 +91,21 @@ class RolloutEncoder():
         (states, rewards) = imagined_states_and_rewards
 
         shape = states.shape
-        states = states.view((int)(shape[0] * shape[1]), shape[2], shape[3], shape[4])
+        #change view forward and back for forwarding batchwise through cnn
+        #order does not matter for cnn
+        states = states.view(shape[0] * shape[1], shape[2], shape[3], shape[4])
         latent_space = self.encoder_network(states)
         latent_space = latent_space.view(shape[0], shape[1], latent_space.data.shape[1], latent_space.data.shape[2], latent_space.data.shape[3])
-        #broadcasted_reward = rewards.view(-1)
-        #broadcasted_reward = rewards.repeat(1, latent_space.data.shape[2], latent_space.data.shape[3], 1)
-        #broadcasted_reward = broadcasted_reward.permute(3, 0, 1, 2)
+
         broadcasted_reward = rewards.repeat(1, latent_space.data.shape[3], latent_space.data.shape[4], 1, 1)
         broadcasted_reward = broadcasted_reward.permute(3, 4, 0, 1, 2)
 
         aggregated = torch.cat((latent_space, broadcasted_reward), 2)
+        # forward batchwise over the rollouts steps (permute to rollout_steps first, different action second)
         aggregated = aggregated.permute(1, 0, 2, 3, 4)
-        for i in range(aggregated.data.shape[0]):
-            lstm_input = aggregated[i].contiguous()#torch.split(aggregated, aggregated.data.shape[0], 0)
+        # iterate in reverse order to feed data from last-to-first prediction into the LSTM
+        for i in range(aggregated.data.shape[0]-1, -1, -1):
+            lstm_input = aggregated[i].contiguous()
             lstm_output = self.lstm_network.forward(lstm_input)
 
         return lstm_output   #it is an [1x256] vector
@@ -112,5 +114,4 @@ class RolloutEncoder():
         return self.encode(self.imagine_future(input_state, action))
 
     def repackage_lstm_hidden_variables(self):
-
         self.lstm_network.repackage_lstm_hidden_variables()

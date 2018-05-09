@@ -39,6 +39,7 @@ def main():
                               root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
                               policy_model_name="RegularMiniPacmanNoFrameskip-v0.pt",
                               load_policy_model_dir="trained_models/a2c/",
+                              input_size=(19,19),
                               use_cuda=use_cuda)
 
     mean_image = get_mean_image(env=env,policy=policy,use_cuda=use_cuda)
@@ -101,11 +102,9 @@ def get_mean_image(env,policy,use_cuda):
     return arr
 
 
-def init_autoencoder_training(env_name, root_path, load_policy_model_dir, policy_model_name, use_cuda):
+def init_autoencoder_training(env_name, root_path, load_policy_model_dir, policy_model_name, input_size, use_cuda):
     #create environment to train on
     env = make_minipacman_env_no_log(env_name)
-    #make_method = make_minipacman_env(env_name,seed=1,rank=0,log_dir=visdom_log_dir)
-    #env = make_method()
     action_space = env.action_space.n
 
     #load policy to use to generate training states
@@ -128,7 +127,7 @@ def init_autoencoder_training(env_name, root_path, load_policy_model_dir, policy
     #                                      action_space,
     #                                      use_cuda)
     #else:
-    encoder_model = AutoEncoderModel(num_inputs = 1)
+    encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size)
     if use_cuda:
         encoder_model.cuda()
     return env, encoder_model, policy

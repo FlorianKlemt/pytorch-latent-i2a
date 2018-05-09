@@ -33,4 +33,5 @@ class WrapPyTorch(gym.ObservationWrapper):
         self.observation_space = Box(0.0, 1.0, [1, 84, 84])
 
     def _observation(self, observation):
+        observation = observation / 255.
         return observation.transpose(2, 0, 1)

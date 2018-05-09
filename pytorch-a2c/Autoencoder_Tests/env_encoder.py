@@ -2,10 +2,11 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 import random
-from Autoencoder_Tests.autoencoder import init_autoencoder_training, plot_smooth_loss, render_observation_in_window
+from Autoencoder_Tests.autoencoder import plot_smooth_loss, render_observation_in_window
 from Autoencoder_Tests.EnvEncoderModel import EnvEncoderModel
 import matplotlib.pyplot as plt
 import cv2
+import gym
 
 
 def main():
@@ -22,11 +23,23 @@ def main():
     plt.ion()
 
     use_cuda = True
-    env, auto_encoder_model, policy = init_autoencoder_training(env_name="RegularMiniPacmanNoFrameskip-v0",
-                                                                root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
-                                                                policy_model_name="RegularMiniPacmanNoFrameskip-v0.pt",
-                                                                load_policy_model_dir="trained_models/a2c/",
+    from A2C_Models.model import ActorCritic
+    from A2C_Models.MiniModel import MiniModel
+    env, auto_encoder_model, policy = init_autoencoder_training("MsPacman-v0",#env_name="PongDeterministic-v4",
+                                                                policy_model_alias=ActorCritic,
+                                                                policy_model_input_channels=4,
+                                                                input_size=(84,84),
                                                                 use_cuda=use_cuda)
+
+    #env, auto_encoder_model, policy = init_autoencoder_training(env_name="RegularMiniPacmanNoFrameskip-v0",
+    #                                                            #root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
+    #                                                            #policy_model_name="RegularMiniPacmanNoFrameskip-v0.pt",
+    #                                                            #load_policy_model_dir="trained_models/a2c/",
+    #                                                            policy_model_alias=MiniModel,
+    #                                                            policy_model_input_channels=4,
+    #                                                            input_size=(19,19),
+    #                                                            use_cuda=use_cuda)
+
     env_encoder_model = EnvEncoderModel(num_inputs=1, action_broadcast_size=50, use_cuda=use_cuda)
     if use_cuda:
         env_encoder_model.cuda()
@@ -36,6 +49,30 @@ def main():
 
     train_env_encoder(env, auto_encoder_model, env_encoder_model, policy, loss_criterion, auto_optimizer,
                       env_encoder_optimizer, use_cuda)
+
+
+
+def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_channels, input_size, use_cuda):
+    from Autoencoder_Tests.AutoEncoderModel import AutoEncoderModel
+    from minipacman_envs import make_minipacman_env_no_log
+    #create environment to train on
+    if "MiniPacman" in env_name:
+        env = make_minipacman_env_no_log(env_name)
+    else:
+        from envs import WrapPyTorch
+        from baselines.common.atari_wrappers import wrap_deepmind
+        env = WrapPyTorch(wrap_deepmind(gym.make(env_name)))
+
+    action_space = env.action_space.n
+
+    policy = policy_model_alias(num_inputs=policy_model_input_channels, action_space=action_space, use_cuda=use_cuda)
+    if use_cuda:
+        policy.cuda()
+
+    encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size)
+    if use_cuda:
+        encoder_model.cuda()
+    return env, encoder_model, policy
 
 
 

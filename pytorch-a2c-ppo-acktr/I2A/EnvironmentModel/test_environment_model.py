@@ -7,7 +7,8 @@ import cv2
 import sys
 from random import randint
 import collections
-from minipacman_envs import make_minipacman_env_no_log
+from collections import deque
+from custom_envs import make_custom_env
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.EnvironmentModel.make_environment_model import load_em_model, load_policy
 from I2A.ImaginationCore import ImaginationCore, MiniPacmanImaginationCore
@@ -21,7 +22,8 @@ class RenderImaginationCore():
         cv2.resizeWindow('start_state', render_window_sizes)
 
     def render_observation(self, window_name, observation):
-        drawable_state = (observation.data[0][-1]).unsqueeze(0)
+        drawable_state = (observation.data[0]).unsqueeze(0)
+        #drawable_state = (observation.data[0][-1]).unsqueeze(0)
         print(drawable_state.shape)
         drawable_state = np.swapaxes(drawable_state, 0, 1)
         drawable_state = np.swapaxes(drawable_state, 1, 2)
@@ -55,9 +57,9 @@ def play_with_imagination_core(imagination_core, env, use_cuda):
         for i in range(randint(20, 50)):
             env.render()
             observation, reward, done, _ = env.step(env.action_space.sample())
-
-        observation = torch.from_numpy(observation).type(FloatTensor)
-        observation = Variable(observation, requires_grad=False)
+            observation = torch.from_numpy(observation).type(FloatTensor)
+            observation = Variable(observation, requires_grad=False)
+            states.append(observation)
 
         # render start state
         if render:
@@ -66,9 +68,11 @@ def play_with_imagination_core(imagination_core, env, use_cuda):
         for t in range(10):
 
             if render:
-                renderer.render_observation('imagination_core', observation)
-
-            observation, reward = imagination_core(observation)
+                render_obs = observation if observation.data.shape[1]==19 else observation[-1][-1].unsqueeze(0) #kill me now
+                renderer.render_observation('imagination_core', render_obs)
+            stacked_frames = torch.stack(states, dim=1)
+            action = imagination_core.sample(stacked_frames)
+            observation, reward = imagination_core(stacked_frames, action)
             reward = reward.data.cpu().numpy()
             print(t, "reward", np.max(reward[0], 0))
 
@@ -76,15 +80,18 @@ def play_with_imagination_core(imagination_core, env, use_cuda):
 
 ### Begin Main ###
 use_cuda = True
-root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+#root_dir = '/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c-ppo-acktr/trained_models/environment_models/'    #os.path.dirname(os.path.realpath(sys.argv[0]))
 
 
 env_name = "RegularMiniPacmanNoFrameskip-v0"
-env = make_minipacman_env_no_log(env_name)
+env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)()
+if env_name == "RegularMiniPacmanNoFrameskip-v0":
+    em_model_reward_bins = [0., 1., 2., 5., 0.]
 
 # small model which only predicts one reward
 EMModel = MiniPacmanEnvModel
 
-imagination_core = MiniPacmanImaginationCore(num_inputs=4, use_cuda=use_cuda, require_policy_grad=False)    #no policy grads required for this
+imagination_core = MiniPacmanImaginationCore(num_inputs=4, action_space=env.action_space.n,
+                                             em_model_reward_bins=em_model_reward_bins, use_cuda=use_cuda, require_grad=False)    #no policy grads required for this
 
 play_with_imagination_core(imagination_core, env=env, use_cuda=use_cuda)

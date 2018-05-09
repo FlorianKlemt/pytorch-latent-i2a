@@ -37,10 +37,8 @@ class ImaginationCore(nn.Module):
 
 class MiniPacmanImaginationCore(ImaginationCore):
 
-    def __init__(self, num_inputs, use_cuda, require_grad):
+    def __init__(self, num_inputs, action_space, em_model_reward_bins, use_cuda, require_grad):
         super(MiniPacmanImaginationCore, self).__init__(use_cuda=use_cuda)
-
-        action_space = 5
 
         load_environment_model_dir = os.path.join(os.getcwd(), 'trained_models/environment_models/')
         self.env_model = load_em_model(EMModel=MiniPacmanEnvModel,
@@ -48,6 +46,7 @@ class MiniPacmanImaginationCore(ImaginationCore):
                                  environment_model_name="RegularMiniPacman_EnvModel_0.dat",
                                  num_inputs=num_inputs,
                                  action_space=action_space,
+                                 reward_bins=em_model_reward_bins,
                                  use_cuda=use_cuda)
 
         if require_grad == False:

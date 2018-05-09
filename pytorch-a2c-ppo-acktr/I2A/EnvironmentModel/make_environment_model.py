@@ -9,12 +9,14 @@ import gym_minipacman
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
-from minipacman_envs import make_minipacman_env_no_log
+from custom_envs import make_custom_env
 import os
 import collections
 import sys
 
 from I2A.load_utils import load_policy, load_em_model
+from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+from A2C_Models.I2A_MiniModel import I2A_MiniModel
 
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 #root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
@@ -28,7 +30,7 @@ def main():
              EMModel=EMModel,
              policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
              load_policy_model_dir="trained_models/a2c/",
-             environment_model_name="RegularMiniPacman_EnvModel_0",
+             environment_model_name="RegularMiniPacman_EnvModel_trained",
              save_environment_model_dir="trained_models/environment_models/",
              load_environment_model=False,
              load_environment_model_dir="trained_models/environment_models/",
@@ -49,16 +51,18 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
 
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-    env = make_minipacman_env_no_log(env_name)#gym.make(env_name)
+    env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)() #wtf
     action_space = env.action_space.n
+    if env_name == "RegularMiniPacmanNoFrameskip-v0":
+        reward_bins = [0., 1., 2., 5., 0.]
 
     load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
-    policy = load_policy(load_policy_model_dir,
-                         policy_model,
-                         action_space=action_space,
-                         use_cuda=use_cuda,
-                         policy_name='MiniModel')
-    #policy = MiniModel(1,action_space)  #1?
+    #policy = A2C_PolicyWrapper(load_policy(load_policy_model_dir,
+    #                     policy_model,
+    #                     action_space=action_space,
+    #                     use_cuda=use_cuda,
+    #                     policy_name='MiniModel'))
+    policy = I2A_MiniModel(num_inputs=1,action_space=action_space, use_cuda=use_cuda)
     if use_cuda:
         policy.cuda()
 
@@ -71,8 +75,9 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
                                           action_space,
                                           use_cuda)
     else:
-        environment_model = EMModel(num_inputs = 4,
+        environment_model = EMModel(num_inputs = 1, #4
                                     num_actions=env.action_space.n,
+                                    reward_bins=reward_bins,
                                     use_cuda=use_cuda)
 
     if use_cuda:
@@ -100,13 +105,13 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
             critic, actor = policy(state_variable)
 
             prob = F.softmax(actor, dim=1)
-            action = prob.multinomial().data
-            action = action[0][0]
-            if random.random() < chance_of_random_action:
-                action = random.randint(0, env.action_space.n -1)
+            action = prob.multinomial()
+            action_int = action.data[0][0]
+            #if random.random() < chance_of_random_action:
+            #    action = random.randint(0, env.action_space.n -1)
 
 
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, _ = env.step(action_int)
 
             next_state_variable = torch.from_numpy(next_state[-1]).type(FloatTensor)
             next_state_variable = Variable(next_state_variable.unsqueeze(0))

@@ -30,8 +30,11 @@ class ModelBasedNetwork(torch.nn.Module):
         self.number_lstm_cells = number_lstm_cells
         self.number_actions = number_actions
         self.use_cuda = use_cuda
+        self.em_model_reward_bins = [0., 1., 2., 5., 0.]    #TODO: make variable based on the env that is used
 
         self.imagination_core = MiniPacmanImaginationCore(num_inputs=input_channels,
+                                                          action_space=number_actions,
+                                                          em_model_reward_bins=self.em_model_reward_bins,
                                                           use_cuda=self.use_cuda,
                                                           require_grad=False)
 

@@ -34,6 +34,7 @@ def load_em_model(EMModel,
                   environment_model_name = None,
                   num_inputs = None,
                   action_space = None,
+                  reward_bins = None,
                   use_cuda = True):
 
     saved_state = torch.load('{0}{1}'.format(
@@ -41,6 +42,7 @@ def load_em_model(EMModel,
 
     environment_model = EMModel(num_inputs=num_inputs,
                                 num_actions=action_space,
+                                reward_bins=reward_bins,
                                 use_cuda=use_cuda)
     environment_model.load_state_dict(saved_state)
     if use_cuda:

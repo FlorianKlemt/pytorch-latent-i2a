@@ -41,14 +41,13 @@ class BasicBlock(torch.nn.Module):
         return x + input
 
 class MiniPacmanEnvModel(torch.nn.Module):
-    def __init__(self, num_inputs, num_actions, use_cuda):
+    def __init__(self, num_inputs, num_actions, reward_bins, use_cuda):
         super(MiniPacmanEnvModel, self).__init__()
         self.num_actions = num_actions
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        #TODO: for regular only
-        self.reward_bins = Variable(torch.FloatTensor([0., 1., 2., 5., 0.]).type(self.FloatTensor))
+        self.reward_bins = Variable(torch.FloatTensor(reward_bins).type(self.FloatTensor))
 
         W=19    #TODO: 15
         H=19

@@ -38,8 +38,6 @@ class EncoderLSTMNetwork(nn.Module):
         self.lstm.bias_ih.data.fill_(0)
         self.lstm.bias_hh.data.fill_(0)
 
-        #self.fc = nn.Linear(12600, self.number_lstm_cells) #2340
-
     def forward(self,x):
         x = x.view(x.size(0), -1)
 
@@ -50,7 +48,6 @@ class EncoderLSTMNetwork(nn.Module):
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h
 
-        #x = self.fc(x)
         return x
 
     def repackage_lstm_hidden_variables(self, batch_size):

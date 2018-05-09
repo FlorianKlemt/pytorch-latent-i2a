@@ -51,8 +51,8 @@ def main():
     auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)             #0.0001!!!
     env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)       #0.0001!!!
 
-    train_env_encoder(env, auto_encoder_model, env_encoder_model, policy, loss_criterion, auto_optimizer,
-                      env_encoder_optimizer, use_cuda)
+    latent_space_trainer = LatentSpaceEnvModelTrainer(auto_encoder_model, env_encoder_model, loss_criterion, auto_optimizer, env_encoder_optimizer, use_cuda)
+    train_env_encoder(env, policy, latent_space_trainer, use_cuda)
 
 
 
@@ -80,7 +80,7 @@ def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_c
 
 
 
-def train_env_encoder(env, auto_encoder_model, env_encoder_model, policy, loss_criterion, auto_optimizer, next_pred_optimizer, use_cuda):
+def train_env_encoder(env, policy, latent_space_trainer, use_cuda):
     auto_loss_plot, latent_pred_loss_plot = init_loss_plot()
 
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
@@ -113,53 +113,71 @@ def train_env_encoder(env, auto_encoder_model, env_encoder_model, policy, loss_c
             # perform action to get next state
             next_state, reward, done, _ = env.step(action)
 
-
-            # first state encoder forward
-            target = first_state_variable[0][-1]
-            first_state_prediction = auto_encoder_model(target)
-
-            first_state_loss = loss_criterion(first_state_prediction, target)
-            total_game_auto_loss += first_state_loss.data[0]
-
-            # first state encoder backward
-            auto_optimizer.zero_grad()
-            first_state_loss.backward()
-            auto_optimizer.step()
-
-
-            # first state encode in latent space
-            first_state_latent_prediction = auto_encoder_model.encode(first_state_variable[0][-1])
-
-            # second state encode in latent space
             second_state_variable = Variable(torch.from_numpy(next_state).unsqueeze(0).type(FloatTensor))
-            second_state_latent_prediction = auto_encoder_model.encode(second_state_variable[0][-1])
-
-
-
-            # first-to-second forward
-            latent_prediction = env_encoder_model(first_state_latent_prediction, action)
-            target = second_state_latent_prediction
-            target = Variable(target.data, requires_grad=False)
-            loss = loss_criterion(latent_prediction, target)
-            total_game_pred_loss += loss.data[0]
-            #first-to-second backward
-            next_pred_optimizer.zero_grad()
-            loss.backward()
-            next_pred_optimizer.step()
-
+            first_state_loss, latent_loss = latent_space_trainer.train_env_model_step(first_state_variable=first_state_variable, second_state_variable=second_state_variable, action=action)
+            total_game_auto_loss += first_state_loss.data[0]
+            total_game_pred_loss += latent_loss.data[0]
             state = next_state
 
-            # render last of the frame_stack for ground truth and for encoder
-            decoded_prediction = auto_encoder_model.decode(latent_prediction)
-            render_observation_in_window('predicted', decoded_prediction, None)
-            render_observation_in_window('next_ground_truth', second_state_variable[0][-1], None)
-            render_observation_in_window('autoencoder', first_state_prediction, None)
 
-        print("Episode ", i_episode, " auto_loss: ", total_game_auto_loss / game_step_counter, " pred_loss: ",total_game_pred_loss / game_step_counter)
+        print("Episode ", i_episode, " auto_loss: ", total_game_auto_loss / game_step_counter, " pred_loss: ",
+              total_game_pred_loss / game_step_counter)
         auto_loss_list.append(first_state_loss.data[0])
-        latent_pred_loss_list.append(loss.data[0])
+        latent_pred_loss_list.append(latent_loss.data[0])
         plot_smooth_loss(i_episode, auto_loss_list, auto_loss_plot)
         plot_smooth_loss(i_episode, latent_pred_loss_list, latent_pred_loss_plot)
+
+
+
+class LatentSpaceEnvModelTrainer():
+    def __init__(self, auto_encoder_model, env_encoder_model, loss_criterion, auto_optimizer, next_pred_optimizer, use_cuda):
+        self.auto_encoder_model = auto_encoder_model
+        self.env_encoder_model = env_encoder_model
+        self.loss_criterion = loss_criterion
+        self.auto_optimizer = auto_optimizer
+        self.next_pred_optimizer = next_pred_optimizer
+        self.use_cuda = use_cuda
+
+
+    def train_env_model_step(self, first_state_variable, second_state_variable, action):
+        # first state encoder forward
+        target = first_state_variable[0][-1]
+        first_state_prediction = self.auto_encoder_model(target)
+
+        first_state_loss = self.loss_criterion(first_state_prediction, target)
+
+        # first state encoder backward
+        self.auto_optimizer.zero_grad()
+        first_state_loss.backward()
+        self.auto_optimizer.step()
+
+
+        # first state encode in latent space
+        first_state_latent_prediction = self.auto_encoder_model.encode(target)
+
+        # second state encode in latent space
+        second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0][-1])
+
+
+
+        # first-to-second forward
+        latent_prediction = self.env_encoder_model(first_state_latent_prediction, action)
+        latent_target = second_state_latent_prediction
+        latent_target = Variable(latent_target.data, requires_grad=False)
+        latent_loss = self.loss_criterion(latent_prediction, latent_target)
+
+        #first-to-second backward
+        self.next_pred_optimizer.zero_grad()
+        latent_loss.backward()
+        self.next_pred_optimizer.step()
+
+        # render last of the frame_stack for ground truth and for encoder
+        decoded_prediction = self.auto_encoder_model.decode(latent_prediction)
+        render_observation_in_window('predicted', decoded_prediction, None)
+        render_observation_in_window('next_ground_truth', second_state_variable[0][-1], None)
+        render_observation_in_window('autoencoder', first_state_prediction, None)
+
+        return first_state_loss, latent_loss
 
 
 def init_loss_plot():

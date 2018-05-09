@@ -1,18 +1,18 @@
 import torch.nn as nn
 
 class AutoEncoderModel(nn.Module):
-    def __init__(self, num_inputs, input_size):
+    def __init__(self, num_inputs, input_size, latent_space=64, hidden_space=128):
         super(AutoEncoderModel, self).__init__()
         self.input_size_x, self.input_size_y = input_size
         self.encoder = nn.Sequential(
-            nn.Linear(num_inputs*self.input_size_x*self.input_size_y, 128),    #1444 input size
+            nn.Linear(num_inputs * self.input_size_x * self.input_size_y, hidden_space),    #1444 input size
             nn.ReLU(True),
-            nn.Linear(128, 64))
+            nn.Linear(hidden_space, latent_space))
         self.decoder = nn.Sequential(
-            nn.Linear(64, 128),
+            nn.Linear(latent_space, hidden_space),
             nn.ReLU(True),
-            nn.Linear(128, num_inputs*self.input_size_x*self.input_size_y),
-            )#nn.ReLU(True))
+            nn.Linear(hidden_space, num_inputs * self.input_size_x * self.input_size_y),
+            )
 
         #self.encoder = nn.Sequential(
         #    nn.Linear(19 * 19, 19*19))  # 1444 input size

@@ -25,10 +25,14 @@ def main():
     use_cuda = True
     from A2C_Models.model import ActorCritic
     from A2C_Models.MiniModel import MiniModel
+
+    latent_space = 256
+
     env, auto_encoder_model, policy = init_autoencoder_training("MsPacman-v0",#env_name="PongDeterministic-v4",
                                                                 policy_model_alias=ActorCritic,
                                                                 policy_model_input_channels=4,
                                                                 input_size=(84,84),
+                                                                latent_space=latent_space,
                                                                 use_cuda=use_cuda)
 
     #env, auto_encoder_model, policy = init_autoencoder_training(env_name="RegularMiniPacmanNoFrameskip-v0",
@@ -40,7 +44,7 @@ def main():
     #                                                            input_size=(19,19),
     #                                                            use_cuda=use_cuda)
 
-    env_encoder_model = EnvEncoderModel(num_inputs=1, action_broadcast_size=50, use_cuda=use_cuda)
+    env_encoder_model = EnvEncoderModel(num_inputs=1, latent_space=latent_space, encoder_space=128, action_broadcast_size=50, use_cuda=use_cuda)
     if use_cuda:
         env_encoder_model.cuda()
     loss_criterion = torch.nn.MSELoss()
@@ -52,7 +56,7 @@ def main():
 
 
 
-def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_channels, input_size, use_cuda):
+def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_channels, input_size, latent_space, use_cuda):
     from Autoencoder_Tests.AutoEncoderModel import AutoEncoderModel
     from minipacman_envs import make_minipacman_env_no_log
     #create environment to train on
@@ -69,7 +73,7 @@ def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_c
     if use_cuda:
         policy.cuda()
 
-    encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size)
+    encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size, latent_space=latent_space, hidden_space=512)
     if use_cuda:
         encoder_model.cuda()
     return env, encoder_model, policy

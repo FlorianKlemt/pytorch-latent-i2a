@@ -4,13 +4,13 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 class EnvEncoderModel(torch.nn.Module):
-    def __init__(self, num_inputs, action_broadcast_size=10, use_cuda=True):
+    def __init__(self, num_inputs, latent_space=64, encoder_space=128, action_broadcast_size=10, use_cuda=True):
         super(EnvEncoderModel, self).__init__()
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
         self.action_broadcast_size = action_broadcast_size
 
-        self.linear1 = nn.Linear(64+self.action_broadcast_size,128)       #64+10 for latent space, 361 without
-        self.linear2 = nn.Linear(128,64)
+        self.linear1 = nn.Linear(latent_space+self.action_broadcast_size,encoder_space)       #64+10 for latent space, 361 without
+        self.linear2 = nn.Linear(encoder_space,latent_space)
 
         self.train()
 

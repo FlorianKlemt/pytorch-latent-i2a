@@ -6,9 +6,12 @@ class A2C_PolicyWrapper(Policy):
         super(A2C_PolicyWrapper, self).__init__()
         self.policy = policy
 
-    def forward(self, inputs, states, masks):
-        raise NotImplementedError('This forward should never be called! The policy should only be called via the act, get_value and evaluate functions.'
-                                  '@future self: if you read this refactor this whole class')
+    def forward(self, inputs, states=None, masks=None):
+        if states is not None or masks is not None:
+            raise NotImplementedError('This forward should never be called when providing masks or states! In this case the policy should only be called via the act, get_value and evaluate functions.'
+                                      '@future self: if you read this refactor this whole class')
+        else:
+            return self.policy(inputs)
 
     def act(self, inputs, states, masks, deterministic=False):
         value, actor = self.policy(inputs)      # value is critic

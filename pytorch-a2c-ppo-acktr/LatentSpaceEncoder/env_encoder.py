@@ -2,10 +2,13 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 import random
-from Autoencoder_Tests.EnvEncoderModel import EnvEncoderModel
+from LatentSpaceEncoder.EnvEncoderModel import EnvEncoderModel
+from LatentSpaceEncoder.AutoEncoderModel import AutoEncoderModel
+from custom_envs import make_custom_env
 import matplotlib.pyplot as plt
 import cv2
 import gym
+import gym_minipacman
 
 
 def main():
@@ -22,27 +25,46 @@ def main():
     plt.ion()
 
     use_cuda = True
-    from A2C_Models.model import ActorCritic
-    from A2C_Models.MiniModel import MiniModel
+    from A2C_Models.I2A_MiniModel import I2A_MiniModel
+    from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 
     latent_space = 32#64
     encoder_space = 128#128
     hidden_space = 128#128
 
-    env, auto_encoder_model, policy = init_autoencoder_training("MsPacman-v0",#env_name="PongDeterministic-v4",
-                                                                policy_model_alias=ActorCritic,
-                                                                policy_model_input_channels=4,
-                                                                input_size=(210,160),#input_size=(84,84),
-                                                                latent_space=latent_space,
-                                                                hidden_space = hidden_space,
-                                                                use_cuda=use_cuda)
+    #env_name = "RegularMiniPacmanNoFrameskip-v0"
+    env_name = "MsPacmanNoFrameskip-v0"
+    #input_size=(19,19)
+    input_size = (210,160)#input_size=(84,84),
+
+    #create environment to train on
+    if "MiniPacman" in env_name:
+        env = make_custom_env(env_name, seed=1, rank=0, log_dir=None)()
+    else:
+        #from baselines.common.atari_wrappers import FrameStack
+        #from custom_envs import MiniFrameStack
+        #env = WarpFrameGrayScale(gym.make(env_name))
+        #env = WrapPyTorch(MiniFrameStack(env, 4))
+        #env = WrapPyTorch(wrap_deepmind(gym.make(env_name), frame_stack=True))
+        env = make_env(env_name, seed=1, rank=0, log_dir=None)()
+
+    auto_encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size, latent_space=latent_space, hidden_space=hidden_space)
+    if use_cuda:
+        auto_encoder_model.cuda()
+
+    action_space = env.action_space.n
+    policy = A2C_PolicyWrapper(I2A_MiniModel(num_inputs=4, action_space=action_space, input_dims=(210,160), use_cuda=use_cuda))
+    #policy = A2C_PolicyWrapper(I2A_MiniModel(num_inputs=1, action_space=action_space, input_dims=input_size, use_cuda=use_cuda))
+    if use_cuda:
+        policy.cuda()
 
     #env, auto_encoder_model, policy = init_autoencoder_training(env_name="RegularMiniPacmanNoFrameskip-v0",
+    #                                                            #root_path="/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/",
+    #                                                            #policy_model_name="RegularMiniPacmanNoFrameskip-v0.pt",
+    #                                                            #load_policy_model_dir="trained_models/a2c/",
     #                                                            policy_model_alias=MiniModel,
     #                                                            policy_model_input_channels=4,
     #                                                            input_size=(19,19),
-    #                                                            latent_space=latent_space,
-    #                                                            hidden_space = hidden_space,
     #                                                            use_cuda=use_cuda)
 
     env_encoder_model = EnvEncoderModel(num_inputs=1, latent_space=latent_space, encoder_space=encoder_space, action_broadcast_size=50, use_cuda=use_cuda)
@@ -56,31 +78,6 @@ def main():
     train_env_encoder(env, policy, latent_space_trainer, use_cuda)
     #train_env_encoder_batchwise(env, policy, latent_space_trainer, use_cuda)
 
-
-
-def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_channels, input_size, latent_space, hidden_space, use_cuda):
-    from Autoencoder_Tests.AutoEncoderModel import AutoEncoderModel
-    from minipacman_envs import make_minipacman_env_no_log
-    #create environment to train on
-    if "MiniPacman" in env_name:
-        env = make_minipacman_env_no_log(env_name)
-    else:
-        from envs import WrapPyTorch
-        from baselines.common.atari_wrappers import wrap_deepmind, FrameStack
-        env = WarpFrameGrayScale(gym.make(env_name))
-        env = WrapPyTorch(FrameStack(env, 4))
-        #env = WrapPyTorch(wrap_deepmind(gym.make(env_name)))
-
-    action_space = env.action_space.n
-
-    policy = policy_model_alias(num_inputs=policy_model_input_channels, action_space=action_space, input_dims=input_size, use_cuda=use_cuda)
-    if use_cuda:
-        policy.cuda()
-
-    encoder_model = AutoEncoderModel(num_inputs = 1, input_size=input_size, latent_space=latent_space, hidden_space=hidden_space)
-    if use_cuda:
-        encoder_model.cuda()
-    return env, encoder_model, policy
 
 
 def sample_action_from_distribution(actor, action_space, chance_of_random_action=0.25):
@@ -299,20 +296,68 @@ def render_observation_in_window(window_name, observation, mean_image=None):
     cv2.waitKey(1)
 
 
+
+class FrameUIntToFloat(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        box = self.observation_space
+        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape))
+
+    def _observation(self, obs):
+        frame = obs / 255.
+        frame[frame < 0] = 0.
+        frame[frame > 1.] = 1.
+        return frame
+
 class WarpFrameGrayScale(gym.ObservationWrapper):
     def __init__(self, env):
-        """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
-        #self.res = 84
         box = self.observation_space
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(box.shape[0], box.shape[1], 1))
+        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape[0], box.shape[1]))
 
     def _observation(self, obs):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
-        #frame = np.array(Image.fromarray(frame).resize((self.res, self.res),
-        #    resample=Image.BILINEAR), dtype=np.uint8)
-        return frame.reshape((frame.shape[0], frame.shape[1], 1))
+        return frame.reshape((frame.shape[0], frame.shape[1]))
 
+'''class WrapPyTorch(gym.ObservationWrapper):
+    def __init__(self, env=None):
+        super(WrapPyTorch, self).__init__(env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=[obs_shape[2], obs_shape[1], obs_shape[0]])
+
+    #in the new version of deepminds wrappers the framestack wrapper returns a LazyFrames object - @future self: dont ask why just accept it
+    def _observation(self, observation):
+        return observation.transpose(0, 3, 1, 2)'''
+
+def make_env(env_id, seed, rank, log_dir):
+    from baselines import bench
+    from baselines.common.atari_wrappers import make_atari, wrap_deepmind, EpisodicLifeEnv, ClipRewardEnv
+    import os
+    from envs import WrapPyTorch
+    from custom_envs import MiniFrameStack
+    def _thunk():
+        env = gym.make(env_id)
+        is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+        if is_atari:
+            env = make_atari(env_id)
+        env.seed(seed + rank)
+        if log_dir is not None:
+            env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
+        if is_atari:
+            env = EpisodicLifeEnv(env)
+            env = ClipRewardEnv(env)
+            #env = wrap_deepmind(env)
+        env = FrameUIntToFloat(env)
+        env = WarpFrameGrayScale(env)
+        env = MiniFrameStack(env, 4)
+        # If the input has shape (W,H,3), wrap for PyTorch convolutions
+        obs_shape = env.observation_space.shape
+        if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
+            env = WrapPyTorch(env)
+
+        return env
+
+    return _thunk
 
 if __name__ == '__main__':
     main()

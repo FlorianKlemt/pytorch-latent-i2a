@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from A2C_Models.model import Policy
 from distributions import Categorical
+from I2A.utils import get_linear_dims_after_conv
 
 def weights_init(m):
     classname = m.__class__.__name__
@@ -20,13 +21,14 @@ def xavier_weights_init(m):
             m.bias.data.fill_(0)
 
 class I2A_MiniModel(Policy):
-    def __init__(self, num_inputs, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
+    def __init__(self, num_inputs, action_space, input_dims, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(I2A_MiniModel, self).__init__()
 
         self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8
 
-        self.linear_input_size = 16*8*8
+        self.linear_input_size = get_linear_dims_after_conv([self.conv1, self.conv2], input_dims)
+        #self.linear_input_size = 16*8*8
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 

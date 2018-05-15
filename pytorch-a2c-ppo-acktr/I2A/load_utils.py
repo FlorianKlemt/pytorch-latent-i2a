@@ -32,7 +32,7 @@ def load_policy(load_policy_model_dir = "trained_models/",
 def load_em_model(EMModel,
                   load_environment_model_dir = "trained_models/environment_models/",
                   environment_model_name = None,
-                  num_inputs = None,
+                  obs_shape = None,
                   action_space = None,
                   reward_bins = None,
                   use_cuda = True):
@@ -40,7 +40,7 @@ def load_em_model(EMModel,
     saved_state = torch.load('{0}{1}'.format(
         load_environment_model_dir, environment_model_name), map_location=lambda storage, loc: storage)
 
-    environment_model = EMModel(num_inputs=num_inputs,
+    environment_model = EMModel(obs_shape=(1, obs_shape[1], obs_shape[2]),
                                 num_actions=action_space,
                                 reward_bins=reward_bins,
                                 use_cuda=use_cuda)

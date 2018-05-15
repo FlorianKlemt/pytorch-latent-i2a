@@ -2,14 +2,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
+from I2A.utils import get_linear_dims_after_conv, get_conv_output_dims
+from functools import reduce
 
 class EncoderCNNNetwork(nn.Module):
-    def __init__(self, input_channels=1):
+    def __init__(self, obs_shape):
         super(EncoderCNNNetwork, self).__init__()
+        input_channels = obs_shape[0]
+        input_dims = obs_shape[1:]
 
         self.conv1 = nn.Conv2d(input_channels, 16, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(16, 16, kernel_size=3, stride=2, padding=1)
+
+        self.output_dims = reduce(lambda x, y: x * y, get_conv_output_dims([self.conv1, self.conv2], input_dims))
+        self.output_size = self.conv2.out_channels * self.output_dims
 
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x))
@@ -24,17 +30,16 @@ https://github.com/pytorch/pytorch/issues/2769
 https://discuss.pytorch.org/t/help-clarifying-repackage-hidden-in-word-language-model/226
 '''
 class EncoderLSTMNetwork(nn.Module):
-    def __init__(self, number_lstm_cells, use_cuda=False):
+    def __init__(self, input_dim, number_lstm_cells, use_cuda=False):
         super(EncoderLSTMNetwork, self).__init__()
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
         # reward broadcasted = 6x6
-        # lstm input = 6x6x64 + reward broadcast = 2340
         self.number_lstm_cells = number_lstm_cells
 
-        #self.lstm = nn.LSTMCell(2520, self.number_lstm_cells, True)  # true for bias
-        self.lstm = nn.LSTMCell(1700, self.number_lstm_cells, True)  # true for bias   10x10x16 + 1x10x10 (output size cnn + broadcasted reward)
+        # input_dim = (output size cnn + broadcasted reward)
+        self.lstm = nn.LSTMCell(input_dim, self.number_lstm_cells, True)
         self.lstm.bias_ih.data.fill_(0)
         self.lstm.bias_hh.data.fill_(0)
 

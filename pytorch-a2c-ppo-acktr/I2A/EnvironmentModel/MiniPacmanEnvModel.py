@@ -41,7 +41,7 @@ class BasicBlock(torch.nn.Module):
         return x + input
 
 class MiniPacmanEnvModel(torch.nn.Module):
-    def __init__(self, num_inputs, num_actions, reward_bins, use_cuda):
+    def __init__(self, obs_shape, num_actions, reward_bins, use_cuda):
         super(MiniPacmanEnvModel, self).__init__()
         self.num_actions = num_actions
 
@@ -49,9 +49,10 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.reward_bins = Variable(torch.FloatTensor(reward_bins).type(self.FloatTensor))
 
-        W=19    #TODO: 15
-        H=19
-        self.conv1 = nn.Conv2d(num_inputs+self.num_actions, 64, kernel_size=1, stride=1, padding=0)    #input size is channels of input frame +1 for the broadcasted action
+        input_channels = obs_shape[0]
+        W=obs_shape[1]
+        H=obs_shape[2]
+        self.conv1 = nn.Conv2d(input_channels+self.num_actions, 64, kernel_size=1, stride=1, padding=0)    #input size is channels of input frame +1 for the broadcasted action
         self.basic_block1 = BasicBlock(num_inputs=64,n1=16,n2=32,n3=64,W=W,H=H,use_cuda=use_cuda)
         self.basic_block2 = BasicBlock(num_inputs=64, n1=16, n2=32, n3=64, W=W, H=H,use_cuda=use_cuda)
         self.reward_head = nn.Sequential(OrderedDict([

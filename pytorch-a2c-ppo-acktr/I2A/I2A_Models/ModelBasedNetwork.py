@@ -11,7 +11,7 @@ class ModelBasedNetwork(torch.nn.Module):
 
     def __init__(self,
                  number_actions,
-                 input_channels,
+                 obs_shape,
                  imagination_core,
                  number_lstm_cells=256,
                  rollout_steps=5,
@@ -26,15 +26,17 @@ class ModelBasedNetwork(torch.nn.Module):
         super(ModelBasedNetwork, self).__init__()
 
         self.rollout_steps = rollout_steps
-        self.input_channels = input_channels
         self.number_lstm_cells = number_lstm_cells
         self.number_actions = number_actions
         self.use_cuda = use_cuda
 
         self.imagination_core = imagination_core
 
-        self.encoder_cnn = EncoderCNNNetwork(self.input_channels)
-        self.encoder_lstm = EncoderLSTMNetwork(self.number_lstm_cells, use_cuda=self.use_cuda)
+        self.encoder_cnn = EncoderCNNNetwork(obs_shape=obs_shape)
+        # (output size cnn + broadcasted reward)
+        self.encoder_lstm = EncoderLSTMNetwork(input_dim=self.encoder_cnn.output_size + self.encoder_cnn.output_dims,
+                                               number_lstm_cells=self.number_lstm_cells,
+                                               use_cuda=self.use_cuda)
 
         self.rollout_encoder = RolloutEncoder(self.imagination_core,
                                               self.encoder_cnn,

@@ -8,11 +8,10 @@ from I2A.I2A_Models.OutputPolicyNetwork import OutputPolicyNetwork
 #    if Model == "MiniPacman"
 
 class I2A(torch.nn.Module):
-    def __init__(self, num_inputs, action_space, imagination_core, use_cuda):
+    def __init__(self, obs_shape, action_space, imagination_core, use_cuda):
         super(I2A, self).__init__()
 
         self.action_space = action_space
-        self.input_channels = 4
         self.rollout_steps = 2
         self.number_lstm_cells = 256
         self.model_free_output_size = 512
@@ -24,15 +23,16 @@ class I2A(torch.nn.Module):
                                                          self.action_space)
 
         # model-free path
-        self.model_free_network = ModelFreeNetworkMiniPacman(self.input_channels)
+        self.model_free_network = ModelFreeNetworkMiniPacman(obs_shape=obs_shape,
+                                                             num_outputs=self.model_free_output_size)
 
         # model-based path
-        self.model_based_network = ModelBasedNetwork(self.action_space,
-                                                     self.input_channels,
-                                                     imagination_core,
-                                                     self.number_lstm_cells,
-                                                     self.rollout_steps,
-                                                     self.use_cuda)
+        self.model_based_network = ModelBasedNetwork(number_actions=self.action_space,
+                                                     obs_shape=obs_shape,
+                                                     imagination_core=imagination_core,
+                                                     number_lstm_cells=self.number_lstm_cells,
+                                                     rollout_steps=self.rollout_steps,
+                                                     use_cuda=self.use_cuda)
         self.train()
 
 

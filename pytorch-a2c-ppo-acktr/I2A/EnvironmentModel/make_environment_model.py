@@ -1,4 +1,3 @@
-
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -145,7 +144,8 @@ def build_em_model(env, load_environment_model=False, load_environment_model_dir
     #TODO: change this depending on the env
     reward_bins = [0., 1., 2., 5., 0.]
 
-    environment_model = EMModel(num_inputs=4,#1,  # 4
+
+    environment_model = EMModel(obs_shape=env.observation_space.shape,  # 4
                                 num_actions=env.action_space.n,
                                 reward_bins=reward_bins,
                                 use_cuda=use_cuda)

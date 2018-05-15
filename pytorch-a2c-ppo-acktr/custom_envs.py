@@ -34,6 +34,21 @@ class MiniFrameStack(gym.Wrapper):
 
 
 class WarpMiniPacmanFrame(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = spaces.Box(low=0., high=1., shape=(1, obs_shape[0], obs_shape[1]), dtype=np.float)
+        #self.states_deque = collections.deque(maxlen=self.num_frames)
+
+    def observation(self, obs):
+        # convert to grey scale
+        frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
+        frame = np.array(Image.fromarray(frame), dtype=np.float)
+        frame = frame.reshape(self.observation_space.shape)
+        return frame
+
+
+class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
         gym.ObservationWrapper.__init__(self, env)
         self.res = image_resize_size
@@ -51,7 +66,34 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
         return frame
 
 
+
 def make_custom_env(env_id, seed, rank, log_dir):
+    def _thunk():
+        episodic_life = True
+        env = gym.make(env_id)
+
+        env.seed(seed + rank)
+        env.frameskip = 1
+
+        if log_dir is not None:
+            env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
+        if episodic_life:
+            env = EpisodicLifeEnv(env)
+
+        env = NoopResetEnv(env, noop_max=30)
+        env = MaxAndSkipEnv(env, skip=1)
+
+        if 'FIRE' in env.unwrapped.get_action_meanings():
+            env = FireResetEnv(env)
+
+        env = WarpMiniPacmanFrame(env)
+        #env = MiniFrameStack(env, 4)
+        return env
+
+    return _thunk
+
+
+def make_custom_env_squared(env_id, seed, rank, log_dir):
     def _thunk():
         episodic_life = True
         clip_rewards = False     #this should always be false
@@ -73,7 +115,7 @@ def make_custom_env(env_id, seed, rank, log_dir):
         if 'FIRE' in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
 
-        env = WarpMiniPacmanFrame(env, image_resize_size)
+        env = WarpMiniPacmanFrameSquared(env, image_resize_size)
         if clip_rewards:
             env = ClipRewardEnv(env)
 

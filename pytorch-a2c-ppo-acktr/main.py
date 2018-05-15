@@ -377,7 +377,7 @@ def build_i2a_model(obs_shape, action_space, use_cuda):
 
     em_model_reward_bins = [0., 1., 2., 5., 0.]  # TODO: make variable based on the env that is used
 
-    input_channels = obs_shape[0]
+    input_channels = 1#obs_shape[0]
 
     # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
     load_environment_model_dir = 'trained_models/environment_models/'
@@ -413,7 +413,7 @@ def build_i2a_model(obs_shape, action_space, use_cuda):
         rollout_policy.cuda()
 
 
-    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy, use_cuda=args.cuda)
+    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy)
 
     i2a_model = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=action_space,
                           imagination_core=imagination_core, use_cuda=args.cuda))

@@ -11,16 +11,14 @@ from A2C_Models.I2A_MiniModel import I2A_MiniModel
 import os
 
 class ImaginationCore(nn.Module):
-    def __init__(self, env_model=None, rollout_policy=None, use_cuda=False):
+    def __init__(self, env_model=None, rollout_policy=None):
         super(ImaginationCore, self).__init__()
         self.env_model = env_model
         self.rollout_policy = rollout_policy
-        #if rollout_policy != None:
-        #    self.num_actions = rollout_policy.policy.action_space
-        #self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     def forward(self, state, action):
-        next_state, reward = self.env_model(state, action)
+        last_frame = state[:,-1:]   #wtf python
+        next_state, reward = self.env_model(last_frame, action)
 
         x = torch.cat((state, next_state), 1)
         next_state = x[:, 1:]

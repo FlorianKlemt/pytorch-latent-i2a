@@ -1,6 +1,4 @@
-import os
-import random
-import numpy as np
+
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -11,37 +9,36 @@ from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptim
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
 from custom_envs import make_custom_env
 import os
-import collections
-import sys
 
-from I2A.load_utils import load_policy, load_em_model
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 from A2C_Models.I2A_MiniModel import I2A_MiniModel
+import argparse
 
-#root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
-#root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
-#root_dir = os.path.join(os.getcwd(), '../../')
-#root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def main():
-    save_environment_model_dir = load_environment_model_dir =  os.path.join('../../', 'trained_models/environment_models/')
+    args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
+    args_parser.add_argument('--load_environment_model', action='store_true', default=False,
+                             help='flag to continue training on pretrained env_model')
+    args_parser.add_argument('--load_environment_model_dir', default="trained_models/environment_models_trained/",
+                             help='relative path to folder from which a environment model should be loaded.')
+    args_parser.add_argument('--load_environment_model_file_name', default="RegularMiniPacman_EnvModel_0.dat",
+                             help='file name of the environment model that should be loaded.')
+    args = args_parser.parse_args()
 
-    train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
+    save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
+
+    train_minipacman(args=args,
+             env_name="RegularMiniPacmanNoFrameskip-v0",
              policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
              load_policy_model_dir="trained_models/a2c/",
              environment_model_name="RegularMiniPacman_EnvModel_trained",
              save_environment_model_dir=save_environment_model_dir,
-             load_environment_model=False,
-             load_environment_model_dir=load_environment_model_dir,
              use_cuda=True)
 
-def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
+def train_minipacman(args, env_name="RegularMiniPacmanNoFrameskip-v0",
              policy_model = None,   #TODO: needs to be passed to build_em_model()
              load_policy_model_dir = None,  #TODO: same
              environment_model_name = "pong_em",
              save_environment_model_dir = "trained_models/environment_models_trained/",
-             load_environment_model = False,
-             load_environment_model_dir="trained_models/environment_models_trained/",
              render=True,
              use_cuda=False):
 
@@ -50,10 +47,12 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
     env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)() #wtf
 
     policy = build_policy(env=env, use_cuda=use_cuda)
+
+    relative_load_environment_model_dir = os.path.join('../../', args.load_environment_model_dir)
     environment_model = build_em_model(env=env,
-                                       load_environment_model=load_environment_model,
-                                       load_environment_model_dir=load_environment_model_dir,
-                                       environment_model_file_name=env_name,        #TODO: kinda risky assignment, what if it has another name?
+                                       load_environment_model=args.load_environment_model,
+                                       load_environment_model_dir=relative_load_environment_model_dir,
+                                       environment_model_file_name=args.load_environment_model_file_name,
                                        use_cuda=use_cuda)
 
     optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=use_cuda)
@@ -62,7 +61,7 @@ def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
     chance_of_random_action = 0.25
 
     if render==True:
-        renderer = RenderTrainEM(environment_model_name, delete_log_file = load_environment_model==False)
+        renderer = RenderTrainEM(environment_model_name, delete_log_file = args.load_environment_model==False)
 
     for i_episode in range(10000):
         print("Start episode ",i_episode)
@@ -146,7 +145,7 @@ def build_em_model(env, load_environment_model=False, load_environment_model_dir
     #TODO: change this depending on the env
     reward_bins = [0., 1., 2., 5., 0.]
 
-    environment_model = EMModel(num_inputs=1,  # 4
+    environment_model = EMModel(num_inputs=4,#1,  # 4
                                 num_actions=env.action_space.n,
                                 reward_bins=reward_bins,
                                 use_cuda=use_cuda)

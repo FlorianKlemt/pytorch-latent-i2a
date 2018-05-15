@@ -105,6 +105,16 @@ def main():
     else:
         action_shape = envs.action_space.shape[0]
 
+    if args.load_model:
+        load_path = os.path.join(args.save_dir, args.algo)
+        load_path = os.path.join(load_path, args.env_name + ".pt")
+        if os.path.isfile(load_path):
+            # if args.cuda:
+            actor_critic.load_state_dict(torch.load(load_path))
+        else:
+            print("Can not load model ", load_path, ". File does not exists")
+            return
+
     if args.cuda:
         actor_critic.cuda()
 

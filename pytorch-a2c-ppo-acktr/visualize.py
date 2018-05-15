@@ -13,7 +13,7 @@ plt.switch_backend('agg')
 import numpy as np
 from scipy.signal import medfilt
 matplotlib.rcParams.update({'font.size': 8})
-
+from collections import deque
 
 def smooth_reward_curve(x, y):
     # Halfwidth of our smoothing convolution
@@ -159,25 +159,73 @@ def plot_multi_lines(viz, plot_window, opts_dict, data_point, count):
                  update='append')
     return plot_window
 
-def get_legends():
-    dist_entropy_opts = dict(
-        xlabel="Frames in Mio.",
-        ylabel="Entropy",
-        title="Distribution Entropy"
-    )
-    reward_opts = dict(
-        xlabel="Frames in Mio.",
-        ylabel="Reward",
-        title="Rewards",
-        legend=["Mean Reward", "Median Reward"]
-    )
-    loss_opts = dict(
-        xlabel="Frames in Mio.",
-        ylabel="Loss",
-        title="Loss",
-        legend=["Value Loss", "Policy Loss"]
-    )
-    return dist_entropy_opts, reward_opts, loss_opts
+class VisdomPlotterA2C():
+    def __init__(self, viz, plot_distill_loss = False):
+        #from visdom import Visdom
+        self.viz = viz
+        #self.win = None
+        self.plot_distill_loss = plot_distill_loss
+        self.dist_plot_win, self.reward_plot_win, self.loss_plot_win = (None for _ in range(3))
+        self.dist_plot_legend, self.reward_plot_legend, self.loss_plot_legend = self.get_legends(self.plot_distill_loss)
+        self.dist_entropy_history = deque(maxlen=250)
+        self.loss_history = deque(maxlen=250)
+        self.reward_history = deque(maxlen=2500)
+
+    def get_legends(self, plot_distill_loss):
+        dist_entropy_opts = dict(
+            xlabel="Frames in Mio.",
+            ylabel="Entropy",
+            title="Distribution Entropy"
+        )
+        reward_opts = dict(
+            xlabel="Frames in Mio.",
+            ylabel="Reward",
+            title="Rewards",
+            legend=["Mean Reward", "Median Reward"]
+        )
+        if plot_distill_loss:
+            loss_legend = ["Value Loss", "Policy Loss", "Distill Loss"]
+        else:
+            loss_legend = ["Value Loss", "Policy Loss"]
+        loss_opts = dict(
+            xlabel="Frames in Mio.",
+            ylabel="Loss",
+            title="Loss",
+            legend=loss_legend
+        )
+        return dist_entropy_opts, reward_opts, loss_opts
+
+    def append(self, dist_entropy, reward, value_loss, action_loss, distill_loss=None):
+        self.dist_entropy_history.append(dist_entropy)
+        if self.plot_distill_loss:
+            self.loss_history.append((value_loss, action_loss, distill_loss))
+        else:
+            self.loss_history.append((value_loss, action_loss))
+        self.reward_history.extend(reward)
+
+    def plot(self, frames):
+        frames_in_mio = frames / 1000000
+        self.dist_plot_win = plot_line(self.viz,
+                                       self.dist_plot_win,
+                                       self.dist_plot_legend,
+                                       np.array(self.dist_entropy_history).mean(),
+                                       frames_in_mio)
+        loss_mean = np.mean(np.array(self.loss_history), axis=0)
+        self.loss_plot_win = plot_line(self.viz,
+                                       self.loss_plot_win,
+                                       self.loss_plot_legend,
+                                       loss_mean,
+                                       frames_in_mio)
+        if len(self.reward_history) >= self.reward_history.maxlen - 1:
+            reward_mean_smooth = np.mean(self.reward_history)
+            reward_median_smooth = np.median(self.reward_history)
+            self.reward_plot_win = plot_multi_lines(self.viz,
+                                                    self.reward_plot_win,
+                                                    self.reward_plot_legend,
+                                                    np.array([[reward_mean_smooth, reward_median_smooth]]),
+                                                    frames_in_mio)
+
+
 
 if __name__ == "__main__":
     from visdom import Visdom

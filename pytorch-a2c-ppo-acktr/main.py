@@ -20,7 +20,7 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 from kfac import KFACOptimizer
 from A2C_Models.model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
-from visualize import visdom_plot, plot_line, plot_multi_lines, get_legends
+from visualize import visdom_plot, VisdomPlotterA2C
 
 from A2C_Models.MiniModel import MiniModel
 from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
@@ -50,6 +50,7 @@ except OSError:
         os.remove(f)
 
 
+
 def main():
     print("#######")
     print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
@@ -61,11 +62,7 @@ def main():
         from visdom import Visdom
         viz = Visdom(port=args.port)
         win = None
-        dist_plot_win, reward_plot_win, loss_plot_win = (None for _ in range(3))
-        dist_plot_legend, reward_plot_legend, loss_plot_legend = get_legends()
-        dist_entropy_history = deque(maxlen=500)
-        loss_history = deque(maxlen=500)
-        reward_history = deque(maxlen=500)
+        visdom_plotter = VisdomPlotterA2C(viz, args.algo == 'i2a')
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
@@ -315,9 +312,13 @@ def main():
 
         rollouts.after_update()
 
-        dist_entropy_history.append(dist_entropy.data[0])
-        loss_history.append((value_loss.data[0], action_loss.data[0]))
-        reward_history.extend(final_rewards.numpy().flatten())
+        if args.vis:
+            distill_loss_data = distill_loss.data[0] if args.algo == 'i2a' else None
+            visdom_plotter.append(dist_entropy.data[0],
+                                  final_rewards.numpy().flatten(),
+                                  value_loss.data[0],
+                                  action_loss.data[0],
+                                  distill_loss_data)
 
         if j % args.save_interval == 0 and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.algo)
@@ -363,14 +364,7 @@ def main():
             except IOError:
                 pass
             frames = j*args.num_processes*args.num_steps
-            frames_in_mio = frames/1000000
-            dist_plot_win = plot_line(viz, dist_plot_win, dist_plot_legend, np.array(dist_entropy_history).mean(), frames_in_mio)
-            loss_mean = np.mean(np.array(loss_history), axis=0)
-            loss_plot_win = plot_line(viz, loss_plot_win, loss_plot_legend, loss_mean, frames_in_mio)
-            if len(reward_history) >= reward_history.maxlen-1:
-                reward_mean_smooth = np.mean(reward_history)
-                reward_median_smooth = np.median(reward_history)
-                reward_plot_win = plot_multi_lines(viz, reward_plot_win, reward_plot_legend, np.array([[reward_mean_smooth,reward_median_smooth]]), frames_in_mio)
+            visdom_plotter.plot(frames)
 
 if __name__ == "__main__":
     main()

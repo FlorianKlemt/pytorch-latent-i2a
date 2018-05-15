@@ -88,7 +88,7 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a':
-        distill_loss_coef = 0.01     #given in the I2A paper page 12
+        distill_loss_coef = 0.000001     #care: may need to change in the future
         actor_critic = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda))
         rollout_policy = actor_critic.policy.model_based_network.imagination_core.policy.policy  # what the fuck
     elif 'MiniPacman' in args.env_name:

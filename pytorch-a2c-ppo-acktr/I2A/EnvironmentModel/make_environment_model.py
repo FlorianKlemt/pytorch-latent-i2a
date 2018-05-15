@@ -141,8 +141,7 @@ def build_em_model(env, load_environment_model=False, load_environment_model_dir
     #TODO: @future self: once we have latent space models change the next line
     EMModel = MiniPacmanEnvModel
 
-    #TODO: change this depending on the env
-    reward_bins = [0., 1., 2., 5., 0.]
+    reward_bins = env.unwrapped.reward_bins #[0., 1., 2., 5., 0.] for regular
 
 
     environment_model = EMModel(obs_shape=env.observation_space.shape,  # 4

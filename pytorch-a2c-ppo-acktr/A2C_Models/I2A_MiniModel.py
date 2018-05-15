@@ -21,10 +21,12 @@ def xavier_weights_init(m):
             m.bias.data.fill_(0)
 
 class I2A_MiniModel(Policy):
-    def __init__(self, num_inputs, action_space, input_dims, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
+    def __init__(self, obs_shape, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(I2A_MiniModel, self).__init__()
+        input_channels = obs_shape[0]
+        input_dims = obs_shape[1:]
 
-        self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
+        self.conv1 = nn.Conv2d(input_channels, 16, 3, stride=1) #17x17
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8
 
         self.linear_input_size = get_linear_dims_after_conv([self.conv1, self.conv2], input_dims)

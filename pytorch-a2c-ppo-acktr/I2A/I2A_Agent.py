@@ -8,7 +8,7 @@ from I2A.I2A_Models.OutputPolicyNetwork import OutputPolicyNetwork
 #    if Model == "MiniPacman"
 
 class I2A(torch.nn.Module):
-    def __init__(self, num_inputs, action_space, use_cuda):
+    def __init__(self, num_inputs, action_space, imagination_core, use_cuda):
         super(I2A, self).__init__()
 
         self.action_space = action_space
@@ -29,6 +29,7 @@ class I2A(torch.nn.Module):
         # model-based path
         self.model_based_network = ModelBasedNetwork(self.action_space,
                                                      self.input_channels,
+                                                     imagination_core,
                                                      self.number_lstm_cells,
                                                      self.rollout_steps,
                                                      self.use_cuda)

@@ -20,71 +20,43 @@ from A2C_Models.I2A_MiniModel import I2A_MiniModel
 
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 #root_dir = "/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c/"
-root_dir = os.path.join(os.getcwd(), '../../')
+#root_dir = os.path.join(os.getcwd(), '../../')
 #root_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def main():
-    EMModel = MiniPacmanEnvModel
+    save_environment_model_dir = load_environment_model_dir =  os.path.join('../../', 'trained_models/environment_models/')
 
     train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
-             EMModel=EMModel,
              policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
              load_policy_model_dir="trained_models/a2c/",
              environment_model_name="RegularMiniPacman_EnvModel_trained",
-             save_environment_model_dir="trained_models/environment_models/",
+             save_environment_model_dir=save_environment_model_dir,
              load_environment_model=False,
-             load_environment_model_dir="trained_models/environment_models/",
-             root_path=root_dir,
+             load_environment_model_dir=load_environment_model_dir,
              use_cuda=True)
 
 def train_minipacman(env_name="RegularMiniPacmanNoFrameskip-v0",
-             EMModel = None,
-             policy_model = "PongDeterministic-v4_21",
-             load_policy_model_dir = "trained_models/",
+             policy_model = None,   #TODO: needs to be passed to build_em_model()
+             load_policy_model_dir = None,  #TODO: same
              environment_model_name = "pong_em",
              save_environment_model_dir = "trained_models/environment_models_trained/",
              load_environment_model = False,
              load_environment_model_dir="trained_models/environment_models_trained/",
-             root_path="",
              render=True,
              use_cuda=False):
 
     FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)() #wtf
-    action_space = env.action_space.n
-    if env_name == "RegularMiniPacmanNoFrameskip-v0":
-        reward_bins = [0., 1., 2., 5., 0.]
 
-    load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
-    #policy = A2C_PolicyWrapper(load_policy(load_policy_model_dir,
-    #                     policy_model,
-    #                     action_space=action_space,
-    #                     use_cuda=use_cuda,
-    #                     policy_name='MiniModel'))
-    policy = I2A_MiniModel(num_inputs=1,action_space=action_space, use_cuda=use_cuda)
-    if use_cuda:
-        policy.cuda()
+    policy = build_policy(env=env, use_cuda=use_cuda)
+    environment_model = build_em_model(env=env,
+                                       load_environment_model=load_environment_model,
+                                       load_environment_model_dir=load_environment_model_dir,
+                                       environment_model_file_name=env_name,        #TODO: kinda risky assignment, what if it has another name?
+                                       use_cuda=use_cuda)
 
-    save_environment_model_dir = os.path.join(root_path, save_environment_model_dir)
-    if load_environment_model:
-        load_environment_model_dir = os.path.join(root_path, load_environment_model_dir)
-        environment_model = load_em_model(EMModel,
-                                          load_environment_model_dir,
-                                          environment_model_name,
-                                          action_space,
-                                          use_cuda)
-    else:
-        environment_model = EMModel(num_inputs = 1, #4
-                                    num_actions=env.action_space.n,
-                                    reward_bins=reward_bins,
-                                    use_cuda=use_cuda)
-
-    if use_cuda:
-        environment_model.cuda()
-
-    optimizer = EnvironmentModelOptimizer(model=environment_model,
-                                          use_cuda=use_cuda)
+    optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=use_cuda)
     optimizer.set_optimizer()
 
     chance_of_random_action = 0.25
@@ -152,6 +124,42 @@ def save_environment_model(save_model_dir, environment_model_name, environment_m
     save_model_path = '{0}{1}.dat'.format(save_model_dir, environment_model_name)
     torch.save(state_to_save, save_model_path)
 
+
+def build_policy(env, use_cuda):
+    # TODO: give option to load policy
+    #load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
+    # policy = A2C_PolicyWrapper(load_policy(load_policy_model_dir,
+    #                     policy_model,
+    #                     action_space=action_space,
+    #                     use_cuda=use_cuda,
+    #                     policy_name='MiniModel'))
+    # Temporary comment: if the next line breaks try it with obs_shape=(1,..,..)
+    policy = I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda)
+    if use_cuda:
+        policy.cuda()
+    return policy
+
+def build_em_model(env, load_environment_model=False, load_environment_model_dir=None, environment_model_file_name=None, use_cuda=True):
+    #TODO: @future self: once we have latent space models change the next line
+    EMModel = MiniPacmanEnvModel
+
+    #TODO: change this depending on the env
+    reward_bins = [0., 1., 2., 5., 0.]
+
+    environment_model = EMModel(num_inputs=1,  # 4
+                                num_actions=env.action_space.n,
+                                reward_bins=reward_bins,
+                                use_cuda=use_cuda)
+
+    if load_environment_model:
+        saved_state = torch.load('{0}{1}'.format(
+            load_environment_model_dir, environment_model_file_name), map_location=lambda storage, loc: storage)
+        environment_model.load_state_dict(saved_state)
+
+    if use_cuda:
+        environment_model.cuda()
+
+    return environment_model
 
 if __name__ == '__main__':
     main()

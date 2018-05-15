@@ -86,11 +86,13 @@ def main():
 
     if args.algo == 'i2a':
         distill_loss_coef = 0.000001     #care: may need to change in the future
-        actor_critic = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=envs.action_space.n, use_cuda=args.cuda))
-        rollout_policy = actor_critic.policy.model_based_network.imagination_core.policy.policy  # what the fuck
+
+        #build i2a model also wraps it with the A2C_PolicyWrapper
+        actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda)
+
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
-        actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda))
+        actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
     elif len(envs.observation_space.shape) == 3:
         actor_critic = CNNPolicy(obs_shape[0], envs.action_space, args.recurrent_policy)
     else:
@@ -365,6 +367,58 @@ def main():
                 pass
             frames = j*args.num_processes*args.num_steps
             visdom_plotter.plot(frames)
+
+
+
+def build_i2a_model(obs_shape, action_space, use_cuda):
+    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
+    from I2A.load_utils import load_em_model
+    from I2A.ImaginationCore import ImaginationCore
+
+    em_model_reward_bins = [0., 1., 2., 5., 0.]  # TODO: make variable based on the env that is used
+
+    input_channels = obs_shape[0]
+
+    # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
+    load_environment_model_dir = 'trained_models/environment_models/'
+    env_model = load_em_model(EMModel=MiniPacmanEnvModel,
+                             load_environment_model_dir=load_environment_model_dir,
+                             environment_model_name="RegularMiniPacman_EnvModel_0.dat",
+                             num_inputs=input_channels,
+                             action_space=action_space,
+                             reward_bins=em_model_reward_bins,
+                             use_cuda=use_cuda)
+
+    for param in env_model.parameters():
+        param.requires_grad = False
+    env_model.eval()
+
+    #TODO: give option to load rollout_policy
+    #load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
+    #self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
+    #                          policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
+    #                          action_space=action_space,
+    #                          use_cuda=use_cuda,
+    #                          policy_name="MiniModel")
+
+    #obs_shape = (4, (obs_shape[1:]))   #legacy, if the next line breaks try this
+
+    rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=action_space, use_cuda=use_cuda))
+    for param in rollout_policy.parameters():
+        param.requires_grad = True
+    rollout_policy.train()
+
+    if use_cuda:
+        env_model.cuda()
+        rollout_policy.cuda()
+
+
+    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy, use_cuda=args.cuda)
+
+    i2a_model = A2C_PolicyWrapper(I2A(num_inputs=None, action_space=action_space,
+                          imagination_core=imagination_core, use_cuda=args.cuda))
+
+    return i2a_model, rollout_policy
 
 if __name__ == "__main__":
     main()

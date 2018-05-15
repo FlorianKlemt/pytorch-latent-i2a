@@ -319,15 +319,6 @@ class WarpFrameGrayScale(gym.ObservationWrapper):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
         return frame.reshape((frame.shape[0], frame.shape[1]))
 
-'''class WrapPyTorch(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super(WrapPyTorch, self).__init__(env)
-        obs_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=[obs_shape[2], obs_shape[1], obs_shape[0]])
-
-    #in the new version of deepminds wrappers the framestack wrapper returns a LazyFrames object - @future self: dont ask why just accept it
-    def _observation(self, observation):
-        return observation.transpose(0, 3, 1, 2)'''
 
 def make_env(env_id, seed, rank, log_dir):
     from baselines import bench

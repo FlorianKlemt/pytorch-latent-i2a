@@ -62,9 +62,10 @@ def main():
         viz = Visdom(port=args.port)
         win = None
         dist_plot_win, reward_plot_win, loss_plot_win = (None for _ in range(3))
-        dist_plot_legend, reward_plot_legend = get_legends()
-        dist_entropy_history = deque(maxlen=200)
-        reward_history = deque(maxlen=200)
+        dist_plot_legend, reward_plot_legend, loss_plot_legend = get_legends()
+        dist_entropy_history = deque(maxlen=500)
+        loss_history = deque(maxlen=500)
+        reward_history = deque(maxlen=500)
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
@@ -114,6 +115,11 @@ def main():
         else:
             print("Can not load model ", load_path, ". File does not exists")
             return
+
+    log_file = os.path.join(os.path.join(args.save_dir, args.algo), args.env_name + ".log")
+    if not os.path.exists(log_file) or not args.load_model:
+        with open(log_file, 'w') as the_file:
+            the_file.write('Algo: ' + args.algo + 'Environment: ' + args.env_name + '\n')
 
     if args.cuda:
         actor_critic.cuda()
@@ -310,6 +316,7 @@ def main():
         rollouts.after_update()
 
         dist_entropy_history.append(dist_entropy.data[0])
+        loss_history.append((value_loss.data[0], action_loss.data[0]))
         reward_history.extend(final_rewards.numpy().flatten())
 
         if j % args.save_interval == 0 and args.save_dir != "":
@@ -332,14 +339,22 @@ def main():
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
 
-            print("Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}, time {:.5f} min".
-                format(j, total_num_steps,
-                       int(total_num_steps / (end - start)),
-                       final_rewards.mean(),
-                       final_rewards.median(),
-                       final_rewards.min(),
-                       final_rewards.max(), dist_entropy.data[0],
-                       value_loss.data[0], action_loss.data[0], (end-start)/60.))
+            info = "Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}, time {:.5f} min"\
+                    .format(j,
+                            total_num_steps, int(total_num_steps / (end - start)),
+                            final_rewards.mean(),
+                            final_rewards.median(),
+                            final_rewards.min(),
+                            final_rewards.max(),
+                            dist_entropy.data[0],
+                            value_loss.data[0],
+                            action_loss.data[0],
+                            (end - start) / 60.)
+
+            with open(log_file, 'a') as the_file:
+                the_file.write(info + '\n')
+
+            print(info)
         if args.vis and j % args.vis_interval == 0:
             try:
                 # Sometimes monitor doesn't properly flush the outputs
@@ -350,6 +365,8 @@ def main():
             frames = j*args.num_processes*args.num_steps
             frames_in_mio = frames/1000000
             dist_plot_win = plot_line(viz, dist_plot_win, dist_plot_legend, np.array(dist_entropy_history).mean(), frames_in_mio)
+            loss_mean = np.mean(np.array(loss_history), axis=0)
+            loss_plot_win = plot_line(viz, loss_plot_win, loss_plot_legend, loss_mean, frames_in_mio)
             if len(reward_history) >= reward_history.maxlen-1:
                 reward_mean_smooth = np.mean(reward_history)
                 reward_median_smooth = np.median(reward_history)

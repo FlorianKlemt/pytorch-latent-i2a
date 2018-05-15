@@ -171,7 +171,13 @@ def get_legends():
         title="Rewards",
         legend=["Mean Reward", "Median Reward"]
     )
-    return dist_entropy_opts, reward_opts
+    loss_opts = dict(
+        xlabel="Frames in Mio.",
+        ylabel="Loss",
+        title="Loss",
+        legend=["Value Loss", "Policy Loss"]
+    )
+    return dist_entropy_opts, reward_opts, loss_opts
 
 if __name__ == "__main__":
     from visdom import Visdom

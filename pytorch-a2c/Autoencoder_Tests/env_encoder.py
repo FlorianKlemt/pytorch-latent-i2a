@@ -74,7 +74,7 @@ def init_autoencoder_training(env_name, policy_model_alias, policy_model_input_c
 
     action_space = env.action_space.n
 
-    policy = policy_model_alias(num_inputs=policy_model_input_channels, action_space=action_space, use_cuda=use_cuda)
+    policy = policy_model_alias(num_inputs=policy_model_input_channels, action_space=action_space, input_dims=input_size, use_cuda=use_cuda)
     if use_cuda:
         policy.cuda()
 

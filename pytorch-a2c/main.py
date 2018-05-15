@@ -140,8 +140,10 @@ def main():
         make_environment(args.env_name, args.seed, i, args.log_dir)
         for i in range(args.num_processes)
     ])
-
-    actor_critic = model_type(envs.observation_space.shape[0], envs.action_space.n, use_cuda=args.cuda)
+    if model_type == ActorCritic:
+        actor_critic = model_type(envs.observation_space.shape[0], envs.action_space.n, envs.observation_space, use_cuda=args.cuda)
+    else:
+        actor_critic = model_type(envs.observation_space.shape[0], envs.action_space.n, use_cuda=args.cuda)
 
     if args.algo == 'ppo':
         actor_critic = nn.DataParallel(actor_critic)

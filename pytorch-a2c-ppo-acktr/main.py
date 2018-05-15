@@ -62,9 +62,10 @@ def main():
         viz = Visdom(port=args.port)
         win = None
         dist_plot_win, reward_plot_win, loss_plot_win = (None for _ in range(3))
-        dist_plot_legend, reward_plot_legend = get_legends()
-        dist_entropy_history = deque(maxlen=200)
-        reward_history = deque(maxlen=200)
+        dist_plot_legend, reward_plot_legend, loss_plot_legend = get_legends()
+        dist_entropy_history = deque(maxlen=500)
+        loss_history = deque(maxlen=500)
+        reward_history = deque(maxlen=500)
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
@@ -315,6 +316,7 @@ def main():
         rollouts.after_update()
 
         dist_entropy_history.append(dist_entropy.data[0])
+        loss_history.append((value_loss.data[0], action_loss.data[0]))
         reward_history.extend(final_rewards.numpy().flatten())
 
         if j % args.save_interval == 0 and args.save_dir != "":
@@ -363,6 +365,8 @@ def main():
             frames = j*args.num_processes*args.num_steps
             frames_in_mio = frames/1000000
             dist_plot_win = plot_line(viz, dist_plot_win, dist_plot_legend, np.array(dist_entropy_history).mean(), frames_in_mio)
+            loss_mean = np.mean(np.array(loss_history), axis=0)
+            loss_plot_win = plot_line(viz, loss_plot_win, loss_plot_legend, loss_mean, frames_in_mio)
             if len(reward_history) >= reward_history.maxlen-1:
                 reward_mean_smooth = np.mean(reward_history)
                 reward_median_smooth = np.median(reward_history)

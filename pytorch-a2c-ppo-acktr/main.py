@@ -27,7 +27,11 @@ from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 from A2C_Models.I2A_MiniModel import I2A_MiniModel
 from I2A.I2A_Agent import I2A
 
+from play_game_with_trained_model import TestPolicy
+
 import time
+
+import multiprocessing as mp
 
 args = get_args()
 
@@ -55,6 +59,8 @@ def main():
     print("#######")
     print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
+
+    mp.set_start_method('spawn')
 
     os.environ['OMP_NUM_THREADS'] = '1'
 
@@ -86,10 +92,8 @@ def main():
 
     if args.algo == 'i2a':
         distill_loss_coef = 0.000001     #care: may need to change in the future
-
         #build i2a model also wraps it with the A2C_PolicyWrapper
         actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda)
-
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
         actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
@@ -120,8 +124,16 @@ def main():
         with open(log_file, 'w') as the_file:
             the_file.write('Algo: ' + args.algo + 'Environment: ' + args.env_name + '\n')
 
+
     if args.cuda:
         actor_critic.cuda()
+
+    if args.render_game:
+        load_path = os.path.join(args.save_dir, args.algo)
+        test_process = TestPolicy(env_id=args.env_name,
+                                  model=copy.deepcopy(actor_critic),
+                                  load_path=load_path,
+                                  cuda=False)
 
     if args.algo == 'i2a':
         #param = [p for p in actor_critic.parameters() if (p.requires_grad and not p in rollout_policy.parameters())]

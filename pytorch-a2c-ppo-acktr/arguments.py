@@ -45,6 +45,8 @@ def get_args():
                         help='save interval, one save per n updates (default: 10)')
     parser.add_argument('--vis-interval', type=int, default=100,
                         help='vis interval, one log per n updates (default: 100)')
+    parser.add_argument('--render-game',  action='store_true', default=False,
+                        help='starts an progress that play and render games with the current model')
     parser.add_argument('--num-frames', type=int, default=100e6,
                         help='number of frames to train (default: 100e6)')
     parser.add_argument('--env-name', default='PongNoFrameskip-v4',

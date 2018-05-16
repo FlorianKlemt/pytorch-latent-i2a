@@ -96,7 +96,7 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a':
-        distill_loss_coef = 0.000001     #care: may need to change in the future
+        distill_loss_coef = 0.01     #care: may need to change in the future
         #build i2a model also wraps it with the A2C_PolicyWrapper
         actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n,
                                                        em_model_reward_bins=em_model_reward_bins, use_cuda=args.cuda)
@@ -199,7 +199,7 @@ def main():
                 states = Variable(rollouts.states[step], volatile=True)
 
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, rollout_action_prob = rollout_policy(Variable(rollouts.observations[step]))  #NO volatile here, because of distillation loss backprop
+                _, _, rollout_action_prob, _ = rollout_policy.act(Variable(rollouts.observations[step]), None, None)  #NO volatile here, because of distillation loss backprop
 
                 policy_action_probs[step].copy_(action_prob.data)
                 #rollout_policy_action_probs[step].copy_(rollout_action_prob.data)

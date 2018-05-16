@@ -79,6 +79,11 @@ def main():
         envs = [make_env(args.env_name, args.seed, i, args.log_dir)
                 for i in range(args.num_processes)]
 
+    #@future self: it might be tempting to move this below after the initialization of envs is finished - dont do it.
+    #              SubprovVecEnv hides the unwrapping. At least this incredibly ugly line makes the code 'dynamic' - it's something
+    if 'MiniPacman' in args.env_name:
+        em_model_reward_bins = envs[0]().unwrapped.reward_bins
+
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
     else:
@@ -93,7 +98,9 @@ def main():
     if args.algo == 'i2a':
         distill_loss_coef = 0.000001     #care: may need to change in the future
         #build i2a model also wraps it with the A2C_PolicyWrapper
-        actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda)
+        actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n,
+                                                       em_model_reward_bins=em_model_reward_bins, use_cuda=args.cuda)
+
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
         actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
@@ -382,12 +389,10 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, action_space, use_cuda):
+def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda):
     from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
-
-    em_model_reward_bins = [0., 1., 2., 5., 0.]  # TODO: make variable based on the env that is used
 
     input_channels = 1#obs_shape[0]
 

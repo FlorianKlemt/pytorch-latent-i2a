@@ -6,120 +6,200 @@ import gym_minipacman
 from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
+from logger import LogTrainEM
 from custom_envs import make_custom_env
-import os
+import random
 
 from A2C_Models.I2A_MiniModel import I2A_MiniModel
 import argparse
-
+import numpy as np
 
 def main():
     args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
     args_parser.add_argument('--load_environment_model', action='store_true', default=False,
                              help='flag to continue training on pretrained env_model')
-    args_parser.add_argument('--load_environment_model_dir', default="trained_models/environment_models_trained/",
+    args_parser.add_argument('--save_environment_model_dir', default="../../trained_models/environment_models/",
                              help='relative path to folder from which a environment model should be loaded.')
     args_parser.add_argument('--load_environment_model_file_name', default="RegularMiniPacman_EnvModel_0.dat",
                              help='file name of the environment model that should be loaded.')
+    args_parser.add_argument('--load-policy_dir', default='../../trained_models/a2c',
+                             help='directory to save agent logs (default: ./trained_models/)')
+    args_parser.add_argument('--load-policy', action='store_true', default=False,
+                             help='use trained policy model for environment model training')
+    args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
+                             help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
+    args_parser.add_argument('--render',  action='store_true', default=False,
+                             help='starts an progress that play and render games with the current model')
+    args_parser.add_argument('--no-cuda', action='store_true', default=False,
+                             help='disables CUDA training')
+    args_parser.add_argument('--no-vis', action='store_true', default=False,
+                             help='disables visdom visualization')
+    args_parser.add_argument('--port', type=int, default=8097,
+                             help='port to run the server on (default: 8097)')
     args = args_parser.parse_args()
 
-    save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
+    #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    args.vis = not args.no_vis
 
-    train_minipacman(args=args,
-             env_name="RegularMiniPacmanNoFrameskip-v0",
-             policy_model="RegularMiniPacmanNoFrameskip-v0.pt",
-             load_policy_model_dir="trained_models/a2c/",
-             environment_model_name="RegularMiniPacman_EnvModel_trained",
-             save_environment_model_dir=save_environment_model_dir,
-             use_cuda=True)
+    env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None)() #wtf
 
-def train_minipacman(args, env_name="RegularMiniPacmanNoFrameskip-v0",
-             policy_model = None,   #TODO: needs to be passed to build_em_model()
-             load_policy_model_dir = None,  #TODO: same
-             environment_model_name = "pong_em",
-             save_environment_model_dir = "trained_models/environment_models_trained/",
-             render=True,
-             use_cuda=False):
+    policy = build_policy(env=env, use_cuda=args.cuda)
 
-    FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-
-    env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)() #wtf
-
-    policy = build_policy(env=env, use_cuda=use_cuda)
-
-    relative_load_environment_model_dir = os.path.join('../../', args.load_environment_model_dir)
+    #relative_load_environment_model_dir = os.path.join('../../', args.load_environment_model_dir)
     environment_model = build_em_model(env=env,
                                        load_environment_model=args.load_environment_model,
-                                       load_environment_model_dir=relative_load_environment_model_dir,
+                                       load_environment_model_dir=args.save_environment_model_dir,# relative_load_environment_model_dir,
                                        environment_model_file_name=args.load_environment_model_file_name,
-                                       use_cuda=use_cuda)
+                                       use_cuda=args.cuda)
 
-    optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=use_cuda)
+    optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
     optimizer.set_optimizer()
+
+    if args.vis:
+        from visdom import Visdom
+        viz = Visdom(port=args.port)
+    else:
+        viz = None
+
+    renderer = RenderTrainEM() if args.render==True else None
+
+    logger = LogTrainEM(log_name="em_trainer_" + args.env_name +".log",
+                        delete_log_file = args.load_environment_model==False,
+                        viz = viz)
+    train_env_model_batchwise(env=env,
+                              policy=policy,
+                              optimizer=optimizer,
+                              use_cuda=args.cuda,
+                              renderer=renderer,
+                              loss_printer=logger)
+
+
+
+def sample_action_from_distribution(actor, action_space, chance_of_random_action=0.25):
+    prob = F.softmax(actor, dim=1)
+    action = prob.multinomial().data
+    use_cuda = action.is_cuda
+
+    if random.random() < chance_of_random_action:
+        action_int = random.randint(0, action_space - 1)
+        action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
+        if use_cuda:
+            action = action.cuda()
+
+    action = Variable(action)
+    return action
+
+'''
+def do_step(env, state, action, use_cuda=False):
+    next_state, reward, done, _ = env.step(action.data[0][0])
+    next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
+
+    reward = Variable(torch.from_numpy(np.array([reward]))).float()
+    if use_cuda:
+        next_state = next_state.cuda()
+        reward = reward.cuda()
+    return state, action, next_state, reward
+'''
+
+
+def train_env_model(env, policy, optimizer, use_cuda, renderer = None, loss_printer= None):
 
     chance_of_random_action = 0.25
 
-    if render==True:
-        renderer = RenderTrainEM(environment_model_name, delete_log_file = args.load_environment_model==False)
-
     for i_episode in range(10000):
-        print("Start episode ",i_episode)
-
+        # loss_printer.reset()
         state = env.reset()
+        state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+        if use_cuda:
+            state = state.cuda()
 
         done = False
-        sum_reward = 0
-
         while not done:
-            state_variable = Variable(torch.from_numpy(state).unsqueeze(0).type(FloatTensor))
-            critic, actor = policy(state_variable)
+            # let policy decide on next action and perform it
+            critic, actor = policy(state)
+            action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n,
+                                                     chance_of_random_action=chance_of_random_action)
+            next_state, reward, done, _ = env.step(action.data[0][0])
+            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
 
-            prob = F.softmax(actor, dim=1)
-            action = prob.multinomial()
-            action_int = action.data[0][0]
-            #if random.random() < chance_of_random_action:
-            #    action = random.randint(0, env.action_space.n -1)
+            reward = Variable(torch.from_numpy(np.array([reward]))).float()
+            if use_cuda:
+                next_state = next_state.cuda()
+                reward = reward.cuda()
 
-
-            next_state, reward, done, _ = env.step(action_int)
-
-            next_state_variable = torch.from_numpy(next_state[-1]).type(FloatTensor)
-            next_state_variable = Variable(next_state_variable.unsqueeze(0))
-
-            reward = Variable(FloatTensor([reward]))
-
-            loss, prediction = optimizer.optimizer_step(state_variable,
-                                                        action,
-                                                        next_state_variable,
-                                                        reward)
-
-            (predicted_next_state, predicted_reward) = prediction
+            loss, prediction = optimizer.optimizer_step(env_state_frame=state,
+                                                        env_action=action,
+                                                        env_state_frame_target=next_state,
+                                                        env_reward_target=reward)
             state = next_state
 
-
-            if render:
-                renderer.render_observation(next_state_variable, predicted_next_state[0])
+            # Log, plot and render training
+            (predicted_next_state, predicted_reward) = prediction
+            if renderer:
+                renderer.render_observation(state[0], predicted_next_state[0])
 
             # log and print infos
-            (next_state_loss, next_reward_loss) = loss
-            renderer.log_loss_and_reward(i_episode, next_state_loss,
-                                         next_reward_loss,
-                                         predicted_reward,
-                                         reward)
+            if loss_printer:
+                loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                if loss_printer.frames % 100 == 0:
+                    loss_printer.print_episode(episode=i_episode)
 
-            r = reward.data.cpu().numpy()[0]
-            if r > 0.9 or r < -0.9:
-                sum_reward += r
-                #print("Reward", r, "total reward", sum_reward)
+def train_env_model_batchwise(env, policy, optimizer, use_cuda, renderer = None, loss_printer= None):
+    from collections import deque
+    sample_memory = deque(maxlen=2000)
 
-        print("Save model", save_environment_model_dir, environment_model_name)
-        save_environment_model(save_model_dir = save_environment_model_dir,
-                               environment_model_name = environment_model_name,
-                               environment_model = environment_model)
+    chance_of_random_action = 0.25
+    for i_episode in range(10000):
+        #loss_printer.reset()
+        state = env.reset()
+        state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+        if use_cuda:
+            state = state.cuda()
+
+        done = False
+        while not done:
+            # let policy decide on next action and perform it
+            critic, actor = policy(state)
+            action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n, chance_of_random_action=chance_of_random_action)
+            next_state, reward, done, _ = env.step(action.data[0][0])
+
+            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
+
+            reward = Variable(torch.from_numpy(np.array([reward]))).float()
+            if use_cuda:
+                next_state = next_state.cuda()
+                reward = reward.cuda()
+
+            # add current state, next-state pair to replay memory
+            sample_memory.append((state, action, next_state, reward))
+
+            # sample a state, next-state pair randomly from replay memory for a training step
+            sample_state, sample_action, sample_next_state, sample_reward = random.choice(sample_memory)
+            loss, prediction = optimizer.optimizer_step(env_state_frame = sample_state,
+                                                        env_action = sample_action,
+                                                        env_state_frame_target = sample_next_state,
+                                                        env_reward_target = sample_reward)
+
+
+            state = next_state
+
+            # Log, plot and render training
+            (predicted_next_state, predicted_reward) = prediction
+            if renderer:
+                renderer.render_observation(sample_state[0], predicted_next_state[0])
+
+            # log and print infos
+            if loss_printer:
+                loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                if loss_printer.frames % 100 == 0:
+                    loss_printer.print_episode(episode=i_episode)
+
 
 def save_environment_model(save_model_dir, environment_model_name, environment_model):
     state_to_save = environment_model.state_dict()
     save_model_path = '{0}{1}.dat'.format(save_model_dir, environment_model_name)
+    #print(os.path.abspath(save_model_path))
     torch.save(state_to_save, save_model_path)
 
 

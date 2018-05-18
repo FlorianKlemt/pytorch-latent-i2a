@@ -56,144 +56,154 @@ def main():
     optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
     optimizer.set_optimizer()
 
-    if args.vis:
-        from visdom import Visdom
-        viz = Visdom(port=args.port)
-    else:
-        viz = None
 
-    renderer = RenderTrainEM() if args.render==True else None
+    trainer = EnvironmentModelTrainer(args = args,
+                                      env=env,
+                                      policy=policy,
+                                      optimizer=optimizer,
+                                      environment_model = environment_model)
 
-    logger = LogTrainEM(log_name="em_trainer_" + args.env_name +".log",
-                        delete_log_file = args.load_environment_model==False,
-                        viz = viz)
-    train_env_model_batchwise(env=env,
-                              policy=policy,
-                              optimizer=optimizer,
-                              use_cuda=args.cuda,
-                              renderer=renderer,
-                              loss_printer=logger)
+    trainer.train_env_model_batchwise(1000000)
 
 
 
-def sample_action_from_distribution(actor, action_space, chance_of_random_action=0.25):
-    prob = F.softmax(actor, dim=1)
-    action = prob.multinomial().data
-    use_cuda = action.is_cuda
 
-    if random.random() < chance_of_random_action:
-        action_int = random.randint(0, action_space - 1)
-        action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
-        if use_cuda:
-            action = action.cuda()
+class EnvironmentModelTrainer():
+    def __init__(self, args, env, policy, optimizer, environment_model):
+        self.args = args
+        self.save_environment_model_dir = args.save_environment_model_dir
+        self.save_environment_model_name = args.env_name
+        self.env = env
+        self.policy = policy
+        self.optimizer = optimizer
+        self.environment_model = environment_model
+        self.use_cuda = args.cuda
+        self.chance_of_random_action = 0.25
 
-    action = Variable(action)
-    return action
+        self.save_model_path = '{0}{1}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name)
 
-'''
-def do_step(env, state, action, use_cuda=False):
-    next_state, reward, done, _ = env.step(action.data[0][0])
-    next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
+        if args.vis:
+            from visdom import Visdom
+            viz = Visdom(port=args.port)
+        else:
+            viz = None
+        self.renderer = RenderTrainEM() if args.render == True else None
 
-    reward = Variable(torch.from_numpy(np.array([reward]))).float()
-    if use_cuda:
-        next_state = next_state.cuda()
-        reward = reward.cuda()
-    return state, action, next_state, reward
-'''
+        self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
+                                 delete_log_file=args.load_environment_model == False,
+                                 viz=viz)
 
 
-def train_env_model(env, policy, optimizer, use_cuda, renderer = None, loss_printer= None):
+    def sample_action_from_distribution(self, actor):
+        prob = F.softmax(actor, dim=1)
+        action = prob.multinomial().data
+        use_cuda = action.is_cuda
 
-    chance_of_random_action = 0.25
-
-    for i_episode in range(10000):
-        # loss_printer.reset()
-        state = env.reset()
-        state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
-        if use_cuda:
-            state = state.cuda()
-
-        done = False
-        while not done:
-            # let policy decide on next action and perform it
-            critic, actor = policy(state)
-            action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n,
-                                                     chance_of_random_action=chance_of_random_action)
-            next_state, reward, done, _ = env.step(action.data[0][0])
-            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
-
-            reward = Variable(torch.from_numpy(np.array([reward]))).float()
+        if random.random() < self.chance_of_random_action:
+            action_space = self.env.action_space.n
+            action_int = random.randint(0, action_space - 1)
+            action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
             if use_cuda:
-                next_state = next_state.cuda()
-                reward = reward.cuda()
+                action = action.cuda()
 
-            loss, prediction = optimizer.optimizer_step(env_state_frame=state,
-                                                        env_action=action,
-                                                        env_state_frame_target=next_state,
-                                                        env_reward_target=reward)
-            state = next_state
-
-            # Log, plot and render training
-            (predicted_next_state, predicted_reward) = prediction
-            if renderer:
-                renderer.render_observation(state[0], predicted_next_state[0])
-
-            # log and print infos
-            if loss_printer:
-                loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                if loss_printer.frames % 100 == 0:
-                    loss_printer.print_episode(episode=i_episode)
-
-def train_env_model_batchwise(env, policy, optimizer, use_cuda, renderer = None, loss_printer= None):
-    from collections import deque
-    sample_memory = deque(maxlen=2000)
-
-    chance_of_random_action = 0.25
-    for i_episode in range(10000):
-        #loss_printer.reset()
-        state = env.reset()
-        state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
-        if use_cuda:
-            state = state.cuda()
-
-        done = False
-        while not done:
-            # let policy decide on next action and perform it
-            critic, actor = policy(state)
-            action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n, chance_of_random_action=chance_of_random_action)
-            next_state, reward, done, _ = env.step(action.data[0][0])
-
-            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
-
-            reward = Variable(torch.from_numpy(np.array([reward]))).float()
-            if use_cuda:
-                next_state = next_state.cuda()
-                reward = reward.cuda()
-
-            # add current state, next-state pair to replay memory
-            sample_memory.append((state, action, next_state, reward))
-
-            # sample a state, next-state pair randomly from replay memory for a training step
-            sample_state, sample_action, sample_next_state, sample_reward = random.choice(sample_memory)
-            loss, prediction = optimizer.optimizer_step(env_state_frame = sample_state,
-                                                        env_action = sample_action,
-                                                        env_state_frame_target = sample_next_state,
-                                                        env_reward_target = sample_reward)
+        action = Variable(action)
+        return action
 
 
-            state = next_state
+    def do_env_step(self, action):
+        next_state, reward, done, info = self.env.step(action.data[0][0])
+        next_state = Variable(torch.from_numpy(next_state).unsqueeze(0)).float()
+        reward = Variable(torch.from_numpy(np.array([reward]))).float()
+        if self.use_cuda:
+            next_state = next_state.cuda()
+            reward = reward.cuda()
+        return  next_state, reward, done, info
 
-            # Log, plot and render training
-            (predicted_next_state, predicted_reward) = prediction
-            if renderer:
-                renderer.render_observation(sample_state[0], predicted_next_state[0])
 
-            # log and print infos
-            if loss_printer:
-                loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                if loss_printer.frames % 100 == 0:
-                    loss_printer.print_episode(episode=i_episode)
+
+    def train_env_model(self, episoden = 10000):
+        for i_episode in range(episoden):
+            # loss_printer.reset()
+            state = self.env.reset()
+            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            if self.use_cuda:
+                state = state.cuda()
+
+            done = False
+            while not done:
+                # let policy decide on next action and perform it
+                critic, actor = self.policy(state)
+                action = self.sample_action_from_distribution(actor=actor)
+
+                next_state, reward, done, _ = self.do_env_step(action=action)
+
+                loss, prediction = self.optimizer.optimizer_step(env_state_frame=state,
+                                                            env_action=action,
+                                                            env_state_frame_target=next_state,
+                                                            env_reward_target=reward)
+                state = next_state
+
+                # Log, plot and render training
+                (predicted_next_state, predicted_reward) = prediction
+                if self.renderer:
+                    self.renderer.render_observation(state[0], predicted_next_state[0])
+
+                # log and print infos
+                if self.loss_printer:
+                    self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                    if self.loss_printer.frames % 100 == 0:
+                        self.loss_printer.print_episode(episode=i_episode)
+
+            print("Save model", self.save_environment_model_dir, self.save_environment_model_name)
+            state_to_save = self.environment_model.state_dict()
+            torch.save(state_to_save, self.save_model_path)
+
+    def train_env_model_batchwise(self, episoden = 10000):
+        from collections import deque
+        sample_memory = deque(maxlen=2000)
+
+        chance_of_random_action = 0.25
+        for i_episode in range(episoden):
+            #loss_printer.reset()
+            state = self.env.reset()
+            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            if self.use_cuda:
+                state = state.cuda()
+
+            done = False
+            while not done:
+                # let policy decide on next action and perform it
+                critic, actor = self.policy(state)
+                action = self.sample_action_from_distribution(actor=actor)
+                next_state, reward, done, _ = self.do_env_step(action=action)
+
+                # add current state, next-state pair to replay memory
+                sample_memory.append((state, action, next_state, reward))
+
+                # sample a state, next-state pair randomly from replay memory for a training step
+                sample_state, sample_action, sample_next_state, sample_reward = random.choice(sample_memory)
+                loss, prediction = self.optimizer.optimizer_step(env_state_frame = sample_state,
+                                                            env_action = sample_action,
+                                                            env_state_frame_target = sample_next_state,
+                                                            env_reward_target = sample_reward)
+
+
+                state = next_state
+
+                # Log, plot and render training
+                (predicted_next_state, predicted_reward) = prediction
+                if self.renderer:
+                    self.renderer.render_observation(sample_state[0], predicted_next_state[0])
+
+                # log and print infos
+                if self.loss_printer:
+                    self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                    if self.loss_printer.frames % 100 == 0:
+                        self.loss_printer.print_episode(episode=i_episode)
+
+            print("Save model", self.save_environment_model_dir, self.save_environment_model_name)
+            state_to_save = self.environment_model.state_dict()
+            torch.save(state_to_save, self.save_model_path)
 
 
 def save_environment_model(save_model_dir, environment_model_name, environment_model):
@@ -230,6 +240,7 @@ def build_em_model(env, load_environment_model=False, load_environment_model_dir
                                 use_cuda=use_cuda)
 
     if load_environment_model:
+        print("Load environment model", load_environment_model_dir, environment_model_file_name)
         saved_state = torch.load('{0}{1}'.format(
             load_environment_model_dir, environment_model_file_name), map_location=lambda storage, loc: storage)
         environment_model.load_state_dict(saved_state)

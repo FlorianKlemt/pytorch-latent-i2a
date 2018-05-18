@@ -18,7 +18,7 @@ def plot_line(viz, plot_window, opts_dict, data_point, count):
 
 class VisdomPlotGraph():
 
-    def __init__(self, viz, title, ylabel, legend = None):
+    def __init__(self, viz, title, ylabel, legend = None, running_mean_n = 250):
         self.viz = viz
         # self.win = None
         self.plot_win = None
@@ -28,7 +28,7 @@ class VisdomPlotGraph():
             title=title,
             legend=legend
         )
-        self.history = deque(maxlen=250)
+        self.history = deque(maxlen=running_mean_n)
 
 
     def append(self, value):
@@ -89,8 +89,9 @@ class VisdomPlotterA2C():
 class VisdomPlotterEM():
     def __init__(self, viz):
         self.viz = viz
-        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", ["State Loss", "Reward Loss"])
-        self.reward_plotter = VisdomPlotGraph(viz, "Reward", "Reward", ["True Reward", "Predicted Reward"])
+        running_mean_n = 2000
+        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", ["State Loss", "Reward Loss"], running_mean_n)
+        self.reward_plotter = VisdomPlotGraph(viz, "Reward", "Reward", ["True Reward", "Predicted Reward"], 1)
 
     def append(self, loss, reward):
         self.loss_plotter.append(loss)

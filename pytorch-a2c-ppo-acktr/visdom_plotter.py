@@ -18,7 +18,7 @@ def plot_line(viz, plot_window, opts_dict, data_point, count):
 
 class VisdomPlotGraph():
 
-    def __init__(self, viz, title, ylabel, legend = None):
+    def __init__(self, viz, title, ylabel, legend = None, running_mean_n = 250):
         self.viz = viz
         # self.win = None
         self.plot_win = None

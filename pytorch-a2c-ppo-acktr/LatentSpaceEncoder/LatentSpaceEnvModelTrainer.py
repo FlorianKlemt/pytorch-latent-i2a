@@ -6,7 +6,8 @@ from LatentSpaceEncoder.LossPrinter import LossPrinter
 
 
 class LatentSpaceEnvModelTrainer():
-    def __init__(self, auto_encoder_model, env_encoder_model, loss_criterion, auto_optimizer, next_pred_optimizer, use_cuda, visualize, use_only_last_frame_of_state):
+    def __init__(self, auto_encoder_model, env_encoder_model, loss_criterion, auto_optimizer, next_pred_optimizer, use_cuda, visualize,
+                 use_only_last_frame_of_state, grey_scale):
         self.auto_encoder_model = auto_encoder_model
         self.env_encoder_model = env_encoder_model
         self.loss_criterion = loss_criterion
@@ -15,6 +16,7 @@ class LatentSpaceEnvModelTrainer():
         self.use_cuda = use_cuda
         self.visualize = visualize
         self.use_only_last_frame_of_state = use_only_last_frame_of_state
+        self.grey_scale = grey_scale
         if self.visualize:
             render_window_sizes = (400, 400)
             cv2.namedWindow('predicted', cv2.WINDOW_NORMAL)
@@ -30,12 +32,7 @@ class LatentSpaceEnvModelTrainer():
 
 
     def train_env_model_step(self, first_state_variable, second_state_variable, action):
-        # first state encoder forward
-        '''if self.use_only_last_frame_of_state:
-            target = first_state_variable[0][-1]
-        else:
-            target = first_state_variable[0]'''
-        target = first_state_variable[0]
+        target = first_state_variable
         first_state_prediction = self.auto_encoder_model(target)
 
         first_state_loss = self.loss_criterion(first_state_prediction, target)
@@ -54,12 +51,15 @@ class LatentSpaceEnvModelTrainer():
             second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0][-1])
         else:
             second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0])'''
-        second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0])
+        second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable)
 
 
 
         # first-to-second forward
-        latent_prediction = self.env_encoder_model(first_state_latent_prediction, action)
+        action_variable = Variable(torch.from_numpy(np.array([action])).float())
+        if self.use_cuda:
+            action_variable = action_variable.cuda()
+        latent_prediction = self.env_encoder_model(first_state_latent_prediction, action_variable)
         latent_target = second_state_latent_prediction
         latent_target = Variable(latent_target.data, requires_grad=False)
         latent_loss = self.loss_criterion(latent_prediction, latent_target)
@@ -79,11 +79,11 @@ class LatentSpaceEnvModelTrainer():
             #render_observation_in_window('substracted_auto_encoder',first_state_variable[0][-1]-first_state_prediction[-1] , None)
 
             #for rgb without framestack
-            render_observation_in_window('predicted', decoded_prediction, None)
-            render_observation_in_window('next_ground_truth', second_state_variable[0], None)
-            render_observation_in_window('autoencoder', first_state_prediction,None)
-            render_observation_in_window('current_ground_truth', first_state_variable[0], None)
-            render_observation_in_window('substracted_auto_encoder', first_state_variable[0] - first_state_prediction, None)
+            render_observation_in_window('predicted', decoded_prediction, None, grey_scale=self.grey_scale)
+            render_observation_in_window('next_ground_truth', second_state_variable, None, grey_scale=self.grey_scale)
+            render_observation_in_window('autoencoder', first_state_prediction,None, grey_scale=self.grey_scale)
+            render_observation_in_window('current_ground_truth', first_state_variable, None, grey_scale=self.grey_scale)
+            render_observation_in_window('substracted_auto_encoder', first_state_variable - first_state_prediction, None, grey_scale=self.grey_scale)
 
         return first_state_loss, latent_loss
 
@@ -174,8 +174,11 @@ def sample_action_from_distribution(actor, action_space, chance_of_random_action
 
 import numpy as np
 import cv2
-def render_observation_in_window(window_name, observation, mean_image=None):
-    drawable_state = observation
+def render_observation_in_window(window_name, observation, mean_image=None, grey_scale=False):
+    if grey_scale:
+        drawable_state = observation.view(-1, 1, observation.data.shape[2], observation.data.shape[3])[-1]
+    else:
+        drawable_state = observation.view(-1, 3, observation.data.shape[2], observation.data.shape[3])[-1]
     drawable_state = drawable_state.data.cpu().numpy()
 
     if mean_image is not None:
@@ -189,7 +192,10 @@ def render_observation_in_window(window_name, observation, mean_image=None):
 
     #why the heck would cv2 store images in BGR per default??
     #convert to rgb + transpose because cv2 wants images in the form (x,y,channels)
-    cv2_frame_data = cv2.cvtColor(np.transpose(frame_data, (1, 2, 0)), cv2.COLOR_BGR2RGB)
+    if grey_scale:
+        cv2_frame_data = np.transpose(frame_data, (1, 2, 0))
+    else:
+        cv2_frame_data = cv2.cvtColor(np.transpose(frame_data, (1, 2, 0)), cv2.COLOR_BGR2RGB)
 
     cv2.imshow(window_name, cv2_frame_data)
     cv2.waitKey(1)

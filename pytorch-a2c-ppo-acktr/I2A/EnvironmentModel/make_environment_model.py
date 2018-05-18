@@ -42,7 +42,7 @@ def main():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
-    env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None)() #wtf
+    env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=True)() #wtf
 
     policy = build_policy(env=env, use_cuda=args.cuda)
 

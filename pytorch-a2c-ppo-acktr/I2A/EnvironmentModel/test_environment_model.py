@@ -85,7 +85,7 @@ use_cuda = True
 
 
 env_name = "RegularMiniPacmanNoFrameskip-v0"
-env = make_custom_env(env_name, seed=1, rank=1, log_dir=None)()
+env = make_custom_env(env_name, seed=1, rank=1, log_dir=None, grey_scale=True)()
 
 # small model which only predicts one reward
 EMModel = MiniPacmanEnvModel

@@ -15,9 +15,8 @@ class EnvEncoderModel(torch.nn.Module):
         self.train()
 
     def forward(self, inputs, action):
-        broadcasted_action= Variable(torch.zeros(self.action_broadcast_size))\
-                                 .type(self.FloatTensor) + action
-        x = torch.cat((inputs,broadcasted_action),0)
+        broadcasted_action= action.repeat(inputs.data.shape[0],self.action_broadcast_size)
+        x = torch.cat((inputs,broadcasted_action),1)
 
         #x = inputs.view(-1, 19*19)
         x = F.relu(self.linear1(x))

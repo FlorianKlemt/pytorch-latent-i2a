@@ -1,3 +1,7 @@
+from collections import OrderedDict
+from I2A.utils import get_conv_output_dims
+from functools import reduce
+
 import torch.nn as nn
 
 class AutoEncoderModel(nn.Module):
@@ -34,7 +38,7 @@ class LinearAutoEncoderModel(AutoEncoderModel):
         x = self.encoder(x)
         x = self.decoder(x)
 
-        x = x.view(self.num_inputs, self.input_size_x,self.input_size_y)
+        x = x.view(1, self.num_inputs, self.input_size_x,self.input_size_y) #TODO: remove batchsize harcoding to 1
         return x
 
     def encode(self, x):
@@ -44,7 +48,7 @@ class LinearAutoEncoderModel(AutoEncoderModel):
     def decode(self, x):
         x = x.view(-1)
         x = self.decoder(x)
-        return x.view(self.num_inputs, self.input_size_x, self.input_size_y)
+        return x.view(1, self.num_inputs, self.input_size_x, self.input_size_y)
 
 
 
@@ -52,23 +56,37 @@ class Flatten(nn.Module):
     def forward(self,input):
         return input.view(input.size(0), -1)
 
+class Deflatten(nn.Module):
+    def __init__(self, shape):
+        super(Deflatten, self).__init__()
+        self.shape = shape
+    def forward(self, input):
+        return input.view((-1,)+self.shape)
+
 class CNNAutoEncoderModel(AutoEncoderModel):
-    def __init__(self, num_inputs, input_size, latent_space=64, hidden_space=128):
+    def __init__(self, num_inputs, input_size):
         super(CNNAutoEncoderModel, self).__init__()
         self.input_size_x, self.input_size_y = input_size
-        self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=16, kernel_size=8, stride=3, padding=0),
-            nn.ReLU(True),
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, stride=2, padding=0),
-            nn.ReLU(True),
-            Flatten(),
-            nn.Linear(32 * 32 * 24, hidden_space),    #1444 input size
-            nn.ReLU(True),
-            nn.Linear(hidden_space, latent_space))
+        self.encoder = nn.Sequential(OrderedDict([  #1,3,3
+            ('conv1', nn.Conv2d(in_channels=num_inputs, out_channels=16, kernel_size=10, stride=4, padding=0)),
+            ('relu1', nn.ReLU(True)),
+            ('conv2', nn.Conv2d(in_channels=16, out_channels=32, kernel_size=10, stride=1, padding=0)),
+            ('relu2', nn.ReLU(True)),
+            ('conv3', nn.Conv2d(in_channels=32, out_channels=32, kernel_size=4, stride=1, padding=0)),
+            ('relu3', nn.ReLU(True)),
+            ('flatten', Flatten())]))
+
+        conv_output_dims = get_conv_output_dims([self.encoder._modules['conv1'], self.encoder._modules['conv2'], self.encoder._modules['conv3']],
+                                                input_size)
+        conv_output_channels = self.encoder._modules['conv2'].out_channels
+        self.latent_space_dim = reduce(lambda x, y: x * y, conv_output_dims) *conv_output_channels
         self.decoder = nn.Sequential(
-            nn.Linear(latent_space, hidden_space),
+            Deflatten((conv_output_channels,) + conv_output_dims),
+            nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=4, stride=1, padding=0),
             nn.ReLU(True),
-            nn.Linear(hidden_space, 1 * self.input_size_x * self.input_size_y),
+            nn.ConvTranspose2d(in_channels=32, out_channels=16, kernel_size=10, stride=1, padding=0),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(in_channels=16, out_channels=num_inputs, kernel_size=10, stride=4, padding=0),
             )
 
     def forward(self, x):
@@ -77,10 +95,7 @@ class CNNAutoEncoderModel(AutoEncoderModel):
         return x
 
     def encode(self, x):
-        x = x.unsqueeze(0).unsqueeze(0)
-        x = self.encoder(x)
-        return x.view(-1)
+        return self.encoder(x)
 
     def decode(self, x):
-        x = self.decoder(x)
-        return x.view(self.input_size_x, self.input_size_y)
+        return self.decoder(x)

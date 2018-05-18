@@ -90,17 +90,16 @@ def sample_action_from_distribution(actor, action_space, chance_of_random_action
     action = Variable(action)
     return action
 
-'''
-def do_step(env, state, action, use_cuda=False):
-    next_state, reward, done, _ = env.step(action.data[0][0])
-    next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
 
+def do_env_step(env, action, use_cuda=False):
+    next_state, reward, done, info = env.step(action.data[0][0])
+    next_state = Variable(torch.from_numpy(next_state).unsqueeze(0)).float()
     reward = Variable(torch.from_numpy(np.array([reward]))).float()
     if use_cuda:
         next_state = next_state.cuda()
         reward = reward.cuda()
-    return state, action, next_state, reward
-'''
+    return  next_state, reward, done, info
+
 
 
 def train_env_model(env, policy, optimizer, use_cuda, renderer = None, loss_printer= None):
@@ -120,13 +119,8 @@ def train_env_model(env, policy, optimizer, use_cuda, renderer = None, loss_prin
             critic, actor = policy(state)
             action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n,
                                                      chance_of_random_action=chance_of_random_action)
-            next_state, reward, done, _ = env.step(action.data[0][0])
-            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
 
-            reward = Variable(torch.from_numpy(np.array([reward]))).float()
-            if use_cuda:
-                next_state = next_state.cuda()
-                reward = reward.cuda()
+            next_state, reward, done, _ = do_env_step(env=env, action=action, use_cuda=use_cuda)
 
             loss, prediction = optimizer.optimizer_step(env_state_frame=state,
                                                         env_action=action,
@@ -162,14 +156,7 @@ def train_env_model_batchwise(env, policy, optimizer, use_cuda, renderer = None,
             # let policy decide on next action and perform it
             critic, actor = policy(state)
             action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n, chance_of_random_action=chance_of_random_action)
-            next_state, reward, done, _ = env.step(action.data[0][0])
-
-            next_state = Variable(torch.from_numpy(next_state[-1]).view(state.data.shape)).float()
-
-            reward = Variable(torch.from_numpy(np.array([reward]))).float()
-            if use_cuda:
-                next_state = next_state.cuda()
-                reward = reward.cuda()
+            next_state, reward, done, _ = do_env_step(env=env, action=action, use_cuda=use_cuda)
 
             # add current state, next-state pair to replay memory
             sample_memory.append((state, action, next_state, reward))

@@ -31,10 +31,11 @@ class LatentSpaceEnvModelTrainer():
 
     def train_env_model_step(self, first_state_variable, second_state_variable, action):
         # first state encoder forward
-        if self.use_only_last_frame_of_state:
+        '''if self.use_only_last_frame_of_state:
             target = first_state_variable[0][-1]
         else:
-            target = first_state_variable[0]
+            target = first_state_variable[0]'''
+        target = first_state_variable[0]
         first_state_prediction = self.auto_encoder_model(target)
 
         first_state_loss = self.loss_criterion(first_state_prediction, target)
@@ -49,10 +50,11 @@ class LatentSpaceEnvModelTrainer():
         first_state_latent_prediction = self.auto_encoder_model.encode(target)
 
         # second state encode in latent space
-        if self.use_only_last_frame_of_state:
+        '''if self.use_only_last_frame_of_state:
             second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0][-1])
         else:
-            second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0])
+            second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0])'''
+        second_state_latent_prediction = self.auto_encoder_model.encode(second_state_variable[0])
 
 
 
@@ -70,11 +72,18 @@ class LatentSpaceEnvModelTrainer():
         if self.visualize:
             # render last of the frame_stack for ground truth and for encoder
             decoded_prediction = self.auto_encoder_model.decode(latent_prediction)
-            render_observation_in_window('predicted', decoded_prediction[-1], None) #print last frame of decoded prediction
-            render_observation_in_window('next_ground_truth', second_state_variable[0][-1], None)
-            render_observation_in_window('autoencoder', first_state_prediction[-1], None)   #print last frame of first state prediction
-            render_observation_in_window('current_ground_truth', first_state_variable[0][-1], None)
-            render_observation_in_window('substracted_auto_encoder',first_state_variable[0][-1]-first_state_prediction[-1] , None)
+            #render_observation_in_window('predicted', decoded_prediction[-1], None) #print last frame of decoded prediction
+            #render_observation_in_window('next_ground_truth', second_state_variable[0][-1], None)
+            #render_observation_in_window('autoencoder', first_state_prediction[-1], None)   #print last frame of first state prediction
+            #render_observation_in_window('current_ground_truth', first_state_variable[0][-1], None)
+            #render_observation_in_window('substracted_auto_encoder',first_state_variable[0][-1]-first_state_prediction[-1] , None)
+
+            #for rgb without framestack
+            render_observation_in_window('predicted', decoded_prediction, None)
+            render_observation_in_window('next_ground_truth', second_state_variable[0], None)
+            render_observation_in_window('autoencoder', first_state_prediction,None)
+            render_observation_in_window('current_ground_truth', first_state_variable[0], None)
+            render_observation_in_window('substracted_auto_encoder', first_state_variable[0] - first_state_prediction, None)
 
         return first_state_loss, latent_loss
 
@@ -178,5 +187,9 @@ def render_observation_in_window(window_name, observation, mean_image=None):
     frame_data[frame_data > 255] = 255
     frame_data = frame_data.astype(np.uint8)
 
-    cv2.imshow(window_name, frame_data)
+    #why the heck would cv2 store images in BGR per default??
+    #convert to rgb + transpose because cv2 wants images in the form (x,y,channels)
+    cv2_frame_data = cv2.cvtColor(np.transpose(frame_data, (1, 2, 0)), cv2.COLOR_BGR2RGB)
+
+    cv2.imshow(window_name, cv2_frame_data)
     cv2.waitKey(1)

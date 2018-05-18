@@ -51,13 +51,14 @@ def make_test_env(env_id):
 
 class TestEnvironment():
     def __init__(self, env, model, load_path, cuda):
+        cuda = True
         self.FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
         self.env = env
         self.model = model
-        self.model.cpu()
+        #self.model.cpu()
         saved_state = torch.load(load_path, map_location=lambda storage,loc: storage)
-        for key, val in saved_state.items():
-            saved_state[key] = val.cpu()
+        #for key, val in saved_state.items():
+        #    saved_state[key] = val.cpu()
 
         self.model.load_state_dict(saved_state)
         self.use_cuda = cuda

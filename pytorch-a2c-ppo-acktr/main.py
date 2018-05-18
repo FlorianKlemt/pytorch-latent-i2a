@@ -199,7 +199,9 @@ def main():
                 states = Variable(rollouts.states[step], volatile=True)
 
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, _, rollout_action_prob, _ = rollout_policy.act(Variable(rollouts.observations[step]), None, None)  #NO volatile here, because of distillation loss backprop
+                _, rp_actor = rollout_policy(Variable(rollouts.observations[step]))
+                rollout_action_prob = F.softmax(rp_actor, dim=1)
+                #_, _, rollout_action_prob, _ = rollout_policy.act(Variable(rollouts.observations[step]), None, None)  #NO volatile here, because of distillation loss backprop
 
                 policy_action_probs[step].copy_(action_prob.data)
                 #rollout_policy_action_probs[step].copy_(rollout_action_prob.data)

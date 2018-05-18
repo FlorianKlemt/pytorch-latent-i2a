@@ -99,7 +99,9 @@ def main():
         distill_loss_coef = 0.01     #care: may need to change in the future
         #build i2a model also wraps it with the A2C_PolicyWrapper
         actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n,
-                                                       em_model_reward_bins=em_model_reward_bins, use_cuda=args.cuda)
+                                                       em_model_reward_bins=em_model_reward_bins,
+                                                       use_cuda=args.cuda,
+                                                       environment_model_name=args.env_name + ".dat")
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -391,7 +393,7 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda):
+def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda, environment_model_name):
     from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
@@ -402,7 +404,7 @@ def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda):
     load_environment_model_dir = 'trained_models/environment_models/'
     env_model = load_em_model(EMModel=MiniPacmanEnvModel,
                              load_environment_model_dir=load_environment_model_dir,
-                             environment_model_name="RegularMiniPacman_EnvModel_0.dat",
+                             environment_model_name=environment_model_name,
                              obs_shape=obs_shape,
                              action_space=action_space,
                              reward_bins=em_model_reward_bins,

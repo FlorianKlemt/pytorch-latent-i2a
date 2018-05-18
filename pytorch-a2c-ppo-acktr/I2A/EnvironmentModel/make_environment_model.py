@@ -240,6 +240,7 @@ def build_em_model(env, load_environment_model=False, load_environment_model_dir
                                 use_cuda=use_cuda)
 
     if load_environment_model:
+        print("Load environment model", load_environment_model_dir, environment_model_file_name)
         saved_state = torch.load('{0}{1}'.format(
             load_environment_model_dir, environment_model_file_name), map_location=lambda storage, loc: storage)
         environment_model.load_state_dict(saved_state)

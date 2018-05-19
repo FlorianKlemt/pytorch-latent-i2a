@@ -40,7 +40,7 @@ class FrameStack(gym.Wrapper):
 
 def make_test_env(env_id):
     if 'MiniPacman' in env_id:
-        env = make_custom_env(env_id, 42, 1, None)()
+        env = make_custom_env(env_id, 42, 1, None, grey_scale=True)()
         env = FrameStack(env, 4)
     else:
         env = gym.make(env_id)

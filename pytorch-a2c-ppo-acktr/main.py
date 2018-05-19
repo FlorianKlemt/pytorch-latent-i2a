@@ -74,7 +74,7 @@ def main():
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
-        envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir)
+        envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=True)   #TODO: make rgb possible
             for i in range(args.num_processes)]
     else:
         from envs import make_env

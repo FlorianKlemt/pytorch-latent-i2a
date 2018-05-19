@@ -18,6 +18,8 @@ def main():
     args_parser.add_argument('--train-batchwise', action='store_true', default=False,
                              help='train autoencoder and envencoder on frames sampled from a deque (conceptwise like a replay memory),'
                                   'helps to reduce the bias on specific image orders, as they occur in a live game')
+    args_parser.add_argument('--grey_scale', action='store_true', default=False,
+                             help='True to convert to grey_scale images')
     args = args_parser.parse_args()
 
     #magic do not change
@@ -28,31 +30,39 @@ def main():
     from A2C_Models.I2A_MiniModel import I2A_MiniModel
     from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 
-    latent_space = 32#64
-    encoder_space = 128#128
-    hidden_space = 128#128
+    #latent_space = 32#64
+    #encoder_space = 128#128
+    #hidden_space = 128#128
+
+    latent_space = 128  # 64
+    encoder_space = 512  # 128
+    hidden_space = 512  # 128
 
     #create environment to train on
     if "MiniPacman" in args.env:
-        #TODO: currently this does not have a framestack -> state is only one frame
-        env = make_custom_env(args.env, seed=1, rank=0, log_dir=None)()
+        env = make_custom_env(args.env, seed=1, rank=0, log_dir=None, grey_scale=args.grey_scale)()
+        if not args.use_only_last_frame_of_state:
+            env = EncoderFrameStack(env, 4)
     else:
-        env = make_env(args.env, seed=1, rank=0, log_dir=None)()
+        env = make_env(args.env, seed=1, rank=0, log_dir=None, grey_scale=args.grey_scale, stack_frames=not args.use_only_last_frame_of_state)()
 
     obs_shape = env.observation_space.shape
 
-    #num_autoencoder_inputs = (1 if args.use_only_last_frame_of_state else 4) * 3    #TODO: this assumes rgb image with 3 channels
-    num_autoencoder_inputs = obs_shape[0]   #this is the batch dimension (the frame stack)
-    auto_encoder_model = LinearAutoEncoderModel(num_inputs = num_autoencoder_inputs, input_size=obs_shape[1:],
-                                                latent_space=latent_space, hidden_space=hidden_space)
+    #num_autoencoder_inputs = (1 if args.use_only_last_frame_of_state else obs_shape[0])   #this is the batch dimension (the frame stack)
+    num_autoencoder_inputs = obs_shape[0]
+    #auto_encoder_model = LinearAutoEncoderModel(num_inputs = num_autoencoder_inputs, input_size=obs_shape[1:],
+    #                                            latent_space=latent_space, hidden_space=hidden_space)
+    auto_encoder_model = CNNAutoEncoderModel(num_inputs=num_autoencoder_inputs, input_size=obs_shape[1:])
     if use_cuda:
         auto_encoder_model.cuda()
 
     action_space = env.action_space.n
+    #in the i2a_minimodel framstack and rgb channels are thrown together as channels
     policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=action_space, use_cuda=use_cuda))
     if use_cuda:
         policy.cuda()
 
+    latent_space = auto_encoder_model.latent_space_dim
     env_encoder_model = EnvEncoderModel(num_inputs=1, latent_space=latent_space, encoder_space=encoder_space,
                                         action_broadcast_size=10, use_cuda=use_cuda)
     if use_cuda:
@@ -65,7 +75,8 @@ def main():
                                                       loss_criterion=loss_criterion, auto_optimizer=auto_optimizer,
                                                       next_pred_optimizer=env_encoder_optimizer, use_cuda=use_cuda,
                                                       visualize=True,
-                                                      use_only_last_frame_of_state=args.use_only_last_frame_of_state)
+                                                      use_only_last_frame_of_state=args.use_only_last_frame_of_state,
+                                                      grey_scale=args.grey_scale)
     if args.train_batchwise:
         latent_space_trainer.train_env_encoder_batchwise(env, policy, use_cuda)
     else:
@@ -116,8 +127,8 @@ class EncoderFrameStack(gym.Wrapper):
         self.num_frames = num_frames
         self.frames = collections.deque(maxlen=self.num_frames)
         shp = env.observation_space.shape
-        #self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames*shp[0], *shp[1:]), dtype=np.float32)
-        self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames, *shp), dtype=np.float32)
+        self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames*shp[0], *shp[1:]), dtype=np.float32)
+        #self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames, *shp), dtype=np.float32)
 
     def reset(self):
         self.frames.clear()
@@ -132,11 +143,10 @@ class EncoderFrameStack(gym.Wrapper):
         return self.observation(), reward, done, info
 
     def observation(self):
-        return np.stack(self.frames)
-        #return np.concatenate(self.frames)  #here we use concatenate instead of stack
+        return np.concatenate(self.frames)  #here we use concatenate instead of stack
 
 
-def make_env(env_id, seed, rank, log_dir):
+def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
     from baselines import bench
     from baselines.common.atari_wrappers import make_atari, wrap_deepmind, EpisodicLifeEnv, ClipRewardEnv
     import os
@@ -154,9 +164,12 @@ def make_env(env_id, seed, rank, log_dir):
             env = ClipRewardEnv(env)
             #env = wrap_deepmind(env)
         env = FrameUIntToFloat(env)
-        #env = WarpFrameGrayScale(env)
-        env = ReshapeRGBChannels(env)
-        #env = EncoderFrameStack(env, 4)
+        if grey_scale:
+            env = WarpFrameGrayScale(env)
+        else:
+            env = ReshapeRGBChannels(env)
+        if stack_frames:
+            env = EncoderFrameStack(env, 4)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         #obs_shape = env.observation_space.shape
         #if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:

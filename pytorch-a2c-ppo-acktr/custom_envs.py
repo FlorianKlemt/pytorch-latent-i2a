@@ -33,7 +33,7 @@ class MiniFrameStack(gym.Wrapper):
 
 
 
-class WarpMiniPacmanFrame(gym.ObservationWrapper):
+class WarpMiniPacmanFrameGreyScale(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
         obs_shape = self.observation_space.shape
@@ -47,6 +47,14 @@ class WarpMiniPacmanFrame(gym.ObservationWrapper):
         frame = frame.reshape(self.observation_space.shape)
         return frame
 
+class WarpMiniPacmanFrameRGB(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        obs_shape = self.observation_space.shape
+        self.observation_space = spaces.Box(low=0., high=1., shape=(obs_shape[2], obs_shape[0], obs_shape[1]), dtype=np.float)
+
+    def observation(self, obs):
+        return obs.transpose(2,0,1)
 
 class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
@@ -67,7 +75,7 @@ class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
 
 
 
-def make_custom_env(env_id, seed, rank, log_dir):
+def make_custom_env(env_id, seed, rank, log_dir, grey_scale):
     def _thunk():
         episodic_life = True
         env = gym.make(env_id)
@@ -85,8 +93,10 @@ def make_custom_env(env_id, seed, rank, log_dir):
 
         if 'FIRE' in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
-
-        env = WarpMiniPacmanFrame(env)
+        if grey_scale:
+            env = WarpMiniPacmanFrameGreyScale(env)
+        else:
+            env = WarpMiniPacmanFrameRGB(env)
         #env = MiniFrameStack(env, 4)
         return env
 

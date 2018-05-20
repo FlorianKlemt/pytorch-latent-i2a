@@ -34,9 +34,9 @@ def main():
     #encoder_space = 128#128
     #hidden_space = 128#128
 
-    latent_space = 128  # 64
-    encoder_space = 512  # 128
-    hidden_space = 512  # 128
+    latent_space = 1024  # 64
+    encoder_space = 2048  # 128
+    #hidden_space = 512  # 128
 
     #create environment to train on
     if "MiniPacman" in args.env:
@@ -52,7 +52,7 @@ def main():
     num_autoencoder_inputs = obs_shape[0]
     #auto_encoder_model = LinearAutoEncoderModel(num_inputs = num_autoencoder_inputs, input_size=obs_shape[1:],
     #                                            latent_space=latent_space, hidden_space=hidden_space)
-    auto_encoder_model = CNNAutoEncoderModel(num_inputs=num_autoencoder_inputs, input_size=obs_shape[1:])
+    auto_encoder_model = CNNAutoEncoderModel(num_inputs=num_autoencoder_inputs, latent_space=latent_space, input_size=obs_shape[1:])
     if use_cuda:
         auto_encoder_model.cuda()
 
@@ -68,8 +68,10 @@ def main():
     if use_cuda:
         env_encoder_model.cuda()
     loss_criterion = torch.nn.MSELoss()
-    auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)             #0.0001!!!
-    env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)       #0.0001!!!
+    #auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)             #0.0001!!!
+    #env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)       #0.0001!!!
+    auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.0001, weight_decay=1e-2)
+    env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.0001, weight_decay=1e-2)
 
     latent_space_trainer = LatentSpaceEnvModelTrainer(auto_encoder_model=auto_encoder_model, env_encoder_model=env_encoder_model,
                                                       loss_criterion=loss_criterion, auto_optimizer=auto_optimizer,

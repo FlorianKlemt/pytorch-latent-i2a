@@ -45,3 +45,23 @@ def get_single_conv_output_dims(conv_layer, input_dims):
     out_dim_1 = ((input_dims[0] - conv_layer.kernel_size[0] + 2 * conv_layer.padding[0]) / conv_layer.stride[0]) + 1
     out_dim_2 = ((input_dims[1] - conv_layer.kernel_size[1] + 2 * conv_layer.padding[1]) / conv_layer.stride[1]) + 1
     return math.floor(out_dim_1), math.floor(out_dim_2)
+
+import torch.nn as nn
+def get_possible_sizes(conv_list, input_dims):
+    out_list = []
+    intermediate_dims = input_dims
+    for conv_layer in conv_list:
+        k_1 = conv_layer.kernel_size[0] - 1
+        out_dim_1 = 0.5
+        while not out_dim_1.is_integer():
+            k_1 += 1
+            out_dim_1 = ((intermediate_dims[0] - k_1) / conv_layer.stride[0]) + 1
+        k_2 = conv_layer.kernel_size[1] - 1
+        out_dim_2 = 0.5
+        while not out_dim_2.is_integer():
+            k_2 += 1
+            out_dim_2 = ((intermediate_dims[1] - k_2) / conv_layer.stride[1]) + 1
+        intermediate_dims = (out_dim_1,out_dim_2)
+        out_list.append(nn.Conv2d(in_channels=conv_layer.in_channels, out_channels=conv_layer.out_channels,
+                                  kernel_size=(k_1,k_2), stride=conv_layer.stride, padding=conv_layer.padding))
+    return out_list

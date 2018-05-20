@@ -18,29 +18,43 @@ def plot_line(viz, plot_window, opts_dict, data_point, count):
 
 class VisdomPlotGraph():
 
-    def __init__(self, viz, title, ylabel, legend = None, running_mean_n = 250):
+    def __init__(self, viz, title, ylabel, legend = None,
+                 running_mean_n = 250, plot_after_n_inserts = 50):
         self.viz = viz
         # self.win = None
         self.plot_win = None
-        self.plot_legend = dict(
-            xlabel="Frames in Mio.",
-            ylabel=ylabel,
-            title=title,
-            legend=legend
-        )
+
+        if legend:
+            self.plot_legend = dict(
+                xlabel="Frames in Mio.",
+                ylabel=ylabel,
+                title=title,
+                legend=legend
+            )
+        else:
+            self.plot_legend = dict(
+                xlabel="Frames in Mio.",
+                ylabel=ylabel,
+                title=title
+            )
         self.history = deque(maxlen=running_mean_n)
+        self.plot_after_history_size = min(running_mean_n, plot_after_n_inserts)
 
 
     def append(self, value):
         self.history.append(value)
 
+    def extend(self, value):
+        self.history.extend(value)
+
     def plot_values(self, frames, values):
-        frames_in_mio = frames / 1000000
-        self.plot_win = plot_line(self.viz,
-                                  self.plot_win,
-                                  self.plot_legend,
-                                  values,
-                                  frames_in_mio)
+        if len(self.history) > self.plot_after_history_size:
+            frames_in_mio = frames / 1000000
+            self.plot_win = plot_line(self.viz,
+                                      self.plot_win,
+                                      self.plot_legend,
+                                      values,
+                                      frames_in_mio)
 
     def plot(self, frames):
         values = np.mean(np.array(self.history), axis=0)
@@ -49,32 +63,39 @@ class VisdomPlotGraph():
     def plot_median_and_mean(self, frames):
         mean_smooth = np.mean(self.history)
         median_smooth = np.median(self.history)
-        values = np.array([[mean_smooth, median_smooth]])
-        self.plot(frames, values)
+        values = np.array([mean_smooth, median_smooth])
+        self.plot_values(frames, values)
 
 
 class VisdomPlotterA2C():
     def __init__(self, viz, plot_distill_loss = False):
         # from visdom import Visdom
         self.viz = viz
+        self.plot_distill_loss = plot_distill_loss
         self.dist_entropy_plotter = VisdomPlotGraph(viz,
                                                     "Distribution Entropy",
-                                                    "Entropy")
+                                                    "Entropy",
+                                                    running_mean_n=1000,
+                                                    plot_after_n_inserts=100)
         self.reward_plotter = VisdomPlotGraph(viz,
                                               "Reward",
                                               "Reward",
-                                              ["Mean Reward", "Median Reward"])
+                                              ["Mean Reward", "Median Reward"],
+                                              running_mean_n=10000,
+                                              plot_after_n_inserts=2000)
 
-        if plot_distill_loss:
+        if self.plot_distill_loss:
             loss_legend = ["Value Loss", "Policy Loss", "Distill Loss"]
         else:
             loss_legend = ["Value Loss", "Policy Loss"]
-        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", loss_legend)
+        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", loss_legend,
+                                            running_mean_n = 1000,
+                                            plot_after_n_inserts=100)
 
 
     def append(self, dist_entropy, reward, value_loss, action_loss, distill_loss=None):
         self.dist_entropy_plotter.append(dist_entropy)
-        self.reward_plotter.append(reward)
+        self.reward_plotter.extend(reward)
         if self.plot_distill_loss:
             self.loss_plotter.append((value_loss, action_loss, distill_loss))
         else:
@@ -82,8 +103,8 @@ class VisdomPlotterA2C():
 
     def plot(self, frames):
         self.dist_entropy_plotter.plot(frames)
-        self.reward_plotter.plot(frames)
-        self.loss_plotter.plot_median_and_mean(frames)
+        self.reward_plotter.plot_median_and_mean(frames)
+        self.loss_plotter.plot(frames)
 
 
 class VisdomPlotterEM():

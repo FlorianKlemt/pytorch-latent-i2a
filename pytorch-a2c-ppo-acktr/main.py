@@ -20,7 +20,8 @@ from baselines.common.vec_env.vec_normalize import VecNormalize
 from kfac import KFACOptimizer
 from A2C_Models.model import CNNPolicy, MLPPolicy
 from storage import RolloutStorage
-from visualize import visdom_plot, VisdomPlotterA2C
+from visualize import visdom_plot
+from visdom_plotter import VisdomPlotterA2C
 
 from A2C_Models.MiniModel import MiniModel
 from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
@@ -60,7 +61,8 @@ def main():
     print("WARNING: All rewards are clipped or normalized so you need to use a monitor (see envs.py) or visdom plot to get true rewards")
     print("#######")
 
-    mp.set_start_method('spawn')
+    if args.render_game:
+        mp.set_start_method('spawn')
 
     os.environ['OMP_NUM_THREADS'] = '1'
 

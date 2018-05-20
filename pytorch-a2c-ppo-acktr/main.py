@@ -367,17 +367,18 @@ def main():
             end = time.time()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
 
-            info = "Updates {}, num timesteps {}, FPS {}, mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}, entropy {:.5f}, value loss {:.5f}, policy loss {:.5f}, time {:.5f} min"\
-                    .format(j,
-                            total_num_steps, int(total_num_steps / (end - start)),
-                            final_rewards.mean(),
-                            final_rewards.median(),
-                            final_rewards.min(),
-                            final_rewards.max(),
-                            dist_entropy.data[0],
-                            value_loss.data[0],
-                            action_loss.data[0],
-                            (end - start) / 60.)
+            reward_info = "mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}"\
+                .format(final_rewards.mean(), final_rewards.median(), final_rewards.min(), final_rewards.max())
+
+            distill_loss = ", distill_loss {:.5f}".format(distill_loss.data[0]) if args.algo == 'i2a' else ""
+            loss_info = "value loss {:.5f}, policy loss {:.5f}{}"\
+                .format(value_loss.data[0], action_loss.data[0], distill_loss)
+
+            entropy_info = "entropy {:.5f}".format(dist_entropy.data[0])
+
+            info = "Updates {}, num timesteps {}, FPS {}, {}, {}, {}, time {:.5f} min"\
+                    .format(j, total_num_steps, int(total_num_steps / (end - start)),
+                            reward_info, entropy_info, loss_info, (end - start) / 60.)
 
             with open(log_file, 'a') as the_file:
                 the_file.write(info + '\n')

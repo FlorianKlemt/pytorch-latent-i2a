@@ -83,7 +83,8 @@ class EnvironmentModelTrainer():
         self.use_cuda = args.cuda
         self.chance_of_random_action = 0.25
 
-        self.save_model_path = '{0}{1}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name)
+        color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
+        self.save_model_path = '{0}{1}{2}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name, color_prefix)
 
         if args.vis:
             from visdom import Visdom
@@ -157,7 +158,7 @@ class EnvironmentModelTrainer():
                     if self.loss_printer.frames % 100 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
 
-            print("Save model", self.save_environment_model_dir, self.save_environment_model_name)
+            print("Save model", self.save_model_path)
             state_to_save = self.environment_model.state_dict()
             torch.save(state_to_save, self.save_model_path)
 
@@ -204,14 +205,15 @@ class EnvironmentModelTrainer():
                     if self.loss_printer.frames % 100 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
 
-            print("Save model", self.save_environment_model_dir, self.save_environment_model_name)
+            print("Save model", self.save_model_path)
             state_to_save = self.environment_model.state_dict()
             torch.save(state_to_save, self.save_model_path)
 
 
-def save_environment_model(save_model_dir, environment_model_name, environment_model):
+def save_environment_model(save_model_dir, environment_model_name, environment_model, grey_scale):
     state_to_save = environment_model.state_dict()
-    save_model_path = '{0}{1}.dat'.format(save_model_dir, environment_model_name)
+    color_prefix = 'grey_scale' if grey_scale else 'RGB'
+    save_model_path = '{0}{1}{2}.dat'.format(save_model_dir, environment_model_name, color_prefix)
     #print(os.path.abspath(save_model_path))
     torch.save(state_to_save, save_model_path)
 

@@ -40,7 +40,7 @@ def load_em_model(EMModel,
     saved_state = torch.load('{0}{1}'.format(
         load_environment_model_dir, environment_model_name), map_location=lambda storage, loc: storage)
     print("Load Environment Model", load_environment_model_dir, environment_model_name)
-    environment_model = EMModel(obs_shape=(1, obs_shape[1], obs_shape[2]),
+    environment_model = EMModel(obs_shape=obs_shape,
                                 num_actions=action_space,
                                 reward_bins=reward_bins,
                                 use_cuda=use_cuda)

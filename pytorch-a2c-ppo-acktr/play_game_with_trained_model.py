@@ -38,10 +38,10 @@ class FrameStack(gym.Wrapper):
         obs = np.expand_dims(np.concatenate(self.frames, axis=0), axis=0)
         return obs
 
-def make_test_env(env_id):
+def make_test_env(env_id, grey_scale, frame_stack):
     if 'MiniPacman' in env_id:
-        env = make_custom_env(env_id, 42, 1, None, grey_scale=True)()
-        env = FrameStack(env, 4)
+        env = make_custom_env(env_id, 42, 1, None, grey_scale=grey_scale)()
+        env = FrameStack(env, frame_stack)
     else:
         env = gym.make(env_id)
         env = wrap_deepmind(env)
@@ -50,9 +50,9 @@ def make_test_env(env_id):
 
 
 class TestEnvironment():
-    def __init__(self, env, model, load_path, cuda):
-        cuda = True
-        self.FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    def __init__(self, env, model, load_path, args):
+        self.args = args
+        self.FloatTensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
         self.env = env
         self.model = model
         #self.model.cpu()
@@ -61,8 +61,8 @@ class TestEnvironment():
         #    saved_state[key] = val.cpu()
 
         self.model.load_state_dict(saved_state)
-        self.use_cuda = cuda
-        if cuda:
+        self.use_cuda = args.cuda
+        if args.cuda:
             self.model.cuda()
         self.reset()
 
@@ -94,19 +94,19 @@ class TestEnvironment():
     def play_game(self):
         self.reset()
         while (self.step() == False):
-            self.render()
+            self.render()   #this always renders RGB (the computation should be done correctly)
             time.sleep(0.2)
         self.render()
         return self.reward
 
 
-def test_policy(env, model_type, load_path, cuda):
-    env = make_test_env(env_id=env)
+def test_policy(model_type, load_path, args):
+    env = make_test_env(env_id=args.env_name, grey_scale=args.grey_scale, frame_stack=args.num_stack)
     i = 1
     # TODO
     while(True):
         print("started game", i)
-        test = TestEnvironment(env, model_type, load_path, cuda)
+        test = TestEnvironment(env, model_type, load_path, args)
         reward = test.play_game()
         print("finished game", i, ": reward", reward)
         time.sleep(10)
@@ -114,11 +114,8 @@ def test_policy(env, model_type, load_path, cuda):
 
 
 class TestPolicy():
-    def __init__(self, env_id, model, load_path, cuda):
-        self.model = model
-        self.load_path = os.path.join(load_path, env_id + ".pt")
-        self.cuda = cuda
-        self.env_id = env_id
+    def __init__(self, model, load_path, args):
+        load_path = os.path.join(load_path, args.env_name + ".pt")
         self.p = Process(target = test_policy,
-                    args=(self.env_id, self.model, self.load_path, self.cuda))
+                    args=(model, load_path, args))
         self.p.start()

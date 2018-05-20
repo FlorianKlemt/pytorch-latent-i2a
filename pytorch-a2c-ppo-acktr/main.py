@@ -74,7 +74,7 @@ def main():
 
     if 'MiniPacman' in args.env_name:
         from custom_envs import make_custom_env
-        envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=True)   #TODO: make rgb possible
+        envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
     else:
         from envs import make_env
@@ -100,10 +100,13 @@ def main():
     if args.algo == 'i2a':
         distill_loss_coef = 0.01     #care: may need to change in the future
         #build i2a model also wraps it with the A2C_PolicyWrapper
-        actor_critic, rollout_policy = build_i2a_model(obs_shape=obs_shape, action_space=envs.action_space.n,
+        color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
+        actor_critic, rollout_policy = build_i2a_model(obs_shape=envs.observation_space.shape,
+                                                       frame_stack=args.num_stack,
+                                                       action_space=envs.action_space.n,
                                                        em_model_reward_bins=em_model_reward_bins,
                                                        use_cuda=args.cuda,
-                                                       environment_model_name=args.env_name + ".dat")
+                                                       environment_model_name=args.env_name + color_prefix + ".dat")
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -141,10 +144,9 @@ def main():
 
     if args.render_game:
         load_path = os.path.join(args.save_dir, args.algo)
-        test_process = TestPolicy(env_id=args.env_name,
-                                  model=copy.deepcopy(actor_critic),
+        test_process = TestPolicy(model=copy.deepcopy(actor_critic),
                                   load_path=load_path,
-                                  cuda=False)
+                                  args=args)
 
     if args.algo == 'i2a':
         #param = [p for p in actor_critic.parameters() if (p.requires_grad and not p in rollout_policy.parameters())]
@@ -396,12 +398,13 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda, environment_model_name):
+def build_i2a_model(obs_shape, frame_stack, action_space, em_model_reward_bins, use_cuda, environment_model_name):
     from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
 
-    input_channels = 1#obs_shape[0]
+    input_channels = obs_shape[0]
+    obs_shape_frame_stack = (obs_shape[0] * frame_stack, *obs_shape[1:])
 
     # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
     load_environment_model_dir = 'trained_models/environment_models/'
@@ -427,7 +430,7 @@ def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda, env
 
     #obs_shape = (4, (obs_shape[1:]))   #legacy, if the next line breaks try this
 
-    rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=action_space, use_cuda=use_cuda))
+    rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape_frame_stack, action_space=action_space, use_cuda=use_cuda))
     for param in rollout_policy.parameters():
         param.requires_grad = True
     rollout_policy.train()
@@ -437,9 +440,10 @@ def build_i2a_model(obs_shape, action_space, em_model_reward_bins, use_cuda, env
         rollout_policy.cuda()
 
 
-    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy)
+    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
+                                       grey_scale=args.grey_scale, frame_stack=args.num_stack)
 
-    i2a_model = A2C_PolicyWrapper(I2A(obs_shape=obs_shape,
+    i2a_model = A2C_PolicyWrapper(I2A(obs_shape=obs_shape_frame_stack,
                                       action_space=action_space,
                                       imagination_core=imagination_core,
                                       use_cuda=args.cuda))

@@ -75,13 +75,13 @@ class VisdomPlotterA2C():
         self.dist_entropy_plotter = VisdomPlotGraph(viz,
                                                     "Distribution Entropy",
                                                     "Entropy",
-                                                    running_mean_n=1000,
-                                                    plot_after_n_inserts=100)
+                                                    running_mean_n=2000,
+                                                    plot_after_n_inserts=200)
         self.reward_plotter = VisdomPlotGraph(viz,
                                               "Reward",
                                               "Reward",
                                               ["Mean Reward", "Median Reward"],
-                                              running_mean_n=10000,
+                                              running_mean_n=20000,
                                               plot_after_n_inserts=2000)
 
         if self.plot_distill_loss:
@@ -89,8 +89,8 @@ class VisdomPlotterA2C():
         else:
             loss_legend = ["Value Loss", "Policy Loss"]
         self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", loss_legend,
-                                            running_mean_n = 1000,
-                                            plot_after_n_inserts=100)
+                                            running_mean_n = 2000,
+                                            plot_after_n_inserts=200)
 
 
     def append(self, dist_entropy, reward, value_loss, action_loss, distill_loss=None):

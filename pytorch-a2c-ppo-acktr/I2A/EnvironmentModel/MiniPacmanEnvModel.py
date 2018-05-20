@@ -66,7 +66,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_fc',    nn.Linear(64*W*H, 5)),
           ('softmax',      nn.Softmax())
         ]))
-        self.img_head = nn.Conv2d(64, 1, kernel_size=1)        #input size is n3 of basic-block2
+        self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
 
         torch.nn.init.xavier_uniform(self.conv1.weight)
         torch.nn.init.xavier_uniform(self.reward_head.reward_conv1.weight)
@@ -93,7 +93,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
         x = self.basic_block2(x)
 
         #output image head
-        image_out = F.relu(self.img_head(x))    #maybe remove relu?
+        image_out = self.img_head(x)
 
         #output reward head
         reward_probability = self.reward_head(x)

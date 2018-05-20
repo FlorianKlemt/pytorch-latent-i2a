@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 
 class RenderTrainEM():
-    def __init__(self):
+    def __init__(self, grey_scale):
+        self.grey_scale = grey_scale
         render_window_sizes = (400, 400)
         cv2.namedWindow('target', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('target', render_window_sizes)
@@ -19,6 +20,9 @@ class RenderTrainEM():
         frame_data[frame_data < 0] = 0
         frame_data[frame_data > 255] = 255
         frame_data = frame_data.astype(np.uint8)
+
+        if not self.grey_scale:
+            frame_data = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
 
         cv2.imshow(window_name, frame_data)
         cv2.waitKey(1)

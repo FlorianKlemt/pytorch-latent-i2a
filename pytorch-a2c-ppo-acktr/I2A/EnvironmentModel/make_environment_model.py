@@ -36,13 +36,15 @@ def main():
                              help='disables visdom visualization')
     args_parser.add_argument('--port', type=int, default=8097,
                              help='port to run the server on (default: 8097)')
+    args_parser.add_argument('--grey_scale', action='store_true', default=False,
+                             help='True to convert to grey_scale images')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
-    env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=True)() #wtf
+    env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=args.grey_scale)() #wtf
 
     policy = build_policy(env=env, use_cuda=args.cuda)
 
@@ -64,6 +66,7 @@ def main():
                                       environment_model = environment_model)
 
     trainer.train_env_model_batchwise(1000000)
+    #trainer.train_env_model(1000)
 
 
 
@@ -87,7 +90,7 @@ class EnvironmentModelTrainer():
             viz = Visdom(port=args.port)
         else:
             viz = None
-        self.renderer = RenderTrainEM() if args.render == True else None
+        self.renderer = RenderTrainEM(args.grey_scale) if args.render == True else None
 
         self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
                                  delete_log_file=args.load_environment_model == False,

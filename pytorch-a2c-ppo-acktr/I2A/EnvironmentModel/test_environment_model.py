@@ -27,7 +27,7 @@ class RenderImaginationCore():
         cv2.resizeWindow(self.window_name, render_window_sizes)
 
 
-    def render_preprocessing(self, observation, text):
+    def render_preprocessing(self, observation, reward_text, step_text):
         drawable_state = observation.permute(1, 2, 0)
 
         drawable_state = drawable_state.data.cpu().numpy()
@@ -42,21 +42,22 @@ class RenderImaginationCore():
         frame_data[frame_data > 255] = 255
         frame_data = frame_data.astype(np.uint8)
 
-        cv2.putText(frame_data, text, (20,720), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
+        cv2.putText(frame_data, reward_text, (20, 720), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
+        cv2.putText(frame_data, step_text, (20, 680), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
 
         if not self.grey_scale:
             frame_data = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
 
         return frame_data
 
-    def render_observation(self, observation, predicted_observation, reward, predicted_reward):
-        frame_data1 = self.render_preprocessing(observation, 'true reward: {0:.3f} '.format(reward))
-        frame_data2 = self.render_preprocessing(predicted_observation, 'predicted reward: {0:.3f} '.format(predicted_reward))
+    def render_observation(self, observation, predicted_observation, reward, predicted_reward, rollout_step):
+        frame_data1 = self.render_preprocessing(observation, 'true reward: {0:.3f} '.format(reward), 'rollout step: '+str(rollout_step))
+        frame_data2 = self.render_preprocessing(predicted_observation, 'predicted reward: {0:.3f} '.format(predicted_reward), 'rollout step: '+str(rollout_step))
 
         both = np.hstack((frame_data1, frame_data2))
 
         cv2.imshow(self.window_name, both)
-        cv2.waitKey(1)
+        cv2.waitKey(1000)
 
 
 
@@ -78,8 +79,8 @@ def play_with_imagination_core(imagination_core, env, args):
     for i in range(randint(20, 50)):
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
-        renderer.render_observation(state[0], state[0], reward, reward)
 
+    renderer.render_observation(state[0], state[0], reward, reward, 0)
     # render start state
     #if render:
     #    renderer.render_observation('start_state', state[0])
@@ -91,14 +92,13 @@ def play_with_imagination_core(imagination_core, env, args):
         predicted_state, predicted_reward = imagination_core(state, action)
 
         predicted_reward = predicted_reward.data.cpu().numpy()
-        print(t, "reward", np.max(predicted_reward[0], 0))
+        print(t+1, "reward", np.max(predicted_reward[0], 0))
 
         observation, reward, done, _ = env.step(action.data[0][0])
         state = numpy_to_variable(observation, args.cuda)
 
         if render:
-            renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward[0])
-            time.sleep(1)
+            renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward[0], t+1)
 
 
 def test_environment_model(env, environment_model, load_path, rollout_policy, args):

@@ -128,7 +128,8 @@ def main():
         load_path = os.path.join(load_path, args.env_name + ".pt")
         if os.path.isfile(load_path):
             # if args.cuda:
-            actor_critic.load_state_dict(torch.load(load_path))
+            saved_state = torch.load(load_path, map_location=lambda storage, loc: storage)
+            actor_critic.load_state_dict(saved_state)
         else:
             print("Can not load model ", load_path, ". File does not exists")
             return

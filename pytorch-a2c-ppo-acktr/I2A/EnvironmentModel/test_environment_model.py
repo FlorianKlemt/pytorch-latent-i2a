@@ -88,8 +88,8 @@ def play_with_imagination_core(imagination_core, env, args):
     predicted_state = state
 
     for t in range(5):
-        action = imagination_core.sample(state)
-        predicted_state, predicted_reward = imagination_core(state, action)
+        action = imagination_core.sample(predicted_state)
+        predicted_state, predicted_reward = imagination_core(predicted_state, action)
 
         predicted_reward = predicted_reward.data.cpu().numpy()
         print(t+1, "reward", np.max(predicted_reward[0], 0))

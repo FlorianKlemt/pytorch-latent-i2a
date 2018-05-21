@@ -15,8 +15,12 @@ from A2C_Models.I2A_MiniModel import I2A_MiniModel
 from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 import gym_minipacman
 
+from multiprocessing import Process
+
 class RenderImaginationCore():
-    def __init__(self):
+    def __init__(self, grey_scale):
+        self.grey_scale = grey_scale
+
         render_window_sizes = (400, 400)
         cv2.namedWindow('imagination_core', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('imagination_core', render_window_sizes)
@@ -24,61 +28,98 @@ class RenderImaginationCore():
         cv2.resizeWindow('start_state', render_window_sizes)
 
     def render_observation(self, window_name, observation):
-        drawable_state = (observation.data[0]).unsqueeze(0)
-        #drawable_state = (observation.data[0][-1]).unsqueeze(0)
-        drawable_state = np.swapaxes(drawable_state, 0, 1)
-        drawable_state = np.swapaxes(drawable_state, 1, 2)
-        drawable_state = drawable_state.numpy()
+        drawable_state = observation.permute(1, 2, 0)
+
+        drawable_state = drawable_state.data.cpu().numpy()
 
         frame_data = (drawable_state * 255.0)
-        #frame_data = drawable_state
 
         frame_data[frame_data < 0] = 0
         frame_data[frame_data > 255] = 255
         frame_data = frame_data.astype(np.uint8)
 
+        if not self.grey_scale:
+            frame_data = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
+
         cv2.imshow(window_name, frame_data)
         cv2.waitKey(1)
         time.sleep(1.)
 
+def numpy_to_variable(numpy_value, use_cuda):
+    value = Variable(torch.from_numpy(numpy_value).unsqueeze(0), requires_grad=False).float()
+    if use_cuda:
+        value = value.cuda()
+    return value
 
-def play_with_imagination_core(imagination_core, env, use_cuda):
-    num_stack = 4
-    states = collections.deque(maxlen=num_stack)
-
-    FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
-
+def play_with_imagination_core(imagination_core, env, args):
     render = True
-    renderer = RenderImaginationCore()
+    renderer = RenderImaginationCore(args.grey_scale)
 
-    for i_episode in range(20):
-        observation = env.reset()
+    #for i_episode in range(20):
+    observation = env.reset()
+    state = numpy_to_variable(observation, args.cuda)
 
-        # do 20 random actions to get different start observations
-        for i in range(randint(20, 50)):
-            env.render()
-            observation, reward, done, _ = env.step(env.action_space.sample())
-            observation = torch.from_numpy(observation).type(FloatTensor)
-            observation = Variable(observation, requires_grad=False)
-            states.append(observation)
+    # do 20 random actions to get different start observations
+    for i in range(randint(20, 50)):
+        env.render()
+        observation, reward, done, _ = env.step(env.action_space.sample())
+        state = numpy_to_variable(observation, args.cuda)
 
-        # render start state
+    # render start state
+    #if render:
+    #    renderer.render_observation('start_state', state[0])
+
+    predicted_state = state
+
+    for t in range(5):
         if render:
-            renderer.render_observation('start_state', observation)
+            renderer.render_observation('imagination_core', predicted_state[0])
+            renderer.render_observation('start_state', state[0])
 
-        for t in range(5):
-            if render:
-                render_obs = observation if observation.data.shape[1]==19 or observation.data.shape[1]==15 else observation[-1][-1].unsqueeze(0) #kill me now
-                renderer.render_observation('imagination_core', render_obs)
-            stacked_frames = torch.stack(states, dim=1)
-            action = imagination_core.sample(stacked_frames[:,-1:])
-            observation, reward = imagination_core(stacked_frames, action)
-            states.append(observation[0,-1:])
-            reward = reward.data.cpu().numpy()
-            print(t, "reward", np.max(reward[0], 0))
+        action = imagination_core.sample(state)
+        predicted_state, predicted_reward = imagination_core(state, action)
 
-            # action = np.argmax(action.data, 1)
+        predicted_reward = predicted_reward.data.cpu().numpy()
+        print(t, "reward", np.max(predicted_reward[0], 0))
 
+        observation, reward, done, _ = env.step(action.data[0][0])
+        state = numpy_to_variable(observation, args.cuda)
+
+
+def test_environment_model(env, environment_model, load_path, rollout_policy, args):
+    i = 1
+    while(True):
+        #env_name = "RegularMiniPacmanNoFrameskip-v0"
+        #env = make_custom_env(env_name, seed=1, rank=1, log_dir=None, grey_scale=True)()
+
+        # small model which only predicts one reward
+        saved_state = torch.load(load_path, map_location=lambda storage, loc: storage)
+        environment_model.load_state_dict(saved_state)
+
+        if args.cuda:
+            environment_model.cuda()
+
+        imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=rollout_policy,
+                                           grey_scale = False, frame_stack = 1)
+
+        print("started game", i)
+        play_with_imagination_core(imagination_core, env=env, args=args)
+
+        print("finished game", i)
+        #time.sleep(10)
+        i += 1
+
+class TestEnvironmentModel():
+    def __init__(self, env, environment_model, load_path, rollout_policy, args):
+        #load_path = os.path.join(load_path, args.env_name + ".pt")
+        self.p = Process(target = test_environment_model,
+                         args=(env, environment_model, load_path, rollout_policy, args))
+        self.p.start()
+
+    def stop(self):
+        self.p.terminate()
+
+'''
 ### Begin Main ###
 use_cuda = True
 #root_dir = '/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c-ppo-acktr/trained_models/environment_models/'    #os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -107,3 +148,4 @@ imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=r
 #                                             em_model_reward_bins=em_model_reward_bins, use_cuda=use_cuda, require_grad=False)    #no policy grads required for this
 
 play_with_imagination_core(imagination_core, env=env, use_cuda=use_cuda)
+'''

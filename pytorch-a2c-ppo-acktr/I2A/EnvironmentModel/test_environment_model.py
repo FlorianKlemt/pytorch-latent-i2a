@@ -21,16 +21,20 @@ class RenderImaginationCore():
     def __init__(self, grey_scale):
         self.grey_scale = grey_scale
 
-        render_window_sizes = (400, 400)
-        cv2.namedWindow('imagination_core', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('imagination_core', render_window_sizes)
-        cv2.namedWindow('start_state', cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('start_state', render_window_sizes)
+        render_window_sizes = (1520, 760)
+        self.window_name = 'imagination_core'
+        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(self.window_name, render_window_sizes)
 
-    def render_observation(self, window_name, observation):
+
+    def render_preprocessing(self, observation, text):
         drawable_state = observation.permute(1, 2, 0)
 
         drawable_state = drawable_state.data.cpu().numpy()
+
+        zeros = np.ones((4, drawable_state.shape[1], drawable_state.shape[2]))
+        drawable_state = np.append(drawable_state, zeros, axis=0)
+        drawable_state = drawable_state.repeat(40,0).repeat(40,1)
 
         frame_data = (drawable_state * 255.0)
 
@@ -38,12 +42,23 @@ class RenderImaginationCore():
         frame_data[frame_data > 255] = 255
         frame_data = frame_data.astype(np.uint8)
 
+        cv2.putText(frame_data, text, (20,720), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
+
         if not self.grey_scale:
             frame_data = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
 
-        cv2.imshow(window_name, frame_data)
+        return frame_data
+
+    def render_observation(self, observation, predicted_observation, reward, predicted_reward):
+        frame_data1 = self.render_preprocessing(observation, 'true reward: {0:.3f} '.format(reward))
+        frame_data2 = self.render_preprocessing(predicted_observation, 'predicted reward: {0:.3f} '.format(predicted_reward))
+
+        both = np.hstack((frame_data1, frame_data2))
+
+        cv2.imshow(self.window_name, both)
         cv2.waitKey(1)
-        time.sleep(1.)
+
+
 
 def numpy_to_variable(numpy_value, use_cuda):
     value = Variable(torch.from_numpy(numpy_value).unsqueeze(0), requires_grad=False).float()
@@ -61,9 +76,9 @@ def play_with_imagination_core(imagination_core, env, args):
 
     # do 20 random actions to get different start observations
     for i in range(randint(20, 50)):
-        env.render()
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
+        renderer.render_observation(state[0], state[0], reward, reward)
 
     # render start state
     #if render:
@@ -72,10 +87,6 @@ def play_with_imagination_core(imagination_core, env, args):
     predicted_state = state
 
     for t in range(5):
-        if render:
-            renderer.render_observation('imagination_core', predicted_state[0])
-            renderer.render_observation('start_state', state[0])
-
         action = imagination_core.sample(state)
         predicted_state, predicted_reward = imagination_core(state, action)
 
@@ -84,6 +95,10 @@ def play_with_imagination_core(imagination_core, env, args):
 
         observation, reward, done, _ = env.step(action.data[0][0])
         state = numpy_to_variable(observation, args.cuda)
+
+        if render:
+            renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward[0])
+            time.sleep(1)
 
 
 def test_environment_model(env, environment_model, load_path, rollout_policy, args):

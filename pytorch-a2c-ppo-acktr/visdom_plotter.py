@@ -110,9 +110,9 @@ class VisdomPlotterA2C():
 class VisdomPlotterEM():
     def __init__(self, viz):
         self.viz = viz
-        running_mean_n = 2000
-        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", ["State Loss", "Reward Loss"], running_mean_n)
-        self.reward_plotter = VisdomPlotGraph(viz, "Reward", "Reward", ["True Reward", "Predicted Reward"], 1)
+        running_mean_n = 5000
+        self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", ["State Loss", "Reward Loss"], running_mean_n, 200)
+        self.reward_plotter = VisdomPlotGraph(viz, "Reward", "Reward", ["True Reward", "Predicted Reward"], 1, 0)
 
     def append(self, loss, reward):
         self.loss_plotter.append(loss)

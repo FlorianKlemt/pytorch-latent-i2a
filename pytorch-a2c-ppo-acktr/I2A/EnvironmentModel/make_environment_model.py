@@ -108,7 +108,7 @@ class EnvironmentModelTrainer():
         self.environment_model = environment_model
         self.use_cuda = args.cuda
         self.chance_of_random_action = 0.25
-        self.batch_size = 1
+        self.batch_size = 100
 
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
         self.save_model_path = '{0}{1}{2}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name, color_prefix)
@@ -118,8 +118,6 @@ class EnvironmentModelTrainer():
             viz = Visdom(port=args.port)
         else:
             viz = None
-        #self.renderer = RenderTrainEM(args.grey_scale) if args.render == True else None
-        self.renderer = None
 
         self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
                                  delete_log_file=args.load_environment_model == False,
@@ -177,8 +175,6 @@ class EnvironmentModelTrainer():
 
                 # Log, plot and render training
                 (predicted_next_state, predicted_reward) = prediction
-                if self.renderer:
-                    self.renderer.render_observation(state[0], predicted_next_state[0])
 
                 # log and print infos
                 if self.loss_printer:
@@ -229,13 +225,11 @@ class EnvironmentModelTrainer():
 
                 # Log, plot and render training
                 (predicted_next_state, predicted_reward) = prediction
-                if self.renderer:
-                    self.renderer.render_observation(sample_state[0], predicted_next_state[0])
 
                 # log and print infos
                 if self.loss_printer:
                     self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                    if self.loss_printer.frames % 100 == 0:
+                    if self.loss_printer.frames % 10 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
 
             if i_episode % self.args.save_interval==0:

@@ -38,6 +38,8 @@ def main():
                              help='port to run the server on (default: 8097)')
     args_parser.add_argument('--grey_scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
+    args_parser.add_argument('--save-interval', type=int, default=100,
+                             help='save model each n episodes (default: 100)')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
@@ -82,6 +84,7 @@ class EnvironmentModelTrainer():
         self.environment_model = environment_model
         self.use_cuda = args.cuda
         self.chance_of_random_action = 0.25
+        self.batch_size = 1
 
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
         self.save_model_path = '{0}{1}{2}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name, color_prefix)
@@ -157,10 +160,10 @@ class EnvironmentModelTrainer():
                     self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
                     if self.loss_printer.frames % 100 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
-
-            print("Save model", self.save_model_path)
-            state_to_save = self.environment_model.state_dict()
-            torch.save(state_to_save, self.save_model_path)
+            if i_episode % self.args.save_interval == 0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.environment_model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
 
     def train_env_model_batchwise(self, episoden = 10000):
         from collections import deque
@@ -182,10 +185,15 @@ class EnvironmentModelTrainer():
                 next_state, reward, done, _ = self.do_env_step(action=action)
 
                 # add current state, next-state pair to replay memory
-                sample_memory.append((state, action, next_state, reward))
+                #sample_memory.append((state, action, next_state, reward))
+                sample_memory.append([state, action, next_state, reward])
 
                 # sample a state, next-state pair randomly from replay memory for a training step
+                if len(sample_memory) < self.batch_size:
+                    continue
+
                 sample_state, sample_action, sample_next_state, sample_reward = random.choice(sample_memory)
+                sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
                 loss, prediction = self.optimizer.optimizer_step(env_state_frame = sample_state,
                                                             env_action = sample_action,
                                                             env_state_frame_target = sample_next_state,
@@ -205,9 +213,10 @@ class EnvironmentModelTrainer():
                     if self.loss_printer.frames % 100 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
 
-            print("Save model", self.save_model_path)
-            state_to_save = self.environment_model.state_dict()
-            torch.save(state_to_save, self.save_model_path)
+            if i_episode % self.args.save_interval==0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.environment_model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
 
 
 def save_environment_model(save_model_dir, environment_model_name, environment_model, grey_scale):

@@ -46,13 +46,12 @@ class EnvironmentModelOptimizer():
 
         #print(next_reward_loss.data)
         # preform training step with both losses
-        #loss = next_reward_loss + next_reward_loss
-        #self.optimizer.zero_grad()
-        #torch.autograd.backward(loss, retain_graph=True)
-        losses = [next_frame_loss, next_reward_loss]
-        grad_seq = [losses[0].data.new(1).fill_(1) for _ in range(len(losses))]
-        torch.autograd.backward(losses, grad_seq, retain_graph=True)
-        #torch.autograd.backward(losses, retain_graph=True)
+        loss = next_reward_loss + next_frame_loss
+        loss.backward(retain_graph=True)
+
+        #losses = [next_frame_loss, next_reward_loss]
+        #grad_seq = [losses[0].data.new(1).fill_(1) for _ in range(len(losses))]
+        #torch.autograd.backward(losses, grad_seq, retain_graph=True)
 
         self.optimizer.step()
 

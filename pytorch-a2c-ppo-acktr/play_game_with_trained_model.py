@@ -75,14 +75,17 @@ class TestEnvironment():
         if self.use_cuda:
             input = input.cuda()
 
-        value, logits = self.model(input)
-        probs = F.softmax(logits, dim=0)
-        action = probs.multinomial().data
-        cpu_actions = action.cpu()
-        cpu_actions = cpu_actions.numpy()
-        cpu_actions = cpu_actions[0][0]
+        #value, logits = self.model(input)
+        #probs = F.softmax(logits, dim=0)
+        #action = probs.multinomial().data
+        #cpu_actions = action.cpu()
+        #cpu_actions = cpu_actions.numpy()
+        #cpu_actions = cpu_actions[0][0]
 
-        state, reward, done, info = self.env.step(cpu_actions)
+        _, actions, _, _ = self.model.act(input, None, None)
+        cpu_actions = actions.data[0][0]
+
+        self.state, reward, done, info = self.env.step(cpu_actions)
         self.reward += reward
 
         return done

@@ -167,20 +167,20 @@ class EnvironmentModelTrainer():
 
                 next_state, reward, done, _ = self.do_env_step(action=action)
 
-                loss, prediction = self.optimizer.optimizer_step(env_state_frame=state,
-                                                            env_action=action,
-                                                            env_state_frame_target=next_state,
-                                                            env_reward_target=reward)
+                loss, prediction = self.optimizer.optimizer_step(state=state,
+                                                                 action=action,
+                                                                 next_state_target=next_state,
+                                                                 reward_target=reward)
                 state = next_state
 
-                # Log, plot and render training
-                (predicted_next_state, predicted_reward) = prediction
 
                 # log and print infos
                 if self.loss_printer:
+                    (predicted_next_state, predicted_reward) = prediction
                     self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
                     if self.loss_printer.frames % 100 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
+
             if i_episode % self.args.save_interval == 0:
                 print("Save model", self.save_model_path)
                 state_to_save = self.environment_model.state_dict()
@@ -190,9 +190,7 @@ class EnvironmentModelTrainer():
         from collections import deque
         sample_memory = deque(maxlen=2000)
 
-        chance_of_random_action = 0.25
         for i_episode in range(episoden):
-            #loss_printer.reset()
             state = self.env.reset()
             state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
             if self.use_cuda:
@@ -206,28 +204,24 @@ class EnvironmentModelTrainer():
                 next_state, reward, done, _ = self.do_env_step(action=action)
 
                 # add current state, next-state pair to replay memory
-                #sample_memory.append((state, action, next_state, reward))
                 sample_memory.append([state, action, next_state, reward])
 
                 # sample a state, next-state pair randomly from replay memory for a training step
                 if len(sample_memory) < self.batch_size:
                     continue
 
-                sample_state, sample_action, sample_next_state, sample_reward = random.choice(sample_memory)
                 sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
-                loss, prediction = self.optimizer.optimizer_step(env_state_frame = sample_state,
-                                                            env_action = sample_action,
-                                                            env_state_frame_target = sample_next_state,
-                                                            env_reward_target = sample_reward)
+                loss, prediction = self.optimizer.optimizer_step(state = sample_state,
+                                                                 action = sample_action,
+                                                                 next_state_target = sample_next_state,
+                                                                 reward_target = sample_reward)
 
 
                 state = next_state
 
-                # Log, plot and render training
-                (predicted_next_state, predicted_reward) = prediction
-
                 # log and print infos
                 if self.loss_printer:
+                    (predicted_next_state, predicted_reward) = prediction
                     self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
                     if self.loss_printer.frames % 10 == 0:
                         self.loss_printer.print_episode(episode=i_episode)
@@ -236,15 +230,6 @@ class EnvironmentModelTrainer():
                 print("Save model", self.save_model_path)
                 state_to_save = self.environment_model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
-
-
-def save_environment_model(save_model_dir, environment_model_name, environment_model, grey_scale):
-    state_to_save = environment_model.state_dict()
-    color_prefix = 'grey_scale' if grey_scale else 'RGB'
-    save_model_path = '{0}{1}{2}.dat'.format(save_model_dir, environment_model_name, color_prefix)
-    #print(os.path.abspath(save_model_path))
-    torch.save(state_to_save, save_model_path)
-
 
 def build_policy(env, use_cuda):
     # TODO: give option to load policy

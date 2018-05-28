@@ -30,19 +30,19 @@ class EnvironmentModelOptimizer():
         self.optimizer = self.optimizer(self.model.parameters(), **optimizer_args_adam)
 
     def optimizer_step(self,
-                       env_state_frame, env_action,
-                       env_state_frame_target, env_reward_target):
+                       state, action,
+                       next_state_target, reward_target):
         """
         Make a single gradient update.
         """
         self.optimizer.zero_grad()
 
         # Compute loss and gradient
-        next_frame, next_reward = self.model(env_state_frame, env_action)
+        predicted_next_state, predicted_reward = self.model(state, action)
 
 
-        next_frame_loss = self.loss_function_frame(next_frame, env_state_frame_target)
-        next_reward_loss = self.loss_function_reward(next_reward, env_reward_target)
+        next_frame_loss = self.loss_function_frame(predicted_next_state, next_state_target)
+        next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
         #print(next_reward_loss.data)
         # preform training step with both losses
@@ -55,4 +55,4 @@ class EnvironmentModelOptimizer():
 
         self.optimizer.step()
 
-        return (next_frame_loss, next_reward_loss), (next_frame, next_reward)
+        return (next_frame_loss, next_reward_loss), (predicted_next_state, predicted_reward)

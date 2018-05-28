@@ -98,7 +98,6 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a':
-        distill_loss_coef = 0.01     #care: may need to change in the future
         #build i2a model also wraps it with the A2C_PolicyWrapper
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
         actor_critic, rollout_policy = build_i2a_model(obs_shape=envs.observation_space.shape,
@@ -293,7 +292,7 @@ def main():
             optimizer.zero_grad()
             loss = value_loss * args.value_loss_coef + action_loss - dist_entropy * args.entropy_coef
             if args.algo == 'i2a':
-                loss = loss + distill_loss * distill_loss_coef
+                loss = loss + distill_loss * args.distill_coef
             loss.backward()
 
             if args.algo == 'a2c' or args.algo == 'i2a':

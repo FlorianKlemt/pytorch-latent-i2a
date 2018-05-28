@@ -31,7 +31,7 @@ from I2A.I2A_Agent import I2A
 from play_game_with_trained_model import TestPolicy
 
 import time
-
+import sys
 import multiprocessing as mp
 
 args = get_args()
@@ -135,8 +135,9 @@ def main():
 
     log_file = os.path.join(os.path.join(args.save_dir, args.algo), args.env_name + ".log")
     if not os.path.exists(log_file) or not args.load_model:
+        print("Log file: ", log_file)
         with open(log_file, 'w') as the_file:
-            the_file.write('Algo: ' + args.algo + 'Environment: ' + args.env_name + '\n')
+            the_file.write('command line args: ' + " ".join(sys.argv) + '\n')
 
 
     if args.cuda:

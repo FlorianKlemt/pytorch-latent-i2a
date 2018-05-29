@@ -122,3 +122,6 @@ class TestPolicy():
         self.p = Process(target = test_policy,
                     args=(model, load_path, args))
         self.p.start()
+
+    def stop(self):
+        self.p.terminate()

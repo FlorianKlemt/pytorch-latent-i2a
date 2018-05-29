@@ -3,8 +3,8 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import gym
 import gym_minipacman
-from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
-from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer
+from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModelClassLabels, MiniPacmanEnvModel
+from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer, MiniPacmanEnvironmentModelOptimizer
 from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
 from logger import LogTrainEM
 from custom_envs import make_custom_env
@@ -47,6 +47,9 @@ def main():
                              help='True to convert to grey_scale images')
     args_parser.add_argument('--save-interval', type=int, default=100,
                              help='save model each n episodes (default: 100)')
+    args_parser.add_argument('--use-class-labels', action='store_true', default=False,
+                             help='true to use pixelwise cross-entropy-loss and make'
+                                  'the color of each pixel a classification task')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
@@ -69,10 +72,13 @@ def main():
     environment_model = build_em_model(env=env,
                                        load_environment_model=args.load_environment_model,
                                        load_environment_model_path=save_model_path,
-                                       use_cuda=args.cuda)
+                                       use_cuda=args.cuda,
+                                       use_class_labels=args.use_class_labels)
 
-    optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
-    optimizer.set_optimizer()
+    if args.use_class_labels:
+        optimizer = MiniPacmanEnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
+    else:
+        optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
 
     if args.render:
         test_process = TestEnvironmentModel(env = env,
@@ -108,7 +114,7 @@ class EnvironmentModelTrainer():
         self.environment_model = environment_model
         self.use_cuda = args.cuda
         self.chance_of_random_action = 0.25
-        self.batch_size = 100
+        self.batch_size = 50
 
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
         self.save_model_path = '{0}{1}{2}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name, color_prefix)
@@ -188,7 +194,7 @@ class EnvironmentModelTrainer():
 
     def train_env_model_batchwise(self, episoden = 10000):
         from collections import deque
-        sample_memory = deque(maxlen=2000)
+        sample_memory = deque(maxlen=10000)
 
         for i_episode in range(episoden):
             state = self.env.reset()
@@ -246,14 +252,18 @@ def build_policy(env, use_cuda):
         policy.cuda()
     return policy
 
-def build_em_model(env, load_environment_model=False, load_environment_model_path=None, use_cuda=True):
+def build_em_model(env, load_environment_model=False, load_environment_model_path=None, use_cuda=True, use_class_labels=False):
     #TODO: @future self: once we have latent space models change the next line
-    EMModel = MiniPacmanEnvModel
+    if use_class_labels:
+        EMModel = MiniPacmanEnvModelClassLabels
+        em_obs_shape = (6, env.observation_space.shape[1], env.observation_space.shape[2])
+    else:
+        EMModel = MiniPacmanEnvModel
+        em_obs_shape = env.observation_space.shape
 
     reward_bins = env.unwrapped.reward_bins #[0., 1., 2., 5., 0.] for regular
 
-
-    environment_model = EMModel(obs_shape=env.observation_space.shape,  # 4
+    environment_model = EMModel(obs_shape=em_obs_shape, #env.observation_space.shape,  # 4
                                 num_actions=env.action_space.n,
                                 reward_bins=reward_bins,
                                 use_cuda=use_cuda)

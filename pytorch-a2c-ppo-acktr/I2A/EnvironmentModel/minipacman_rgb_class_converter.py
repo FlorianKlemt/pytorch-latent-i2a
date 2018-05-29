@@ -9,13 +9,19 @@ class MiniPacmanRGBToClassConverter():
         self.color_walls = torch.FloatTensor([1, 1, 1])  # 0
         self.color_food = torch.FloatTensor([0, 0, 1])  # 1
         self.color_pillman = torch.FloatTensor([0, 1, 0])  # 2
-        self.color_ground = torch.FloatTensor([0, 0, 0])
-        self.color_pill = torch.FloatTensor([0, 1, 1])  # 5
+        self.color_ground = torch.FloatTensor([0, 0, 0]) # 3
+        self.color_pill = torch.FloatTensor([0, 1, 1])  # 4
 
-        self.color_ghost = torch.FloatTensor([1, 0, 0]) # todo edibily ghost??
-        #self.color_edibily_ghost = torch.FloatTensor([1, 1, 0])  # todo
+        self.color_ghost = torch.FloatTensor([1, 0, 0]) # 5
+        self.color_ghost_edible = torch.FloatTensor([1, 1, 0]) # 6
 
-        self.color = torch.stack([self.color_walls, self.color_food, self.color_pillman, self.color_ground, self.color_ghost, self.color_pill])
+        self.color = torch.stack([self.color_walls,
+                                  self.color_food,
+                                  self.color_pillman,
+                                  self.color_ground,
+                                  self.color_pill,
+                                  self.color_ghost,
+                                  self.color_ghost_edible])
 
         if use_cuda:
             self.color_walls = self.color_walls.cuda()
@@ -24,6 +30,7 @@ class MiniPacmanRGBToClassConverter():
             self.color_ground = self.color_ground.cuda()
             self.color_pill = self.color_pill.cuda()
             self.color_ghost = self.color_ghost.cuda()
+            self.color_ghost_edible = self.color_ghost_edible.cuda()
             self.color = self.color.cuda()
 
     def minipacman_rgb_to_class(self, state):
@@ -35,9 +42,10 @@ class MiniPacmanRGBToClassConverter():
         food = ((state.data[:, :, :] == self.color_food).sum(3) == 3).float()
         pillman = ((state.data[:, :, :] == self.color_pillman).sum(3) == 3).float()
         ground = ((state.data[:, :, :] == self.color_ground).sum(3) == 3).float()
-        ghost = ((state.data[:, :, :] == self.color_ghost).sum(3) == 3).float()
         pill = ((state.data[:, :, :] == self.color_pill).sum(3) == 3).float()
-        class_state = Variable(torch.stack([wall, food, pillman, ground, ghost, pill], -1))
+        ghost = ((state.data[:, :, :] == self.color_ghost).sum(3) == 3).float()
+        ghost_edible = ((state.data[:, :, :] == self.color_ghost_edible).sum(3) == 3).float()
+        class_state = Variable(torch.stack([wall, food, pillman, ground, pill, ghost, ghost_edible], -1))
 
         if self.use_cuda:
             class_state = class_state.cuda()
@@ -88,6 +96,5 @@ class MiniPacmanRGBToClassConverter():
                         rgb_state[b, x, y] = self.color_pill
                     else:
                         rgb_state[b, x, y] = self.color_ghost'''
-
         return rgb_state
 

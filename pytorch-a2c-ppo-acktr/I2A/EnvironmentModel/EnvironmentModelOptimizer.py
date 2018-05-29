@@ -63,24 +63,18 @@ class EnvironmentModelOptimizer():
 
 class MiniPacmanEnvironmentModelOptimizer():
 
-    def __init__(self,
-                 model,
-                 use_cuda = True,
-                 optimizer_args_adam={"lr": 1e-4,# 1e-4,
-                                      "betas": (0.9, 0.999),
-                                      "eps": 1e-8,
-                                      "weight_decay": 0.0000001}#0.00001}
-                 ):
-        self.use_cuda = use_cuda
+    def __init__(self, model, args):
+        self.use_cuda = args.cuda
         self.model = model
         if self.use_cuda == True:
             self.model.cuda()
 
         self.loss_function_reward = nn.MSELoss()
         #self.loss_function_reward = nn.CrossEntropyLoss()
-        self.loss_function_frame = nn.CrossEntropyLoss()
+        self.loss_function_state = nn.CrossEntropyLoss()
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), **optimizer_args_adam)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), args.lr, eps=args.eps)
+
         from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
         self.rgb_to_class = MiniPacmanRGBToClassConverter()
 
@@ -94,16 +88,13 @@ class MiniPacmanEnvironmentModelOptimizer():
         class_next_state_target = self.rgb_to_class.minipacman_rgb_to_class(next_state_target)
         _, class_next_state_target = torch.max(class_next_state_target, 1)
 
-        #predicted_next_state, predicted_reward = self.model(state, action)
         predicted_next_state, predicted_reward = self.model.forward_class(class_state, action)
 
-        #next_frame_loss = self.loss_function_frame(predicted_next_state, next_state_target)
-        next_frame_loss = self.loss_function_frame(predicted_next_state, class_next_state_target)
+        next_frame_loss = self.loss_function_state(predicted_next_state, class_next_state_target)
         next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
         # preform training step with both losses
         loss = next_reward_loss + next_frame_loss
-        #loss.backward(retain_graph=True)
         loss.backward()
         self.optimizer.step()
 

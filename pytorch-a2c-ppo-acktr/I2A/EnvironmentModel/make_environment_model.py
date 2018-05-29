@@ -23,16 +23,14 @@ import multiprocessing as mp
 
 def main():
     args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
-    args_parser.add_argument('--load_environment_model', action='store_true', default=False,
+    args_parser.add_argument('--load-environment-model', action='store_true', default=False,
                              help='flag to continue training on pretrained env_model')
-    args_parser.add_argument('--save_environment_model_dir', default="../../trained_models/environment_models/",
+    args_parser.add_argument('--save-environment-model-dir', default="../../trained_models/environment_models/",
                              help='relative path to folder from which a environment model should be loaded.')
-    args_parser.add_argument('--load_environment_model_file_name', default="RegularMiniPacman_EnvModel_0.dat",
-                             help='file name of the environment model that should be loaded.')
-    args_parser.add_argument('--load-policy_dir', default='../../trained_models/a2c',
-                             help='directory to save agent logs (default: ./trained_models/)')
-    args_parser.add_argument('--load-policy', action='store_true', default=False,
+    args_parser.add_argument('--load-policy-model', action='store_true', default=False,
                              help='use trained policy model for environment model training')
+    args_parser.add_argument('--load-policy-model-dir', default='../../trained_models/a2c/',
+                             help='directory to save agent logs (default: ./trained_models/)')
     args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
                              help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
     args_parser.add_argument('--render',  action='store_true', default=False,
@@ -50,6 +48,10 @@ def main():
     args_parser.add_argument('--use-class-labels', action='store_true', default=False,
                              help='true to use pixelwise cross-entropy-loss and make'
                                   'the color of each pixel a classification task')
+    args_parser.add_argument('--lr', type=float, default=7e-4, #1e-4
+                             help='learning rate (default: 7e-4)')
+    args_parser.add_argument('--eps', type=float, default=1e-5, #1e-8
+                             help='RMSprop optimizer epsilon (default: 1e-5)')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
@@ -64,9 +66,14 @@ def main():
                                              args.env_name,
                                              color_prefix)
 
+    load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.env_name)
+
     env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=args.grey_scale)() #wtf
 
-    policy = build_policy(env=env, use_cuda=args.cuda)
+    policy = build_policy(env=env,
+                          load_policy_model=args.load_policy_model,
+                          load_policy_model_path=load_policy_model_path,
+                          use_cuda=args.cuda)
 
     #relative_load_environment_model_dir = os.path.join('../../', args.load_environment_model_dir)
     environment_model = build_em_model(env=env,
@@ -76,7 +83,7 @@ def main():
                                        use_class_labels=args.use_class_labels)
 
     if args.use_class_labels:
-        optimizer = MiniPacmanEnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
+        optimizer = MiniPacmanEnvironmentModelOptimizer(model=environment_model, args=args)
     else:
         optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
 
@@ -237,26 +244,24 @@ class EnvironmentModelTrainer():
                 state_to_save = self.environment_model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
 
-def build_policy(env, use_cuda):
-    # TODO: give option to load policy
-    #load_policy_model_dir = os.path.join(root_path, load_policy_model_dir)
-    # policy = A2C_PolicyWrapper(load_policy(load_policy_model_dir,
-    #                     policy_model,
-    #                     action_space=action_space,
-    #                     use_cuda=use_cuda,
-    #                     policy_name='MiniModel'))
-    # Temporary comment: if the next line breaks try it with obs_shape=(1,..,..)
-    #policy = I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda)
+def build_policy(env, load_policy_model, load_policy_model_path, use_cuda):
     policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda))
     if use_cuda:
         policy.cuda()
+
+    if load_policy_model:
+        saved_state = torch.load(load_policy_model_path, map_location=lambda storage, loc: storage)
+        print("Load Policy Model", load_policy_model_path)
+        policy.load_state_dict(saved_state)
+
     return policy
 
 def build_em_model(env, load_environment_model=False, load_environment_model_path=None, use_cuda=True, use_class_labels=False):
     #TODO: @future self: once we have latent space models change the next line
     if use_class_labels:
         EMModel = MiniPacmanEnvModelClassLabels
-        em_obs_shape = (6, env.observation_space.shape[1], env.observation_space.shape[2])
+        labels = 7
+        em_obs_shape = (labels, env.observation_space.shape[1], env.observation_space.shape[2])
     else:
         EMModel = MiniPacmanEnvModel
         em_obs_shape = env.observation_space.shape

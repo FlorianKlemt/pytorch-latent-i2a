@@ -86,37 +86,13 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
     def forward(self,input_frame,input_action):
         input_frame = self.rgb_to_class.minipacman_rgb_to_class(input_frame)
 
-        #print("INPUT ACTION SHAPE inside env_model forward: ", input_action)
-        one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
-        # make one hot vector
-        one_hot.scatter_(1, input_action.data, 1)
-        # breoadcast action
-        one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
-        broadcasted_action = Variable(one_hot.repeat(1, 1, input_frame.data.shape[2], input_frame.data.shape[3]))
-
-        # concatinate observation and broadcasted action
-        x = torch.cat((input_frame,broadcasted_action),1)
-
-        x = F.relu(self.conv1(x))
-        x = self.basic_block1(x)
-        x = self.basic_block2(x)
-
-        #output image head
-        image_out = self.img_head(x)
-
-        #output reward head
-        reward_probability = self.reward_head(x)
-        # TODO why not just use the value of the max probability
-        # TODO is this correct??
-        reward_out = torch.sum(reward_probability * self.reward_bins, 1)
-        #x.view(x.size())
+        image_out, reward_out = self.forward_class(input_frame, input_action)
 
         image_out = self.rgb_to_class.minipacman_class_to_rgb(image_out)
 
         return image_out,reward_out
 
     def forward_class(self,input_frame,input_action):
-        #print("INPUT ACTION SHAPE inside env_model forward: ", input_action)
         one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
         one_hot.scatter_(1, input_action.data, 1)
@@ -186,10 +162,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.train()
 
-        self.rgb_to_class = MiniPacmanRGBToClassConverter()
-
     def forward(self,input_frame,input_action):
-        #print("INPUT ACTION SHAPE inside env_model forward: ", input_action)
         one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
         one_hot.scatter_(1, input_action.data, 1)

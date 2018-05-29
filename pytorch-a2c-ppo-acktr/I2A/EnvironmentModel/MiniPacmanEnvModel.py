@@ -149,16 +149,20 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_fc',    nn.Linear(64*W*H, 5))#,
           #('softmax',      nn.Softmax())
         ]))
-        #self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
-        self.img_head = nn.Sequential(OrderedDict([
-            ('conv', nn.Conv2d(64, input_channels, kernel_size=1))#,
-            #('softmax', nn.Softmax())
-        ]))
+        self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
+
         torch.nn.init.xavier_uniform(self.conv1.weight)
         torch.nn.init.xavier_uniform(self.reward_head.reward_conv1.weight)
         torch.nn.init.xavier_uniform(self.reward_head.reward_conv2.weight)
         torch.nn.init.xavier_uniform(self.reward_head.reward_fc.weight)
-        torch.nn.init.xavier_uniform(self.img_head.conv.weight)
+        torch.nn.init.xavier_uniform(self.img_head.weight)
+
+        #TODO: this formulation destroys compatibility with current I2A implementation
+        #self.img_head = nn.Sequential(OrderedDict([
+        #    ('conv', nn.Conv2d(64, input_channels, kernel_size=1))#,
+        #    #('softmax', nn.Softmax())
+        #]))
+        #torch.nn.init.xavier_uniform(self.img_head.conv.weight)
 
         self.train()
 
@@ -187,3 +191,11 @@ class MiniPacmanEnvModel(torch.nn.Module):
         reward_out = torch.sum(reward_probability * self.reward_bins, 1)
 
         return image_out,reward_out
+
+
+#the copy model returns the identity, this is its own class so we dont have to change the code to use the copymodel
+class CopyEnvModel(torch.nn.Module):
+    def __init__(self):
+        super(CopyEnvModel, self).__init__()
+    def forward(self, input_frame, input_action):
+        return input_frame, Variable(torch.zeros(input_frame.data.shape[0])).cuda()

@@ -69,6 +69,8 @@ def get_args():
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--grey_scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
+    parser.add_argument('--use-copy-model', action='store_true', default=False,
+                        help='True to use copy model, False for standard I2A')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

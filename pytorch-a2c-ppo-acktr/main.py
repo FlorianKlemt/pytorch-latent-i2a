@@ -31,7 +31,7 @@ from I2A.I2A_Agent import I2A
 from play_game_with_trained_model import TestPolicy
 
 import time
-
+import sys
 import multiprocessing as mp
 
 args = get_args()
@@ -105,7 +105,8 @@ def main():
                                                        action_space=envs.action_space.n,
                                                        em_model_reward_bins=em_model_reward_bins,
                                                        use_cuda=args.cuda,
-                                                       environment_model_name=args.env_name + color_prefix + ".dat")
+                                                       environment_model_name=args.env_name + color_prefix + ".dat",
+                                                       use_copy_model=args.use_copy_model)
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -135,8 +136,9 @@ def main():
 
     log_file = os.path.join(os.path.join(args.save_dir, args.algo), args.env_name + ".log")
     if not os.path.exists(log_file) or not args.load_model:
+        print("Log file: ", log_file)
         with open(log_file, 'w') as the_file:
-            the_file.write('Algo: ' + args.algo + 'Environment: ' + args.env_name + '\n')
+            the_file.write('command line args: ' + " ".join(sys.argv) + '\n')
 
 
     if args.cuda:
@@ -398,23 +400,25 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, frame_stack, action_space, em_model_reward_bins, use_cuda, environment_model_name):
-    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
+def build_i2a_model(obs_shape, frame_stack, action_space, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model):
+    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel, CopyEnvModel
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
 
     input_channels = obs_shape[0]
     obs_shape_frame_stack = (obs_shape[0] * frame_stack, *obs_shape[1:])
-
-    # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
-    load_environment_model_dir = 'trained_models/environment_models/'
-    env_model = load_em_model(EMModel=MiniPacmanEnvModel,
-                             load_environment_model_dir=load_environment_model_dir,
-                             environment_model_name=environment_model_name,
-                             obs_shape=obs_shape,
-                             action_space=action_space,
-                             reward_bins=em_model_reward_bins,
-                             use_cuda=use_cuda)
+    if use_copy_model:
+        env_model = CopyEnvModel()
+    else:
+        # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
+        load_environment_model_dir = 'trained_models/environment_models/'
+        env_model = load_em_model(EMModel=MiniPacmanEnvModel,
+                                 load_environment_model_dir=load_environment_model_dir,
+                                 environment_model_name=environment_model_name,
+                                 obs_shape=obs_shape,
+                                 action_space=action_space,
+                                 reward_bins=em_model_reward_bins,
+                                 use_cuda=use_cuda)
 
     for param in env_model.parameters():
         param.requires_grad = False

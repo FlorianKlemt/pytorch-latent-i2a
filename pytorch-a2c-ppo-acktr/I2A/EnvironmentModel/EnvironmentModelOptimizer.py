@@ -1,58 +1,171 @@
 import torch
 import torch.nn as nn
 from collections import deque
+from torch.autograd import Variable
+import numpy as np
+#from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+
+'''
+def numpy_state_to_variable(state, use_cuda):
+    state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+    if use_cuda:
+        state = state.cuda()
+    return state
+
+
+def numpy_reward_to_variable(reward, use_cuda):
+    reward = Variable(torch.from_numpy(np.array([reward]))).float()
+    if use_cuda:
+        reward = reward.cuda()
+    return reward
+'''
+
 
 class EnvironmentModelOptimizer():
 
-    def __init__(self,
-                 model,
-                 use_cuda = True):
-
-        self.use_cuda = use_cuda
-        # State Input
+    def __init__(self, model, args):
         self.model = model
-
-        if self.use_cuda == True:
+        if args.cuda == True:
             self.model.cuda()
+
+        self.reward_loss_coef = args.reward_loss_coef
 
         self.loss_function_frame = nn.MSELoss()
         self.loss_function_reward = nn.MSELoss()
-        #self.loss_function_reward = nn.CrossEntropyLoss()
-        #self.loss_function_frame = nn.CrossEntropyLoss()
 
-        self.optimizer = torch.optim.Adam
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr = args.lr,
+                                          eps=args.eps,
+                                          weight_decay=args.weight_decay)
 
-    def set_optimizer(self, optimizer_args_adam = {"lr": 1e-4,
-                                                   "betas": (0.9, 0.999),
-                                                   "eps": 1e-8,
-                                                   "weight_decay": 0.00001}):
-        # initialize optimizer
-        self.optimizer = self.optimizer(self.model.parameters(), **optimizer_args_adam)
-
-    def optimizer_step(self,
-                       env_state_frame, env_action,
-                       env_state_frame_target, env_reward_target):
-        """
-        Make a single gradient update.
-        """
+    def optimizer_step(self, state, action, next_state_target, reward_target):
         self.optimizer.zero_grad()
 
         # Compute loss and gradient
-        next_frame, next_reward = self.model(env_state_frame, env_action)
+        predicted_next_state, predicted_reward = self.model(state, action)
 
+        next_frame_loss = self.loss_function_frame(predicted_next_state, next_state_target)
+        next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
-        next_frame_loss = self.loss_function_frame(next_frame, env_state_frame_target)
-        next_reward_loss = self.loss_function_reward(next_reward, env_reward_target)
-
-        #print(next_reward_loss.data)
         # preform training step with both losses
-        loss = next_reward_loss + next_frame_loss
-        loss.backward(retain_graph=True)
-
-        #losses = [next_frame_loss, next_reward_loss]
-        #grad_seq = [losses[0].data.new(1).fill_(1) for _ in range(len(losses))]
-        #torch.autograd.backward(losses, grad_seq, retain_graph=True)
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
+        #loss.backward(retain_graph=True)
+        loss.backward()
 
         self.optimizer.step()
+        return (next_frame_loss, next_reward_loss), (predicted_next_state, predicted_reward)
 
-        return (next_frame_loss, next_reward_loss), (next_frame, next_reward)
+
+    def rollout_optimizer_step(self, rollout_batch):
+        self.optimizer.zero_grad()
+
+        next_frame_loss, next_reward_loss = 0, 0
+        '''state_batch, _, _, _ = [torch.cat(a) for a in zip(*[rollout[0] for rollout in rollout_batch])]
+        for i in range(1, len(rollout_batch[0])):
+            single_rollout_step_batch = [rollout[i] for rollout in rollout_batch]
+            #state_batch, action_batch, next_state_batch, reward_batch = [torch.cat(a) for a in zip(*single_rollout_step_batch)]
+            _ , action_batch, next_state_batch, reward_batch = [torch.cat(a) for a in zip(*single_rollout_step_batch)]
+
+            # Compute loss and gradient
+            predicted_next_state, predicted_reward = self.model(state_batch, action_batch)
+
+            next_frame_loss += self.loss_function_frame(predicted_next_state, next_state_batch)
+            next_reward_loss += self.loss_function_reward(predicted_reward, reward_batch)
+
+            state_batch = predicted_next_state #??'''
+
+        for i in range(len(rollout_batch[0])):
+            single_rollout_step_batch = [rollout[i] for rollout in rollout_batch]
+            state_batch, action_batch, next_state_batch, reward_batch = [torch.cat(a) for a in zip(*single_rollout_step_batch)]
+
+            # Compute loss and gradient
+            predicted_next_state, predicted_reward = self.model(state_batch, action_batch)
+
+            next_frame_loss += self.loss_function_frame(predicted_next_state, next_state_batch)
+            next_reward_loss += self.loss_function_reward(predicted_reward, reward_batch)
+
+
+        # preform training step with both losses
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
+        loss.backward()
+
+        self.optimizer.step()
+        return (next_frame_loss, next_reward_loss), (predicted_next_state, predicted_reward)
+
+
+
+class MiniPacmanEnvironmentModelOptimizer():
+
+    def __init__(self, model, args):
+        self.model = model
+        if args.cuda == True:
+            self.model.cuda()
+
+        self.reward_loss_coef = args.reward_loss_coef
+
+        self.loss_function_reward = nn.MSELoss()
+        self.loss_function_state = nn.CrossEntropyLoss()
+        #self.loss_function_state = nn.HingeEmbeddingLoss()
+
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr = args.lr,
+                                          eps=args.eps,
+                                          weight_decay=args.weight_decay)
+
+        from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+        self.rgb_to_class = MiniPacmanRGBToClassConverter()
+
+    def optimizer_step(self,
+                       state, action,
+                       next_state_target, reward_target):
+        self.optimizer.zero_grad()
+
+        # Compute loss and gradient
+        class_state = self.rgb_to_class.minipacman_rgb_to_class(state)
+        class_next_state_target = self.rgb_to_class.minipacman_rgb_to_class(next_state_target)
+        _, class_next_state_target = torch.max(class_next_state_target, 1)
+
+        #hinge_class_next_state_target = torch.ones(class_state.data.shape).type(torch.cuda.FloatTensor)
+        #hinge_class_next_state_target *= -1
+        #hinge_class_next_state_target = hinge_class_next_state_target.scatter_(1, torch.unsqueeze(class_next_state_target.data, 1), 1)
+
+        predicted_next_state, predicted_reward = self.model.forward_class(class_state, action)
+
+        next_frame_loss = self.loss_function_state(predicted_next_state, class_next_state_target)
+        #next_frame_loss = self.loss_function_state(predicted_next_state.data, hinge_class_next_state_target)
+        next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
+
+        # preform training step with both losses
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
+        loss.backward()
+        self.optimizer.step()
+
+        predicted_next_state = self.rgb_to_class.minipacman_class_to_rgb(predicted_next_state)
+
+        return (next_frame_loss, next_reward_loss), (predicted_next_state, predicted_reward)
+
+    def rollout_optimizer_step(self, rollout_batch):
+        self.optimizer.zero_grad()
+
+        next_frame_loss, next_reward_loss = 0, 0
+        for i in range(len(rollout_batch[0])):
+            single_rollout_step_batch = [rollout[i] for rollout in rollout_batch]
+            state_batch, action_batch, next_state_batch, reward_batch = [torch.cat(a) for a in zip(*single_rollout_step_batch)]
+
+            class_state = self.rgb_to_class.minipacman_rgb_to_class(state_batch)
+            class_next_state_target = self.rgb_to_class.minipacman_rgb_to_class(next_state_batch)
+            _, class_next_state_target = torch.max(class_next_state_target, 1)
+
+            # Compute loss and gradient
+            predicted_next_state, predicted_reward = self.model.forward_class(class_state, action_batch)
+
+            next_frame_loss += self.loss_function_state(predicted_next_state, class_next_state_target)
+            next_reward_loss += self.loss_function_reward(predicted_reward, reward_batch)
+
+
+        # preform training step with both losses
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
+        loss.backward()
+
+        self.optimizer.step()
+        return (next_frame_loss, next_reward_loss), (predicted_next_state, predicted_reward)

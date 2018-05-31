@@ -223,14 +223,12 @@ class EnvironmentModelTrainer():
                 sample_memory.append([state, action, next_state, reward])
 
                 # sample a state, next-state pair randomly from replay memory for a training step
-                if len(sample_memory) < self.batch_size:
-                    continue
-
-                sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
-                loss, prediction = self.optimizer.optimizer_step(state = sample_state,
-                                                                 action = sample_action,
-                                                                 next_state_target = sample_next_state,
-                                                                 reward_target = sample_reward)
+                if len(sample_memory) > self.batch_size:
+                    sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
+                    loss, prediction = self.optimizer.optimizer_step(state = sample_state,
+                                                                     action = sample_action,
+                                                                     next_state_target = sample_next_state,
+                                                                     reward_target = sample_reward)
 
                 state = next_state
 
@@ -245,6 +243,7 @@ class EnvironmentModelTrainer():
                 print("Save model", self.save_model_path)
                 state_to_save = self.optimizer.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
+
 
 def build_policy(env, load_policy_model, load_policy_model_path, use_cuda):
     policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda))

@@ -18,9 +18,35 @@ def main():
     args_parser.add_argument('--train-batchwise', action='store_true', default=False,
                              help='train autoencoder and envencoder on frames sampled from a deque (conceptwise like a replay memory),'
                                   'helps to reduce the bias on specific image orders, as they occur in a live game')
-    args_parser.add_argument('--grey_scale', action='store_true', default=False,
+    args_parser.add_argument('--grey-scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
+    args_parser.add_argument('--save-interval', type=int, default=10,
+                             help='Save interval for auto_encoder and env_encoder (default: 10)')
+    args_parser.add_argument('--save-model-path', default='/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c-ppo-acktr/LatentSpaceEncoder/trained_autoencoder_models/', help='path to save and load models')
+    args_parser.add_argument('--test', action='store_true', default=False, help='true to run test_encoder parallel')
+    args_parser.add_argument('--no-cuda', action='store_true', default=False, help='true to compute on cpu')
+    args_parser.add_argument('--cnn-model', action='store_true', default=False,
+                             help='True to use large cnn model, False to use small linear model (currently: False for MiniPacman'
+                                  'True for MsPacman)')
+    args_parser.add_argument('--frame-loss-weight', type=float, default=1, help='factor to multiply frame-loss with')
+    args_parser.add_argument('--reward-loss-weight', type=float, default=1, help='factor to multiply reward-loss with')
+    args_parser.add_argument('--latent-space', type=int, default=128,
+                             help='size of the latent space (default: 128)  (NOTE: when using the CNN model the latent-space dim is'
+                                  'calculated automatically overwriting this value)')
+    args_parser.add_argument('--encoder-space', type=int, default=256,
+                             help='size of the encoder space (default: 256)')
+    args_parser.add_argument('--hidden-space', type=int, default=512,
+                             help='size of the hidden space (default: 512)  (NOTE: this value only has meaning when using the LinearModel)')
+    args_parser.add_argument('--auto-encoder-lr', type=float, default=1e-4, help='autoencoder learning rate (default: 1e-4)')
+    args_parser.add_argument('--auto-encoder-weight-decay', type=float, default=1e-2, help='autoencoder weight decay (default: 1e-2)')
+    args_parser.add_argument('--env-encoder-lr', type=float, default=1e-4, help='env encoder learning rate (default: 1e-4)')
+    args_parser.add_argument('--env-encoder-weight-decay', type=float, default=1e-2, help='env encoder weight decay (default: 1e-2)')
     args = args_parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    if args.test:
+        import multiprocessing as mp
+        mp.set_start_method('spawn')    #get the exorcist, this method is evil
 
     #magic do not change
     plt.switch_backend('TKAgg')
@@ -29,14 +55,6 @@ def main():
     use_cuda = True
     from A2C_Models.I2A_MiniModel import I2A_MiniModel
     from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
-
-    #latent_space = 32#64
-    #encoder_space = 128#128
-    #hidden_space = 128#128
-
-    latent_space = 1024  # 64
-    encoder_space = 2048  # 128
-    #hidden_space = 512  # 128
 
     #create environment to train on
     if "MiniPacman" in args.env:
@@ -50,9 +68,13 @@ def main():
 
     #num_autoencoder_inputs = (1 if args.use_only_last_frame_of_state else obs_shape[0])   #this is the batch dimension (the frame stack)
     num_autoencoder_inputs = obs_shape[0]
-    #auto_encoder_model = LinearAutoEncoderModel(num_inputs = num_autoencoder_inputs, input_size=obs_shape[1:],
-    #                                            latent_space=latent_space, hidden_space=hidden_space)
-    auto_encoder_model = CNNAutoEncoderModel(num_inputs=num_autoencoder_inputs, latent_space=latent_space, input_size=obs_shape[1:])
+
+    if args.cnn_model:
+        auto_encoder_model = CNNAutoEncoderModel(num_inputs=num_autoencoder_inputs, latent_space=args.latent_space,
+                                                 input_size=obs_shape[1:])
+    else:
+        auto_encoder_model = LinearAutoEncoderModel(num_inputs = num_autoencoder_inputs, input_size=obs_shape[1:],
+                                                 latent_space=args.latent_space, hidden_space=args.hidden_space)
     if use_cuda:
         auto_encoder_model.cuda()
 
@@ -63,27 +85,41 @@ def main():
         policy.cuda()
 
     latent_space = auto_encoder_model.latent_space_dim
-    env_encoder_model = EnvEncoderModel(num_inputs=1, latent_space=latent_space, encoder_space=encoder_space,
+    env_encoder_model = EnvEncoderModel(num_inputs=1, latent_space=latent_space, encoder_space=args.encoder_space,
                                         action_broadcast_size=10, use_cuda=use_cuda)
     if use_cuda:
         env_encoder_model.cuda()
+
     loss_criterion = torch.nn.MSELoss()
     #auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)             #0.0001!!!
     #env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.00005, weight_decay=1e-5)       #0.0001!!!
-    auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=0.0001, weight_decay=1e-2)
-    env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=0.0001, weight_decay=1e-2)
+    auto_optimizer = torch.optim.RMSprop(auto_encoder_model.parameters(), lr=args.auto_encoder_lr, weight_decay=args.auto_encoder_weight_decay)
+    env_encoder_optimizer = torch.optim.RMSprop(env_encoder_model.parameters(), lr=args.env_encoder_lr, weight_decay=args.env_encoder_weight_decay)
 
     latent_space_trainer = LatentSpaceEnvModelTrainer(auto_encoder_model=auto_encoder_model, env_encoder_model=env_encoder_model,
                                                       loss_criterion=loss_criterion, auto_optimizer=auto_optimizer,
                                                       next_pred_optimizer=env_encoder_optimizer, use_cuda=use_cuda,
                                                       visualize=True,
-                                                      use_only_last_frame_of_state=args.use_only_last_frame_of_state,
-                                                      grey_scale=args.grey_scale)
+                                                      args=args)
+
+    if args.test:
+        import copy
+        from LatentSpaceEncoder.test_encoder import TestLatentSpaceModel
+        test_process = TestLatentSpaceModel(env=env,
+                                            auto_encoder=copy.deepcopy(auto_encoder_model),
+                                            env_encoder=copy.deepcopy(env_encoder_model),
+                                            auto_encoder_load_path=args.save_model_path + "autoencoder.pt",
+                                            env_encoder_load_path=args.save_model_path + "envencoder.pt",
+                                            rollout_policy=policy,
+                                            args=args)
+
     if args.train_batchwise:
         latent_space_trainer.train_env_encoder_batchwise(env, policy, use_cuda)
     else:
         latent_space_trainer.train_env_encoder(env, policy, use_cuda)
 
+    if args.test:
+        test_process.stop()
 
 
 

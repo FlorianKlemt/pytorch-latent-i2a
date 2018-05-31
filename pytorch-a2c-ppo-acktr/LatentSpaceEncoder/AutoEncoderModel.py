@@ -23,6 +23,7 @@ class LinearAutoEncoderModel(AutoEncoderModel):
         super(LinearAutoEncoderModel, self).__init__()
         self.num_inputs = num_inputs
         self.input_size_x, self.input_size_y = input_size
+        self.latent_space_dim = latent_space
         self.encoder = nn.Sequential(
             nn.Linear(num_inputs * self.input_size_x * self.input_size_y, hidden_space),    #1444 input size
             nn.ReLU(True),
@@ -43,7 +44,8 @@ class LinearAutoEncoderModel(AutoEncoderModel):
 
     def encode(self, x):
         x = x.view(-1)
-        return self.encoder(x)
+        x = self.encoder(x)
+        return x
 
     def decode(self, x):
         x = x.view(-1)

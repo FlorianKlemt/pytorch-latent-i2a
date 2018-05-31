@@ -111,6 +111,7 @@ def main():
 
     trainer.train_env_model_batchwise(1000000)
     #trainer.train_env_model(1000)
+    #trainer.train_env_model_batchwise_on_rollouts(10000,rollout_length=5)
 
     if args.render:
         test_process.stop()
@@ -144,14 +145,14 @@ class EnvironmentModelTrainer():
     def sample_action_from_distribution(self, actor):
         prob = F.softmax(actor, dim=1)
         action = prob.multinomial().data
-        use_cuda = action.is_cuda
+        #use_cuda = action.is_cuda
 
-        if random.random() < self.chance_of_random_action:
-            action_space = self.env.action_space.n
-            action_int = random.randint(0, action_space - 1)
-            action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
-            if use_cuda:
-                action = action.cuda()
+        #if random.random() < self.chance_of_random_action:
+        #    action_space = self.env.action_space.n
+        #    action_int = random.randint(0, action_space - 1)
+        #    action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
+        #    if use_cuda:
+        #        action = action.cuda()
 
         action = Variable(action)
         return action
@@ -229,15 +230,57 @@ class EnvironmentModelTrainer():
                                                                      action = sample_action,
                                                                      next_state_target = sample_next_state,
                                                                      reward_target = sample_reward)
+                    # log and print infos
+                    if self.loss_printer:
+                        (predicted_next_state, predicted_reward) = prediction
+                        self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                        if self.loss_printer.frames % 10 == 0:
+                            self.loss_printer.print_episode(episode=i_episode)
 
                 state = next_state
 
-                # log and print infos
-                if self.loss_printer:
-                    (predicted_next_state, predicted_reward) = prediction
-                    self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                    if self.loss_printer.frames % 10 == 0:
-                        self.loss_printer.print_episode(episode=i_episode)
+            if i_episode % self.args.save_interval==0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.optimizer.model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
+
+
+
+    def train_env_model_batchwise_on_rollouts(self, episoden = 10000, rollout_length=5):
+        from collections import deque
+        sample_memory = deque(maxlen=self.sample_memory_size)   #one sample is a complete rollout here
+
+        for i_episode in range(episoden):
+            state = self.env.reset()
+            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            if self.use_cuda:
+                state = state.cuda()
+
+            done = False
+            while not done:
+                rollout = []
+                for _ in range(rollout_length):
+                    # let policy decide on next action and perform it
+                    critic, actor = self.policy(state)
+                    action = self.sample_action_from_distribution(actor=actor)
+                    next_state, reward, done, _ = self.do_env_step(action=action)
+                    rollout.append([state, action, next_state, reward])
+                    state = next_state
+
+                # add current rollout to replay memory
+                sample_memory.append(rollout)
+
+                # sample a rollout randomly from replay memory for a training step
+                if len(sample_memory) > self.batch_size:
+                    sample_rollouts = random.sample(sample_memory, self.batch_size) #[[state, action, next_state, reward],...],[...]
+                    loss, prediction = self.optimizer.rollout_optimizer_step(sample_rollouts)
+
+                    # log and print infos
+                    if self.loss_printer:
+                        (_, predicted_reward) = prediction
+                        self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
+                        if self.loss_printer.frames % 10 == 0:
+                            self.loss_printer.print_episode(episode=i_episode)
 
             if i_episode % self.args.save_interval==0:
                 print("Save model", self.save_model_path)

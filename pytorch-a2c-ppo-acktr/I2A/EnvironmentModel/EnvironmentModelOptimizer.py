@@ -104,8 +104,8 @@ class MiniPacmanEnvironmentModelOptimizer():
         self.reward_loss_coef = args.reward_loss_coef
 
         self.loss_function_reward = nn.MSELoss()
-        #self.loss_function_reward = nn.CrossEntropyLoss()
         self.loss_function_state = nn.CrossEntropyLoss()
+        #self.loss_function_state = nn.HingeEmbeddingLoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr = args.lr,
@@ -125,9 +125,14 @@ class MiniPacmanEnvironmentModelOptimizer():
         class_next_state_target = self.rgb_to_class.minipacman_rgb_to_class(next_state_target)
         _, class_next_state_target = torch.max(class_next_state_target, 1)
 
+        #hinge_class_next_state_target = torch.ones(class_state.data.shape).type(torch.cuda.FloatTensor)
+        #hinge_class_next_state_target *= -1
+        #hinge_class_next_state_target = hinge_class_next_state_target.scatter_(1, torch.unsqueeze(class_next_state_target.data, 1), 1)
+
         predicted_next_state, predicted_reward = self.model.forward_class(class_state, action)
 
         next_frame_loss = self.loss_function_state(predicted_next_state, class_next_state_target)
+        #next_frame_loss = self.loss_function_state(predicted_next_state.data, hinge_class_next_state_target)
         next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
         # preform training step with both losses

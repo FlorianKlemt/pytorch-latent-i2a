@@ -28,6 +28,8 @@ class EnvironmentModelOptimizer():
         if args.cuda == True:
             self.model.cuda()
 
+        self.reward_loss_coef = args.reward_loss_coef
+
         self.loss_function_frame = nn.MSELoss()
         self.loss_function_reward = nn.MSELoss()
 
@@ -46,7 +48,7 @@ class EnvironmentModelOptimizer():
         next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
         # preform training step with both losses
-        loss = next_reward_loss + next_frame_loss
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
         #loss.backward(retain_graph=True)
         loss.backward()
 
@@ -61,6 +63,8 @@ class MiniPacmanEnvironmentModelOptimizer():
         self.model = model
         if args.cuda == True:
             self.model.cuda()
+
+        self.reward_loss_coef = args.reward_loss_coef
 
         self.loss_function_reward = nn.MSELoss()
         #self.loss_function_reward = nn.CrossEntropyLoss()
@@ -90,7 +94,7 @@ class MiniPacmanEnvironmentModelOptimizer():
         next_reward_loss = self.loss_function_reward(predicted_reward, reward_target)
 
         # preform training step with both losses
-        loss = next_reward_loss + next_frame_loss
+        loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
         loss.backward()
         self.optimizer.step()
 

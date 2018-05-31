@@ -56,6 +56,8 @@ def main():
                              help='RMSprop optimizer epsilon (default: 1e-5)')
     args_parser.add_argument('--weight-decay', type=float, default=0,
                              help='weight decay (default: 0)')
+    args_parser.add_argument('--reward-loss-coef', type=float, default=0.5,
+                             help='reward loss coef (default: 0.5)')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
@@ -126,6 +128,7 @@ class EnvironmentModelTrainer():
         self.chance_of_random_action = 0.25
         self.batch_size = args.batch_size
         self.save_model_path = save_model_path
+        self.sample_memory_size = 10000
 
         if args.vis:
             from visdom import Visdom
@@ -201,7 +204,7 @@ class EnvironmentModelTrainer():
 
     def train_env_model_batchwise(self, episoden = 10000):
         from collections import deque
-        sample_memory = deque(maxlen=10000)
+        sample_memory = deque(maxlen=self.sample_memory_size)
 
         for i_episode in range(episoden):
             state = self.env.reset()

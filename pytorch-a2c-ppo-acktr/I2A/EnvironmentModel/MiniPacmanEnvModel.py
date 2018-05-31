@@ -6,6 +6,15 @@ from collections import OrderedDict
 
 
 from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+import torch.nn.init as init
+import math
+
+def xavier_weights_init(m):
+    if isinstance(m, nn.Conv2d):
+        init.xavier_uniform(m.weight.data)
+        m.weight.data.mul_(math.sqrt(2))
+        if m.bias is not None:
+            m.bias.data.fill_(0)
 
 class Flatten(torch.nn.Module):
     def forward(self,input):
@@ -33,6 +42,7 @@ class BasicBlock(torch.nn.Module):
         self.right_conv1 = nn.Conv2d(num_inputs, n2, kernel_size=1)
         self.right_conv2 = nn.Conv2d(n2, n2, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(n1+n2, n3, kernel_size=1)            #input after cat is output size of left side + output size of right side = n1 + n2
+        self.apply(xavier_weights_init)
 
     def forward(self,input):
         x = self.pool_and_inject(input)
@@ -66,18 +76,15 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
           # TODO why do they use 5 output rewards??
           #('reward_fc', nn.Linear(64 * W * H, 1))
           ('reward_fc',    nn.Linear(64*W*H, 5))#,
-          #('softmax',      nn.Softmax())
+          #('relu',         nn.ReLU())
         ]))
-        #self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
+
         self.img_head = nn.Sequential(OrderedDict([
             ('conv', nn.Conv2d(64, input_channels, kernel_size=1))#,
             #('softmax', nn.Softmax())
         ]))
-        torch.nn.init.xavier_uniform(self.conv1.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_conv1.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_conv2.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_fc.weight)
-        torch.nn.init.xavier_uniform(self.img_head.conv.weight)
+
+        self.apply(xavier_weights_init)
 
         self.train()
 
@@ -151,11 +158,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
         ]))
         self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
 
-        torch.nn.init.xavier_uniform(self.conv1.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_conv1.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_conv2.weight)
-        torch.nn.init.xavier_uniform(self.reward_head.reward_fc.weight)
-        torch.nn.init.xavier_uniform(self.img_head.weight)
+        self.apply(xavier_weights_init)
 
         #TODO: this formulation destroys compatibility with current I2A implementation
         #self.img_head = nn.Sequential(OrderedDict([

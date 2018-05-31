@@ -9,7 +9,6 @@ from random import randint
 import collections
 from collections import deque
 from custom_envs import make_custom_env
-from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
 from I2A.ImaginationCore import ImaginationCore
 from A2C_Models.I2A_MiniModel import I2A_MiniModel
 from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
@@ -28,7 +27,8 @@ class RenderImaginationCore():
 
 
     def render_preprocessing(self, observation, reward_text, step_text):
-        drawable_state = observation.permute(1, 2, 0)
+        #drawable_state = observation.permute(1, 2, 0)
+        drawable_state = observation.view(observation.data.shape[1], observation.data.shape[2], -1)
 
         drawable_state = drawable_state.data.cpu().numpy()
 
@@ -80,7 +80,14 @@ def play_with_imagination_core(imagination_core, env, args):
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
 
-    renderer.render_observation(state[0], state[0], reward, reward, 0)
+    # todo remove only used for testing rgb to class converter
+    from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+    x = MiniPacmanRGBToClassConverter()
+    p = x.minipacman_rgb_to_class(state)
+    p = x.minipacman_class_to_rgb(p)
+    # end remove
+
+    renderer.render_observation(state[0], p[0], reward, reward, 0)
     # render start state
     #if render:
     #    renderer.render_observation('start_state', state[0])
@@ -121,7 +128,7 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
         play_with_imagination_core(imagination_core, env=env, args=args)
 
         print("finished game", i)
-        #time.sleep(10)
+        time.sleep(5)
         i += 1
 
 class TestEnvironmentModel():

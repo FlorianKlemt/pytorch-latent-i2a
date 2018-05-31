@@ -54,7 +54,7 @@ class WarpMiniPacmanFrameRGB(gym.ObservationWrapper):
         self.observation_space = spaces.Box(low=0., high=1., shape=(obs_shape[2], obs_shape[0], obs_shape[1]), dtype=np.float)
 
     def observation(self, obs):
-        return obs.transpose(2,0,1)
+        return obs.reshape(self.observation_space.shape)#obs.transpose(2,0,1)
 
 class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):

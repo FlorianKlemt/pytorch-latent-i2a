@@ -93,7 +93,7 @@ def main():
     if args.use_class_labels:
         optimizer = MiniPacmanEnvironmentModelOptimizer(model=environment_model, args=args)
     else:
-        optimizer = EnvironmentModelOptimizer(model=environment_model, use_cuda=args.cuda)
+        optimizer = EnvironmentModelOptimizer(model=environment_model, args=args)
 
     if args.render:
         test_process = TestEnvironmentModel(env = env,

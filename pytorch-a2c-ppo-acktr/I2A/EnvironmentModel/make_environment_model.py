@@ -54,6 +54,8 @@ def main():
                              help='learning rate (default: 7e-4)')
     args_parser.add_argument('--eps', type=float, default=1e-5, #1e-8
                              help='RMSprop optimizer epsilon (default: 1e-5)')
+    args_parser.add_argument('--weight-decay', type=float, default=0,
+                             help='weight decay (default: 0)')
     args = args_parser.parse_args()
 
     #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')

@@ -23,24 +23,18 @@ def numpy_reward_to_variable(reward, use_cuda):
 
 class EnvironmentModelOptimizer():
 
-    def __init__(self,
-                 model,
-                 use_cuda = True,
-                 optimizer_args_adam={"lr": 1e-2,#1e-4,
-                                      "betas": (0.9, 0.999),
-                                      "eps": 1e-8,
-                                      "weight_decay": 0.00001}
-                 ):
-
-        self.use_cuda = use_cuda
+    def __init__(self, model, args):
         self.model = model
-        if self.use_cuda == True:
+        if args.cuda == True:
             self.model.cuda()
 
         self.loss_function_frame = nn.MSELoss()
         self.loss_function_reward = nn.MSELoss()
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), **optimizer_args_adam)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr = args.lr,
+                                          eps=args.eps,
+                                          weight_decay=args.weight_decay)
 
     def optimizer_step(self, state, action, next_state_target, reward_target):
         self.optimizer.zero_grad()
@@ -64,16 +58,18 @@ class EnvironmentModelOptimizer():
 class MiniPacmanEnvironmentModelOptimizer():
 
     def __init__(self, model, args):
-        self.use_cuda = args.cuda
         self.model = model
-        if self.use_cuda == True:
+        if args.cuda == True:
             self.model.cuda()
 
         self.loss_function_reward = nn.MSELoss()
         #self.loss_function_reward = nn.CrossEntropyLoss()
         self.loss_function_state = nn.CrossEntropyLoss()
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(), args.lr, eps=args.eps)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                          lr = args.lr,
+                                          eps=args.eps,
+                                          weight_decay=args.weight_decay)
 
         from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
         self.rgb_to_class = MiniPacmanRGBToClassConverter()

@@ -43,11 +43,13 @@ def main():
                              help='port to run the server on (default: 8097)')
     args_parser.add_argument('--grey_scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
-    args_parser.add_argument('--save-interval', type=int, default=100,
-                             help='save model each n episodes (default: 100)')
+    args_parser.add_argument('--save-interval', type=int, default=10,
+                             help='save model each n episodes (default: 10)')
     args_parser.add_argument('--use-class-labels', action='store_true', default=False,
                              help='true to use pixelwise cross-entropy-loss and make'
                                   'the color of each pixel a classification task')
+    args_parser.add_argument('--batch-size', type=int, default=100,
+                             help='batch size (default: 100)')
     args_parser.add_argument('--lr', type=float, default=7e-4, #1e-4
                              help='learning rate (default: 7e-4)')
     args_parser.add_argument('--eps', type=float, default=1e-5, #1e-8
@@ -62,9 +64,11 @@ def main():
         mp.set_start_method('spawn')
 
     color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
-    save_model_path = '{0}{1}{2}.dat'.format(args.save_environment_model_dir,
-                                             args.env_name,
-                                             color_prefix)
+    class_labels_prefix = '_labels' if args.use_class_labels else ''
+    save_model_path = '{0}{1}{2}{3}.dat'.format(args.save_environment_model_dir,
+                                                args.env_name,
+                                                color_prefix,
+                                                class_labels_prefix)
 
     load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.env_name)
 
@@ -99,7 +103,7 @@ def main():
                                       env=env,
                                       policy=policy,
                                       optimizer=optimizer,
-                                      environment_model = environment_model)
+                                      save_model_path = save_model_path)
 
     trainer.train_env_model_batchwise(1000000)
     #trainer.train_env_model(1000)
@@ -111,20 +115,15 @@ def main():
 
 
 class EnvironmentModelTrainer():
-    def __init__(self, args, env, policy, optimizer, environment_model):
+    def __init__(self, args, env, policy, optimizer, save_model_path):
         self.args = args
-        self.save_environment_model_dir = args.save_environment_model_dir
-        self.save_environment_model_name = args.env_name
         self.env = env
         self.policy = policy
         self.optimizer = optimizer
-        self.environment_model = environment_model
         self.use_cuda = args.cuda
         self.chance_of_random_action = 0.25
-        self.batch_size = 50
-
-        color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
-        self.save_model_path = '{0}{1}{2}.dat'.format(self.save_environment_model_dir, self.save_environment_model_name, color_prefix)
+        self.batch_size = args.batch_size
+        self.save_model_path = save_model_path
 
         if args.vis:
             from visdom import Visdom
@@ -133,8 +132,8 @@ class EnvironmentModelTrainer():
             viz = None
 
         self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
-                                 delete_log_file=args.load_environment_model == False,
-                                 viz=viz)
+                                       delete_log_file=args.load_environment_model == False,
+                                       viz=viz)
 
 
     def sample_action_from_distribution(self, actor):
@@ -161,7 +160,6 @@ class EnvironmentModelTrainer():
             next_state = next_state.cuda()
             reward = reward.cuda()
         return  next_state, reward, done, info
-
 
 
     def train_env_model(self, episoden = 10000):
@@ -196,7 +194,7 @@ class EnvironmentModelTrainer():
 
             if i_episode % self.args.save_interval == 0:
                 print("Save model", self.save_model_path)
-                state_to_save = self.environment_model.state_dict()
+                state_to_save = self.optimizer.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
 
     def train_env_model_batchwise(self, episoden = 10000):
@@ -229,7 +227,6 @@ class EnvironmentModelTrainer():
                                                                  next_state_target = sample_next_state,
                                                                  reward_target = sample_reward)
 
-
                 state = next_state
 
                 # log and print infos
@@ -241,7 +238,7 @@ class EnvironmentModelTrainer():
 
             if i_episode % self.args.save_interval==0:
                 print("Save model", self.save_model_path)
-                state_to_save = self.environment_model.state_dict()
+                state_to_save = self.optimizer.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
 
 def build_policy(env, load_policy_model, load_policy_model_path, use_cuda):

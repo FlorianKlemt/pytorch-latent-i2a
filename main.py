@@ -141,10 +141,10 @@ def main():
     if args.render_game:
         load_path = os.path.join(args.save_dir, args.algo)
         test_process = TestPolicy(model=copy.deepcopy(actor_critic),
-                                  load_path=load_path,
-                                  args=args)
+                                load_path=load_path,
+                                args=args)
 
-   if args.algo == 'i2a':
+    if args.algo == 'i2a':
         #param = [p for p in actor_critic.parameters() if (p.requires_grad and not p in rollout_policy.parameters())]
         #nope = [k for k in rollout_policy.parameters()]
         #param = [p for p in param if not p in nope]
@@ -259,10 +259,10 @@ def main():
 
         if args.vis:
             distill_loss_data = distill_loss.data[0] if args.algo == 'i2a' else None
-            visdom_plotter.append(dist_entropy.data[0],
+            visdom_plotter.append(dist_entropy,
                                   final_rewards.numpy().flatten(),
-                                  value_loss.data[0],
-                                  action_loss.data[0],
+                                  value_loss,
+                                  action_loss,
                                   distill_loss_data)
 
         if j % args.save_interval == 0 and args.save_dir != "":
@@ -290,9 +290,9 @@ def main():
 
             distill_loss = ", distill_loss {:.5f}".format(distill_loss.data[0]) if args.algo == 'i2a' else ""
             loss_info = "value loss {:.5f}, policy loss {:.5f}{}"\
-                .format(value_loss.data[0], action_loss.data[0], distill_loss)
+                .format(value_loss, action_loss, distill_loss)
 
-            entropy_info = "entropy {:.5f}".format(dist_entropy.data[0])
+            entropy_info = "entropy {:.5f}".format(dist_entropy)
 
             info = "Updates {}, num timesteps {}, FPS {}, {}, {}, {}, time {:.5f} min"\
                     .format(j, total_num_steps, int(total_num_steps / (end - start)),

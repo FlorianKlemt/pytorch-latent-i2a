@@ -3,8 +3,7 @@ import math
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from A2C_Models.model import Policy
-from distributions import Categorical
+from model import Policy
 from I2A.utils import get_linear_dims_after_conv
 
 def weights_init(m):

@@ -3,7 +3,7 @@ import math
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from A2C_Models.model import Policy
+from model import Policy
 from distributions import Categorical
 
 def weights_init(m):

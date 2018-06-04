@@ -1,4 +1,4 @@
-from A2C_Models.model import Policy
+from model import Policy
 import torch.nn.functional as F
 
 class A2C_PolicyWrapper(Policy):

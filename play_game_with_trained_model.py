@@ -2,7 +2,6 @@ from envs import WrapPyTorch
 import torch
 import time
 import os
-from torch.autograd import Variable
 import torch.nn.functional as F
 from custom_envs import make_custom_env, MiniFrameStack
 
@@ -71,22 +70,16 @@ class TestEnvironment():
         self.env.render()
 
     def step(self):
-        input = Variable(torch.from_numpy(self.state).float(), volatile = True)
-        if self.use_cuda:
-            input = input.cuda()
+        with torch.no_grad():
+            input = torch.from_numpy(self.state).float()
+            if self.use_cuda:
+                input = input.cuda()
 
-        #value, logits = self.model(input)
-        #probs = F.softmax(logits, dim=0)
-        #action = probs.multinomial().data
-        #cpu_actions = action.cpu()
-        #cpu_actions = cpu_actions.numpy()
-        #cpu_actions = cpu_actions[0][0]
+            _, actions, _, _ = self.model.act(input, None, None)
+            cpu_actions = actions.item()
 
-        _, actions, _, _ = self.model.act(input, None, None)
-        cpu_actions = actions.data[0][0]
-
-        self.state, reward, done, info = self.env.step(cpu_actions)
-        self.reward += reward
+            self.state, reward, done, info = self.env.step(cpu_actions)
+            self.reward += reward
 
         return done
 

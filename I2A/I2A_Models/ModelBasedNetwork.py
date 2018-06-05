@@ -1,6 +1,5 @@
 import torch
 from I2A.RolloutEncoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
-from torch.autograd import Variable
 import numpy as np
 
 class ModelBasedNetwork(torch.nn.Module):
@@ -48,16 +47,16 @@ class ModelBasedNetwork(torch.nn.Module):
         # model-based side
         states = input_state.repeat(self.number_actions, 1, 1, 1, 1)
         states = states.permute(1, 0, 2, 3, 4).contiguous()
-        actions = Variable(torch.arange(self.number_actions).long()).unsqueeze(1)
-        actions = actions.repeat(input_state.data.shape[0], 1, 1)
+        actions = torch.arange(self.number_actions).long().unsqueeze(1)
+        actions = actions.repeat(input_state.shape[0], 1, 1)
         if self.use_cuda:
             actions = actions.cuda()
         # compute rollout encoder final results
 
-        states_shape = states.data.shape
+        states_shape = states.shape
         batch_size = states_shape[0] * states_shape[1]
         states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])
-        actions = actions.view(actions.data.shape[0] * actions.data.shape[1], -1)
+        actions = actions.view(actions.shape[0] * actions.shape[1], -1)
         self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=batch_size)
         rollout_results = self.rollout_encoder.forward(states, actions)
 

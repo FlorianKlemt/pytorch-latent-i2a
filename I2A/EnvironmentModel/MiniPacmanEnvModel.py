@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 from collections import OrderedDict
 
 
@@ -59,7 +58,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        self.reward_bins = Variable(torch.FloatTensor(reward_bins).type(self.FloatTensor))
+        self.reward_bins = torch.FloatTensor(reward_bins).type(self.FloatTensor)
 
         input_channels = obs_shape[0]
         W=obs_shape[1]
@@ -76,7 +75,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
           # TODO why do they use 5 output rewards??
           #('reward_fc', nn.Linear(64 * W * H, 1))
           ('reward_fc',    nn.Linear(64*W*H, 5))#,
-          #('relu',         nn.ReLU())
+          ('softmax',      nn.Softmax())
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([
@@ -100,12 +99,12 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
         return image_out,reward_out
 
     def forward_class(self,input_frame,input_action):
-        one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
+        one_hot = torch.zeros(input_action.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
-        one_hot.scatter_(1, input_action.data, 1)
+        one_hot.scatter_(1, input_action, 1)
         # breoadcast action
         one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
-        broadcasted_action = Variable(one_hot.repeat(1, 1, input_frame.data.shape[2], input_frame.data.shape[3]))
+        broadcasted_action = one_hot.repeat(1, 1, input_frame.shape[2], input_frame.shape[3])
 
         # concatinate observation and broadcasted action
         x = torch.cat((input_frame,broadcasted_action),1)
@@ -137,7 +136,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        self.reward_bins = Variable(torch.FloatTensor(reward_bins).type(self.FloatTensor))
+        self.reward_bins = torch.FloatTensor(reward_bins).type(self.FloatTensor)
 
         input_channels = obs_shape[0]
         W=obs_shape[1]
@@ -160,22 +159,15 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.apply(xavier_weights_init)
 
-        #TODO: this formulation destroys compatibility with current I2A implementation
-        #self.img_head = nn.Sequential(OrderedDict([
-        #    ('conv', nn.Conv2d(64, input_channels, kernel_size=1))#,
-        #    #('softmax', nn.Softmax())
-        #]))
-        #torch.nn.init.xavier_uniform(self.img_head.conv.weight)
-
         self.train()
 
     def forward(self,input_frame,input_action):
-        one_hot = torch.zeros(input_action.data.shape[0], self.num_actions).type(self.FloatTensor)
+        one_hot = torch.zeros(input_action.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
-        one_hot.scatter_(1, input_action.data, 1)
+        one_hot.scatter_(1, input_action, 1)
         # breoadcast action
         one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
-        broadcasted_action = Variable(one_hot.repeat(1, 1, input_frame.data.shape[2], input_frame.data.shape[3]))
+        broadcasted_action = one_hot.repeat(1, 1, input_frame.shape[2], input_frame.shape[3])
 
         # concatinate observation and broadcasted action
         x = torch.cat((input_frame,broadcasted_action),1)
@@ -201,4 +193,4 @@ class CopyEnvModel(torch.nn.Module):
     def __init__(self):
         super(CopyEnvModel, self).__init__()
     def forward(self, input_frame, input_action):
-        return input_frame, Variable(torch.zeros(input_frame.data.shape[0])).cuda()
+        return input_frame, torch.zeros(input_frame.shape[0]).cuda()

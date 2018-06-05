@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.autograd import Variable
 import torch.nn.functional as F
 import numpy as np
 
@@ -31,8 +30,5 @@ class ImaginationCore(nn.Module):
         return next_state, reward
 
     def sample(self, input_state):
-        #TODO: HOW THE FUCK IS THIS SUPPOSED TO BE WITH THE RETARDED ACT FUNCTION IN THIS REPO??
-        #critic, actor = self.policy(state)
         value, action, action_log_probs, states = self.rollout_policy.act(input_state, None, None)
-        #action = action.cpu().data[0][0]
         return action

@@ -1,6 +1,4 @@
 import torch
-from torch.autograd import Variable
-
 
 class MiniPacmanRGBToClassConverter():
     def __init__(self, use_cuda = True):
@@ -34,18 +32,18 @@ class MiniPacmanRGBToClassConverter():
             self.color = self.color.cuda()
 
     def minipacman_rgb_to_class(self, state):
-        state = state.view(state.data.shape[0], state.data.shape[2], state.data.shape[3], -1)
+        state = state.view(state.shape[0], state.shape[2], state.shape[3], -1)
 
         # black python magic: if rgb colors are equal to walls color, food color etc.
         # -> we get an array of 3 times 1, so we can sum them in the 3th dimension up
-        wall = ((state.data[:, :, :] == self.color_walls).sum(3) == 3).float()
-        food = ((state.data[:, :, :] == self.color_food).sum(3) == 3).float()
-        pillman = ((state.data[:, :, :] == self.color_pillman).sum(3) == 3).float()
-        ground = ((state.data[:, :, :] == self.color_ground).sum(3) == 3).float()
-        pill = ((state.data[:, :, :] == self.color_pill).sum(3) == 3).float()
-        ghost = ((state.data[:, :, :] == self.color_ghost).sum(3) == 3).float()
-        ghost_edible = ((state.data[:, :, :] == self.color_ghost_edible).sum(3) == 3).float()
-        class_state = Variable(torch.stack([wall, food, pillman, ground, pill, ghost, ghost_edible], -1))
+        wall = ((state[:, :, :] == self.color_walls).sum(3) == 3).float()
+        food = ((state[:, :, :] == self.color_food).sum(3) == 3).float()
+        pillman = ((state[:, :, :] == self.color_pillman).sum(3) == 3).float()
+        ground = ((state[:, :, :] == self.color_ground).sum(3) == 3).float()
+        pill = ((state[:, :, :] == self.color_pill).sum(3) == 3).float()
+        ghost = ((state[:, :, :] == self.color_ghost).sum(3) == 3).float()
+        ghost_edible = ((state[:, :, :] == self.color_ghost_edible).sum(3) == 3).float()
+        class_state = torch.stack([wall, food, pillman, ground, pill, ghost, ghost_edible], -1)
 
         if self.use_cuda:
             class_state = class_state.cuda()
@@ -69,14 +67,14 @@ class MiniPacmanRGBToClassConverter():
                     else:
                         class_state[b, x, y, 4] = 1.
         '''
-        return class_state.view(class_state.data.shape[0], -1, class_state.data.shape[1], class_state.data.shape[2])
+        return class_state.view(class_state.shape[0], -1, class_state.shape[1], class_state.shape[2])
 
     def minipacman_class_to_rgb(self, state):
-        state = state.view(state.data.shape[0], state.data.shape[2], state.data.shape[3], -1)
+        state = state.view(state.shape[0], state.shape[2], state.shape[3], -1)
 
         _, index = torch.max(state[:, :, :], 3)
-        rgb_state_tensor =torch.index_select(self.color, 0, index.data.view(-1))
-        rgb_state = Variable(rgb_state_tensor.view(state.data.shape[0],3,state.data.shape[1],state.data.shape[2]))
+        rgb_state_tensor =torch.index_select(self.color, 0, index.view(-1))
+        rgb_state = rgb_state_tensor.view(state.shape[0],3,state.shape[1],state.shape[2])
 
         #legacy-code below serves as documentation for magic above
         '''for b in range(state.data.shape[0]):

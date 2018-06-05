@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from collections import deque
-from torch.autograd import Variable
 import numpy as np
 #from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
 

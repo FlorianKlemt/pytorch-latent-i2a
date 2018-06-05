@@ -1,6 +1,5 @@
 import os
 import torch
-from torch.autograd import Variable
 import numpy as np
 import time
 import cv2
@@ -28,9 +27,9 @@ class RenderImaginationCore():
 
     def render_preprocessing(self, observation, reward_text, step_text):
         #drawable_state = observation.permute(1, 2, 0)
-        drawable_state = observation.view(observation.data.shape[1], observation.data.shape[2], -1)
+        drawable_state = observation.view(observation.shape[1], observation.shape[2], -1)
 
-        drawable_state = drawable_state.data.cpu().numpy()
+        drawable_state = drawable_state.detach().cpu().numpy()
 
         zeros = np.ones((4, drawable_state.shape[1], drawable_state.shape[2]))
         drawable_state = np.append(drawable_state, zeros, axis=0)
@@ -62,7 +61,7 @@ class RenderImaginationCore():
 
 
 def numpy_to_variable(numpy_value, use_cuda):
-    value = Variable(torch.from_numpy(numpy_value).unsqueeze(0), requires_grad=False).float()
+    value = torch.from_numpy(numpy_value, requires_grad=False).unsqueeze(0).float()
     if use_cuda:
         value = value.cuda()
     return value
@@ -98,7 +97,7 @@ def play_with_imagination_core(imagination_core, env, args):
         action = imagination_core.sample(predicted_state)
         predicted_state, predicted_reward = imagination_core(predicted_state, action)
 
-        predicted_reward = predicted_reward.data.cpu().numpy()
+        predicted_reward = predicted_reward.detach().cpu().numpy()
         print(t+1, "reward", np.max(predicted_reward[0], 0))
 
         observation, reward, done, _ = env.step(action.item())

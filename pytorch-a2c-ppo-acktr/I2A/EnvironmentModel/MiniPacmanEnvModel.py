@@ -73,10 +73,8 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
           ('reward_conv2', nn.Conv2d(64, 64, kernel_size=1)),
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
-          # TODO why do they use 5 output rewards??
-          #('reward_fc', nn.Linear(64 * W * H, 1))
-          ('reward_fc',    nn.Linear(64*W*H, 5))#,
-          #('relu',         nn.ReLU())
+          ('reward_fc',    nn.Linear(64*W*H, 5)),
+          ('softmax', nn.Softmax())
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([
@@ -153,8 +151,8 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('flatten',      Flatten()),
           # TODO why do they use 5 output rewards??
           #('reward_fc', nn.Linear(64 * W * H, 1))
-          ('reward_fc',    nn.Linear(64*W*H, 5))#,
-          #('softmax',      nn.Softmax())
+          ('reward_fc',    nn.Linear(64*W*H, 5)),
+          ('softmax',      nn.Softmax())
         ]))
         self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
 

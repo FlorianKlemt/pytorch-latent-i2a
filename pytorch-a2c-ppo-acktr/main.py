@@ -103,6 +103,7 @@ def main():
         actor_critic, rollout_policy = build_i2a_model(obs_shape=envs.observation_space.shape,
                                                        frame_stack=args.num_stack,
                                                        action_space=envs.action_space.n,
+                                                       i2a_rollout_steps=args.i2a_rollout_steps,
                                                        em_model_reward_bins=em_model_reward_bins,
                                                        use_cuda=args.cuda,
                                                        environment_model_name=args.env_name + color_prefix + ".dat",
@@ -400,7 +401,7 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, frame_stack, action_space, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model):
+def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model):
     from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel, CopyEnvModel
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
@@ -450,6 +451,7 @@ def build_i2a_model(obs_shape, frame_stack, action_space, em_model_reward_bins, 
     i2a_model = A2C_PolicyWrapper(I2A(obs_shape=obs_shape_frame_stack,
                                       action_space=action_space,
                                       imagination_core=imagination_core,
+                                      rollout_steps=i2a_rollout_steps,
                                       use_cuda=args.cuda))
 
     return i2a_model, rollout_policy

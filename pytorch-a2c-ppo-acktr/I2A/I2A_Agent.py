@@ -8,11 +8,11 @@ from I2A.I2A_Models.OutputPolicyNetwork import OutputPolicyNetwork
 #    if Model == "MiniPacman"
 
 class I2A(torch.nn.Module):
-    def __init__(self, obs_shape, action_space, imagination_core, use_cuda):
+    def __init__(self, obs_shape, action_space, imagination_core, rollout_steps, use_cuda):
         super(I2A, self).__init__()
 
         self.action_space = action_space
-        self.rollout_steps = 2
+        self.rollout_steps = rollout_steps
         self.number_lstm_cells = 256
         self.model_free_output_size = 512
         self.model_based_output_size = self.number_lstm_cells * self.action_space

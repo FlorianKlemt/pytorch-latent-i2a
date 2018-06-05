@@ -113,7 +113,7 @@ class MiniPacmanEnvironmentModelOptimizer():
                                           weight_decay=args.weight_decay)
 
         from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
-        self.rgb_to_class = MiniPacmanRGBToClassConverter()
+        self.rgb_to_class = MiniPacmanRGBToClassConverter(use_cuda=args.cuda)
 
     def optimizer_step(self,
                        state, action,

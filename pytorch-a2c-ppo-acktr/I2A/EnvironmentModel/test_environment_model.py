@@ -82,7 +82,7 @@ def play_with_imagination_core(imagination_core, env, args):
 
     # todo remove only used for testing rgb to class converter
     from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
-    x = MiniPacmanRGBToClassConverter()
+    x = MiniPacmanRGBToClassConverter(args.cuda)
     p = x.minipacman_rgb_to_class(state)
     p = x.minipacman_class_to_rgb(p)
     # end remove

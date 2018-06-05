@@ -88,7 +88,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
 
         self.train()
 
-        self.rgb_to_class = MiniPacmanRGBToClassConverter()
+        self.rgb_to_class = MiniPacmanRGBToClassConverter(use_cuda=use_cuda)
 
     def forward(self,input_frame,input_action):
         input_frame = self.rgb_to_class.minipacman_rgb_to_class(input_frame)

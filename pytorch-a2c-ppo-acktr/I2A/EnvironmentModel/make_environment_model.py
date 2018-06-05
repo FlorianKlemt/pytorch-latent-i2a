@@ -73,6 +73,11 @@ def main():
                                                 args.env_name,
                                                 color_prefix,
                                                 class_labels_prefix)
+    log_path = '{0}env_{1}{2}{3}.log'.format(args.save_environment_model_dir,
+                                                  args.env_name,
+                                                  color_prefix,
+                                                  class_labels_prefix)
+
 
     load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.env_name)
 
@@ -107,7 +112,8 @@ def main():
                                       env=env,
                                       policy=policy,
                                       optimizer=optimizer,
-                                      save_model_path = save_model_path)
+                                      save_model_path = save_model_path,
+                                      log_path = log_path)
 
     trainer.train_env_model_batchwise(1000000)
     #trainer.train_env_model(1000)
@@ -120,7 +126,7 @@ def main():
 
 
 class EnvironmentModelTrainer():
-    def __init__(self, args, env, policy, optimizer, save_model_path):
+    def __init__(self, args, env, policy, optimizer, save_model_path, log_path):
         self.args = args
         self.env = env
         self.policy = policy
@@ -130,6 +136,7 @@ class EnvironmentModelTrainer():
         self.batch_size = args.batch_size
         self.save_model_path = save_model_path
         self.sample_memory_size = 10000
+        self.log_path = log_path
 
         if args.vis:
             from visdom import Visdom
@@ -137,7 +144,8 @@ class EnvironmentModelTrainer():
         else:
             viz = None
 
-        self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
+        self.loss_printer = LogTrainEM(log_name=self.log_path,
+                                       batch_size=self.batch_size,
                                        delete_log_file=args.load_environment_model == False,
                                        viz=viz)
 
@@ -194,9 +202,10 @@ class EnvironmentModelTrainer():
                 # log and print infos
                 if self.loss_printer:
                     (predicted_next_state, predicted_reward) = prediction
-                    self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                    if self.loss_printer.frames % 100 == 0:
-                        self.loss_printer.print_episode(episode=i_episode)
+                    self.loss_printer.log_loss_and_reward(loss=loss,
+                                                          reward_prediction=predicted_reward,
+                                                          reward=reward,
+                                                          episode=i_episode)
 
             if i_episode % self.args.save_interval == 0:
                 print("Save model", self.save_model_path)
@@ -233,9 +242,10 @@ class EnvironmentModelTrainer():
                     # log and print infos
                     if self.loss_printer:
                         (predicted_next_state, predicted_reward) = prediction
-                        self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                        if self.loss_printer.frames % 10 == 0:
-                            self.loss_printer.print_episode(episode=i_episode)
+                        self.loss_printer.log_loss_and_reward(loss=loss,
+                                                              reward_prediction=predicted_reward,
+                                                              reward=reward,
+                                                              episode=i_episode)
 
                 state = next_state
 

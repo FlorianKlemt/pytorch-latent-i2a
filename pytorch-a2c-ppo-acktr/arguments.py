@@ -71,6 +71,8 @@ def get_args():
                              help='True to convert to grey_scale images')
     parser.add_argument('--use-copy-model', action='store_true', default=False,
                         help='True to use copy model, False for standard I2A')
+    parser.add_argument('--i2a-rollout-steps', type=int, default=5,
+                        help='number of steps the imagination core rollouts in the I2A training (default: 5)')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

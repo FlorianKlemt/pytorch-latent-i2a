@@ -109,8 +109,8 @@ def main():
                                       optimizer=optimizer,
                                       save_model_path = save_model_path)
 
-    trainer.train_env_model_batchwise(1000000)
-    #trainer.train_env_model(1000)
+    #trainer.train_env_model_batchwise(1000000)
+    trainer.train_env_model(1000)
     #trainer.train_env_model_batchwise_on_rollouts(10000,rollout_length=5)
 
     if args.render:
@@ -144,7 +144,7 @@ class EnvironmentModelTrainer():
 
     def sample_action_from_distribution(self, actor):
         prob = F.softmax(actor, dim=1)
-        action = prob.multinomial().data
+        action = prob.multinomial(num_samples=1)
         #use_cuda = action.is_cuda
 
         #if random.random() < self.chance_of_random_action:
@@ -154,14 +154,13 @@ class EnvironmentModelTrainer():
         #    if use_cuda:
         #        action = action.cuda()
 
-        action = Variable(action)
         return action
 
 
     def do_env_step(self, action):
-        next_state, reward, done, info = self.env.step(action.data[0][0])
-        next_state = Variable(torch.from_numpy(next_state).unsqueeze(0)).float()
-        reward = Variable(torch.from_numpy(np.array([reward]))).float()
+        next_state, reward, done, info = self.env.step(action.item())
+        next_state = torch.from_numpy(next_state).unsqueeze(0).float()
+        reward = torch.FloatTensor([reward])
         if self.use_cuda:
             next_state = next_state.cuda()
             reward = reward.cuda()
@@ -172,7 +171,7 @@ class EnvironmentModelTrainer():
         for i_episode in range(episoden):
             # loss_printer.reset()
             state = self.env.reset()
-            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            state = torch.from_numpy(state).unsqueeze(0).float()
             if self.use_cuda:
                 state = state.cuda()
 
@@ -209,7 +208,7 @@ class EnvironmentModelTrainer():
 
         for i_episode in range(episoden):
             state = self.env.reset()
-            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            state = torch.from_numpy(state).unsqueeze(0).float()
             if self.use_cuda:
                 state = state.cuda()
 
@@ -252,7 +251,7 @@ class EnvironmentModelTrainer():
 
         for i_episode in range(episoden):
             state = self.env.reset()
-            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            state = torch.from_numpy(state).unsqueeze(0).float()
             if self.use_cuda:
                 state = state.cuda()
 

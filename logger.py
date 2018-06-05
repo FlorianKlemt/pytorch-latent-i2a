@@ -41,12 +41,12 @@ class LogTrainEM():
         self.frames += 1
 
         state_loss, reward_loss = loss
-        state_loss = state_loss.data.cpu().numpy()[0]
-        reward_loss = reward_loss.data.cpu().numpy()[0]
+        state_loss = state_loss.item()
+        reward_loss = reward_loss.item()
         self.state_loss_list.append(state_loss)
         self.reward_loss_list.append(reward_loss)
-        self.reward_prediction = reward_prediction.data.cpu().numpy()[0]
-        self.reward = reward.data.cpu().numpy()[0]
+        self.reward_prediction = reward_prediction.detach().cpu().numpy()[0]
+        self.reward = reward.detach().cpu().numpy()[0]
 
         if self.visdom_plotter:
             self.visdom_plotter.append((state_loss, reward_loss), (self.reward, self.reward_prediction))

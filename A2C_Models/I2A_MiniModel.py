@@ -19,9 +19,10 @@ def xavier_weights_init(m):
         if m.bias is not None:
             m.bias.data.fill_(0)
 
-class I2A_MiniModel(Policy):
+class I2A_MiniModel(nn.Module):
     def __init__(self, obs_shape, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(I2A_MiniModel, self).__init__()
+
         input_channels = obs_shape[0]
         input_dims = obs_shape[1:]
 

@@ -1,7 +1,8 @@
 from model import Policy
 import torch.nn.functional as F
+import torch.nn as nn
 
-class A2C_PolicyWrapper(Policy):
+class A2C_PolicyWrapper(nn.Module):
     def __init__(self, policy):
         super(A2C_PolicyWrapper, self).__init__()
         self.policy = policy

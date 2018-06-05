@@ -41,10 +41,10 @@ class LogTrainEM():
         state_loss, reward_loss = loss
         state_loss = state_loss.data.cpu().numpy()[0]
         reward_loss = reward_loss.data.cpu().numpy()[0]
-        reward_prediction = reward_prediction.data.cpu().numpy()[0]
-        reward = reward.data.cpu().numpy()[0]
+        self.reward_prediction = reward_prediction.data.cpu().numpy()[0]
+        self.reward = reward.data.cpu().numpy()[0]
 
-        self.visdom_plotter.append((state_loss, reward_loss), (reward, reward_prediction))
+        self.visdom_plotter.append((state_loss, reward_loss), (self.reward, self.reward_prediction))
 
         if self.frames % (self.print_interval * self.batch_size) == 0:
             self.print_episode(episode=episode)
@@ -61,10 +61,10 @@ class LogTrainEM():
     def get_step_summary(self, episode):
         total_time = time.time() - self.start_time
 
-        state_loss, reward_loss, reward, pred_reward = self.visdom_plotter.get_smoothed_values()
+        state_loss, reward_loss = self.visdom_plotter.get_smoothed_values()
 
         loss_info = "frame loss {:.5f}, reward loss {:.5f}".format(state_loss, reward_loss)
-        reward_info = "pred reward {:.5f}, reward {:.5f}".format(pred_reward, reward)
+        reward_info = "pred reward {:.5f}, reward {:.5f}".format(self.reward_prediction, self.reward)
 
         info = "Updates {}, num timesteps {}, FPS {}, {}, {}, time {:.5f} min" \
             .format(episode, self.frames, int(self.frames / (total_time)),

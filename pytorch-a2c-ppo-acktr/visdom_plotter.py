@@ -129,5 +129,4 @@ class VisdomPlotterEM():
 
     def get_smoothed_values(self):
         loss = self.loss_plotter.get_mean()
-        reward = self.reward_plotter.get_mean()
-        return loss[0], loss[1], reward[0], reward[1]
+        return loss[0], loss[1]

@@ -32,6 +32,7 @@ import time
 import sys
 import multiprocessing as mp
 import algo
+from algo.i2a_algo import I2A_ALGO
 
 args = get_args()
 
@@ -145,17 +146,7 @@ def main():
                                 args=args)
 
     if args.algo == 'i2a':
-        #param = [p for p in actor_critic.parameters() if (p.requires_grad and not p in rollout_policy.parameters())]
-        #nope = [k for k in rollout_policy.parameters()]
-        #param = [p for p in param if not p in nope]
-        #for p in actor_critic.parameters():
-        #    if p.requires_grad:
-        #        for a in rollout_policy.parameters():
-        #            if p.data.shape==a.data.shape and p.data.eq(a.data):
-        #                print("mkay")
-
-        param = [p for p in actor_critic.parameters() if p.requires_grad]
-        optimizer = optim.RMSprop(param, args.lr, eps=args.eps, alpha=args.alpha)
+        agent = I2A_ALGO(actor_critic=actor_critic, obs_shape=obs_shape, action_shape=action_shape, args=args)
     elif args.algo == 'a2c':    
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, lr=args.lr,
@@ -172,9 +163,8 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
     current_obs = torch.zeros(args.num_processes, *obs_shape)
-    policy_action_probs = torch.zeros(args.num_steps, args.num_processes, envs.action_space.n)
-    # shouldn't it be a Variable??
-    rollout_policy_action_probs = []
+
+    policy_action_probs, rollout_policy_action_probs = None, None
 
     def update_current_obs(obs):
         shape_dim0 = envs.observation_space.shape[0]
@@ -195,26 +185,35 @@ def main():
     if args.cuda:
         current_obs = current_obs.cuda()
         rollouts.cuda()
-        policy_action_probs = policy_action_probs.cuda()
 
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
             if args.algo  == 'i2a':
                 # Sample actions
-                value, action_prob = actor_critic.policy(Variable(rollouts.observations[step], volatile=True))
+                with torch.no_grad():
+                    value, action_prob = actor_critic.policy(rollouts.observations[step])
                 action = actor_critic.sample(action_prob, deterministic=False)
                 action_log_prob, _ = actor_critic.logprobs_and_entropy(action_prob, action)
-                states = Variable(rollouts.states[step], volatile=True)
+                with torch.no_grad():
+                    states = rollouts.states[step]
 
                 # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, rp_actor = rollout_policy(Variable(rollouts.observations[step]))
+                _, rp_actor = rollout_policy(rollouts.observations[step])
                 rollout_action_prob = F.softmax(rp_actor, dim=1)
                 #_, _, rollout_action_prob, _ = rollout_policy.act(Variable(rollouts.observations[step]), None, None)  #NO volatile here, because of distillation loss backprop
 
-                policy_action_probs[step].copy_(action_prob.data)
-                #rollout_policy_action_probs[step].copy_(rollout_action_prob.data)
-                rollout_policy_action_probs.append(rollout_action_prob)
+                #old version: policy_action_probs[step].copy_(action_prob.data)
+                #not longer correct under pytorch 0.4.0 --> the next 2 if-else blocks
+                if policy_action_probs is None:
+                    policy_action_probs = action_prob.detach().unsqueeze(0)
+                else:
+                    policy_action_probs = torch.cat((policy_action_probs, action_prob.detach().unsqueeze(0)), dim=0)
+
+                if rollout_policy_action_probs is None:
+                    rollout_policy_action_probs = rollout_action_prob.detach().unsqueeze(0)
+                else:
+                    rollout_policy_action_probs = torch.cat((rollout_policy_action_probs, rollout_action_prob.detach().unsqueeze(0)), dim=0)
             else:
                 # Sample actions
                 with torch.no_grad():
@@ -253,12 +252,18 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        if args.algo == 'i2a':
+            value_loss, action_loss, dist_entropy, distill_loss = agent.update(rollouts=rollouts, policy_action_probs=policy_action_probs,
+                                                                               rollout_policy_action_probs=rollout_policy_action_probs)
+            rollout_policy_action_probs = None
+            policy_action_probs = None
+        else:
+            value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()
 
         if args.vis:
-            distill_loss_data = distill_loss.data[0] if args.algo == 'i2a' else None
+            distill_loss_data = distill_loss if args.algo == 'i2a' else None
             visdom_plotter.append(dist_entropy,
                                   final_rewards.numpy().flatten(),
                                   value_loss,
@@ -288,7 +293,7 @@ def main():
             reward_info = "mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}"\
                 .format(final_rewards.mean(), final_rewards.median(), final_rewards.min(), final_rewards.max())
 
-            distill_loss = ", distill_loss {:.5f}".format(distill_loss.data[0]) if args.algo == 'i2a' else ""
+            distill_loss = ", distill_loss {:.5f}".format(distill_loss) if args.algo == 'i2a' else ""
             loss_info = "value loss {:.5f}, policy loss {:.5f}{}"\
                 .format(value_loss, action_loss, distill_loss)
 

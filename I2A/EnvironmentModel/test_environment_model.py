@@ -101,7 +101,7 @@ def play_with_imagination_core(imagination_core, env, args):
         predicted_reward = predicted_reward.data.cpu().numpy()
         print(t+1, "reward", np.max(predicted_reward[0], 0))
 
-        observation, reward, done, _ = env.step(action.data[0][0])
+        observation, reward, done, _ = env.step(action.item())
         state = numpy_to_variable(observation, args.cuda)
 
         if render:

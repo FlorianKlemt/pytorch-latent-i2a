@@ -48,7 +48,7 @@ class VisdomPlotGraph():
         self.history.extend(value)
 
     def plot_values(self, frames, values):
-        if len(self.history) > self.plot_after_history_size:
+        if self.viz is not None and len(self.history) > self.plot_after_history_size:
             frames_in_mio = frames / 1000000
             self.plot_win = plot_line(self.viz,
                                       self.plot_win,
@@ -65,6 +65,12 @@ class VisdomPlotGraph():
         median_smooth = np.median(self.history)
         values = np.array([mean_smooth, median_smooth])
         self.plot_values(frames, values)
+
+    def get_mean(self):
+        return np.mean(np.array(self.history), axis=0)
+
+    def get_median(self):
+        return np.median(self.history)
 
 
 class VisdomPlotterA2C():
@@ -109,7 +115,6 @@ class VisdomPlotterA2C():
 
 class VisdomPlotterEM():
     def __init__(self, viz):
-        self.viz = viz
         running_mean_n = 5000
         self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", ["State Loss", "Reward Loss"], running_mean_n, 200)
         self.reward_plotter = VisdomPlotGraph(viz, "Reward", "Reward", ["True Reward", "Predicted Reward"], 1, 0)
@@ -121,3 +126,7 @@ class VisdomPlotterEM():
     def plot(self, frames):
         self.loss_plotter.plot(frames)
         self.reward_plotter.plot(frames)
+
+    def get_smoothed_values(self):
+        loss = self.loss_plotter.get_mean()
+        return loss[0], loss[1]

@@ -1,16 +1,9 @@
-import os
 import torch
 import numpy as np
 import time
 import cv2
-import sys
 from random import randint
-import collections
-from collections import deque
-from custom_envs import make_custom_env
 from I2A.ImaginationCore import ImaginationCore
-from A2C_Models.I2A_MiniModel import I2A_MiniModel
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
 import gym_minipacman
 
 from multiprocessing import Process
@@ -26,7 +19,6 @@ class RenderImaginationCore():
 
 
     def render_preprocessing(self, observation, reward_text, step_text):
-        #drawable_state = observation.permute(1, 2, 0)
         drawable_state = observation.view(observation.shape[1], observation.shape[2], -1)
 
         drawable_state = drawable_state.detach().cpu().numpy()
@@ -70,7 +62,6 @@ def play_with_imagination_core(imagination_core, env, args):
     render = True
     renderer = RenderImaginationCore(args.grey_scale)
 
-    #for i_episode in range(20):
     observation = env.reset()
     state = numpy_to_variable(observation, args.cuda)
 
@@ -81,15 +72,12 @@ def play_with_imagination_core(imagination_core, env, args):
 
     # todo remove only used for testing rgb to class converter
     from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
-    x = MiniPacmanRGBToClassConverter()
+    x = MiniPacmanRGBToClassConverter(args.cuda)
     p = x.minipacman_rgb_to_class(state)
     p = x.minipacman_class_to_rgb(p)
     # end remove
 
     renderer.render_observation(state[0], p[0], reward, reward, 0)
-    # render start state
-    #if render:
-    #    renderer.render_observation('start_state', state[0])
 
     predicted_state = state
 
@@ -98,8 +86,6 @@ def play_with_imagination_core(imagination_core, env, args):
         predicted_state, predicted_reward = imagination_core(predicted_state, action)
 
         predicted_reward = predicted_reward.detach().cpu().numpy()
-        print(t+1, "reward", np.max(predicted_reward[0], 0))
-
         observation, reward, done, _ = env.step(action.item())
         state = numpy_to_variable(observation, args.cuda)
 
@@ -110,29 +96,26 @@ def play_with_imagination_core(imagination_core, env, args):
 def test_environment_model(env, environment_model, load_path, rollout_policy, args):
     i = 1
     while(True):
-        #env_name = "RegularMiniPacmanNoFrameskip-v0"
-        #env = make_custom_env(env_name, seed=1, rank=1, log_dir=None, grey_scale=True)()
+        try:
+            saved_state = torch.load(load_path, map_location=lambda storage, loc: storage)
+            environment_model.load_state_dict(saved_state)
 
-        # small model which only predicts one reward
-        saved_state = torch.load(load_path, map_location=lambda storage, loc: storage)
-        environment_model.load_state_dict(saved_state)
+            if args.cuda:
+                environment_model.cuda()
 
-        if args.cuda:
-            environment_model.cuda()
+            imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=rollout_policy,
+                                               grey_scale = False, frame_stack = 1)
 
-        imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=rollout_policy,
-                                           grey_scale = False, frame_stack = 1)
-
-        print("started game", i)
-        play_with_imagination_core(imagination_core, env=env, args=args)
-
-        print("finished game", i)
+            print("started game", i)
+            play_with_imagination_core(imagination_core, env=env, args=args)
+            i += 1
+        except:
+            pass
         time.sleep(5)
-        i += 1
+
 
 class TestEnvironmentModel():
     def __init__(self, env, environment_model, load_path, rollout_policy, args):
-        #load_path = os.path.join(load_path, args.env_name + ".pt")
         self.p = Process(target = test_environment_model,
                          args=(env, environment_model, load_path, rollout_policy, args))
         self.p.start()

@@ -72,6 +72,11 @@ def main():
                                                 args.env_name,
                                                 color_prefix,
                                                 class_labels_prefix)
+    log_path = '{0}env_{1}{2}{3}.log'.format(args.save_environment_model_dir,
+                                                  args.env_name,
+                                                  color_prefix,
+                                                  class_labels_prefix)
+
 
     load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.env_name)
 
@@ -106,10 +111,12 @@ def main():
                                       env=env,
                                       policy=policy,
                                       optimizer=optimizer,
-                                      save_model_path = save_model_path)
+                                      save_model_path = save_model_path,
+                                      log_path = log_path)
 
-    #trainer.train_env_model_batchwise(1000000)
-    trainer.train_env_model(1000)
+    trainer.train_env_model_batchwise(1000000)
+    #trainer.train_overfit_on_x_samples(1000000, x_samples=100)
+    #trainer.train_env_model(1000)
     #trainer.train_env_model_batchwise_on_rollouts(10000,rollout_length=5)
 
     if args.render:
@@ -119,7 +126,7 @@ def main():
 
 
 class EnvironmentModelTrainer():
-    def __init__(self, args, env, policy, optimizer, save_model_path):
+    def __init__(self, args, env, policy, optimizer, save_model_path, log_path):
         self.args = args
         self.env = env
         self.policy = policy
@@ -128,7 +135,8 @@ class EnvironmentModelTrainer():
         self.chance_of_random_action = 0.25
         self.batch_size = args.batch_size
         self.save_model_path = save_model_path
-        self.sample_memory_size = 10000
+        self.sample_memory_size = 100000
+        self.log_path = log_path
 
         if args.vis:
             from visdom import Visdom
@@ -136,7 +144,8 @@ class EnvironmentModelTrainer():
         else:
             viz = None
 
-        self.loss_printer = LogTrainEM(log_name="em_trainer_" + args.env_name + ".log",
+        self.loss_printer = LogTrainEM(log_name=self.log_path,
+                                       batch_size=self.batch_size,
                                        delete_log_file=args.load_environment_model == False,
                                        viz=viz)
 
@@ -192,25 +201,25 @@ class EnvironmentModelTrainer():
                 # log and print infos
                 if self.loss_printer:
                     (predicted_next_state, predicted_reward) = prediction
-                    self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                    if self.loss_printer.frames % 100 == 0:
-                        self.loss_printer.print_episode(episode=i_episode)
+                    self.loss_printer.log_loss_and_reward(loss=loss,
+                                                          reward_prediction=predicted_reward,
+                                                          reward=reward,
+                                                          episode=i_episode)
 
             if i_episode % self.args.save_interval == 0:
                 print("Save model", self.save_model_path)
                 state_to_save = self.optimizer.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
 
-    def train_env_model_batchwise(self, episoden = 10000):
+    def create_x_samples(self, number_of_samples):
         from collections import deque
-        sample_memory = deque(maxlen=self.sample_memory_size)
+        sample_memory = deque(maxlen=number_of_samples)
 
-        for i_episode in range(episoden):
+        while len(sample_memory) < number_of_samples:
             state = self.env.reset()
             state = torch.from_numpy(state).unsqueeze(0).float()
             if self.use_cuda:
                 state = state.cuda()
-
             done = False
             while not done:
                 # let policy decide on next action and perform it
@@ -220,27 +229,80 @@ class EnvironmentModelTrainer():
 
                 # add current state, next-state pair to replay memory
                 sample_memory.append([state, action, next_state, reward])
-
-                # sample a state, next-state pair randomly from replay memory for a training step
-                if len(sample_memory) > self.batch_size:
-                    sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
-                    loss, prediction = self.optimizer.optimizer_step(state = sample_state,
-                                                                     action = sample_action,
-                                                                     next_state_target = sample_next_state,
-                                                                     reward_target = sample_reward)
-                    # log and print infos
-                    if self.loss_printer:
-                        (predicted_next_state, predicted_reward) = prediction
-                        self.loss_printer.log_loss_and_reward(loss, predicted_reward, reward)
-                        if self.loss_printer.frames % 10 == 0:
-                            self.loss_printer.print_episode(episode=i_episode)
-
                 state = next_state
+
+                if len(sample_memory) >= number_of_samples:
+                    break
+        return sample_memory
+
+    def train_env_model_batchwise(self, episoden = 10000):
+        from collections import deque
+        import math
+        print("create training data")
+        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
+        sample_memory = deque(maxlen=self.sample_memory_size)
+        sample_memory.extend(self.create_x_samples(create_n_samples))
+
+        for i_episode in range(episoden):
+            # sample a state, next-state pair randomly from replay memory for a training step
+            sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
+            loss, prediction = self.optimizer.optimizer_step(state = sample_state,
+                                                             action = sample_action,
+                                                             next_state_target = sample_next_state,
+                                                             reward_target = sample_reward)
+            # log and print infos
+            if self.loss_printer:
+                (predicted_next_state, predicted_reward) = prediction
+                self.loss_printer.log_loss_and_reward(loss=loss,
+                                                      reward_prediction=predicted_reward,
+                                                      reward=sample_reward,
+                                                      episode=i_episode)
 
             if i_episode % self.args.save_interval==0:
                 print("Save model", self.save_model_path)
                 state_to_save = self.optimizer.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
+
+            if i_episode != 0 and i_episode % len(sample_memory) == 0:
+                print("create more training data")
+                sample_memory.extend(self.create_x_samples(create_n_samples))
+
+    def train_overfit_on_x_samples(self, episoden = 10000, x_samples = 100):
+        from collections import deque
+        sample_memory = deque(maxlen=x_samples)
+
+        self.batch_size = min(self.batch_size, x_samples)
+
+        sample_memory = self.create_x_samples(x_samples)
+
+        from I2A.EnvironmentModel.test_environment_model import RenderImaginationCore
+        import time
+        renderer = RenderImaginationCore(False)
+
+        for i_episode in range(episoden):
+            # sample a state, next-state pair randomly from replay memory for a training step
+            sample_state, sample_action, sample_next_state, sample_reward = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
+            loss, prediction = self.optimizer.optimizer_step(state = sample_state,
+                                                             action = sample_action,
+                                                             next_state_target = sample_next_state,
+                                                             reward_target = sample_reward)
+            # log and print infos
+            (predicted_next_state, predicted_reward) = prediction
+            if self.loss_printer:
+                self.loss_printer.log_loss_and_reward(loss=loss,
+                                                      reward_prediction=predicted_reward,
+                                                      reward=sample_reward,
+                                                      episode=i_episode)
+
+            if i_episode % 100==0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.optimizer.model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
+
+            if i_episode % 500 == 0:
+                renderer.render_observation(sample_state[0], sample_state[0], 0, 0, 0)
+                renderer.render_observation(sample_next_state[0], predicted_next_state[0], sample_reward.data[0], predicted_reward.data[0], 1)
+                time.sleep(1)
 
 
 

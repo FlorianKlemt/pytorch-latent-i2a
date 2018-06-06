@@ -72,10 +72,8 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
           ('reward_conv2', nn.Conv2d(64, 64, kernel_size=1)),
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
-          # TODO why do they use 5 output rewards??
-          #('reward_fc', nn.Linear(64 * W * H, 1))
-          ('reward_fc',    nn.Linear(64*W*H, 5))#,
-          ('softmax',      nn.Softmax())
+          ('reward_fc',    nn.Linear(64*W*H, 5)),
+          ('softmax', nn.Softmax())
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([
@@ -87,7 +85,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
 
         self.train()
 
-        self.rgb_to_class = MiniPacmanRGBToClassConverter()
+        self.rgb_to_class = MiniPacmanRGBToClassConverter(use_cuda=use_cuda)
 
     def forward(self,input_frame,input_action):
         input_frame = self.rgb_to_class.minipacman_rgb_to_class(input_frame)

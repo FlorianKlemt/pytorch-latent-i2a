@@ -33,6 +33,7 @@ class EncoderLSTMNetwork(nn.Module):
         super(EncoderLSTMNetwork, self).__init__()
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+        self.use_cuda = use_cuda
 
         # reward broadcasted = 6x6
         self.number_lstm_cells = number_lstm_cells
@@ -59,6 +60,9 @@ class EncoderLSTMNetwork(nn.Module):
         #self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
         self.lstm_h = torch.zeros(batch_size, self.number_lstm_cells).float()
         self.lstm_c = torch.zeros(batch_size, self.number_lstm_cells).float()
+        if self.use_cuda:
+            self.lstm_h = self.lstm_h.cuda()
+            self.lstm_c = self.lstm_c.cuda()
 
 
 class RolloutEncoder():

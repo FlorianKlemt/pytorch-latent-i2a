@@ -53,7 +53,7 @@ class RenderImaginationCore():
 
 
 def numpy_to_variable(numpy_value, use_cuda):
-    value = torch.from_numpy(numpy_value, requires_grad=False).unsqueeze(0).float()
+    value = torch.from_numpy(numpy_value).unsqueeze(0).float()
     if use_cuda:
         value = value.cuda()
     return value
@@ -110,6 +110,7 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
             play_with_imagination_core(imagination_core, env=env, args=args)
             i += 1
         except:
+            print("Could not load model, try again.")
             pass
         time.sleep(5)
 

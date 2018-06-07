@@ -15,7 +15,7 @@ def weights_init(m):
 
 def xavier_weights_init(m):
     if isinstance(m, nn.Conv2d):
-        init.xavier_uniform(m.weight.data)
+        init.xavier_uniform_(m.weight.data)
         if m.bias is not None:
             m.bias.data.fill_(0)
 

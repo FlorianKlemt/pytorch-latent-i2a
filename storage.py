@@ -114,3 +114,26 @@ class RolloutStorage(object):
 
             yield observations_batch, states_batch, actions_batch, \
                 return_batch, masks_batch, old_action_log_probs_batch, adv_targ
+
+
+
+class I2A_RolloutStorage(RolloutStorage):
+    def __init__(self, num_steps, num_processes, obs_shape, action_space, state_size):
+        super(I2A_RolloutStorage, self).__init__(num_steps, num_processes, obs_shape, action_space, state_size)
+        self.policy_action_probs = torch.zeros(num_steps, num_processes, action_space.n)
+        self.rollout_policy_action_probs = torch.zeros(num_steps, num_processes, action_space.n)
+
+    def cuda(self):
+        super(I2A_RolloutStorage, self).cuda()
+        self.policy_action_probs = self.policy_action_probs.cuda()
+        self.rollout_policy_action_probs = self.rollout_policy_action_probs.cuda()
+
+    def insert(self, current_obs, state, action, action_log_prob, value_pred, reward, mask, policy_action_prob, rollout_policy_action_prob):
+        self.policy_action_probs[self.step].copy_(policy_action_prob)
+        self.rollout_policy_action_probs[self.step].copy_(rollout_policy_action_prob)
+        super(I2A_RolloutStorage, self).insert(current_obs, state, action, action_log_prob, value_pred, reward, mask)
+
+    def after_update(self):
+        super(I2A_RolloutStorage, self).after_update()
+        self.policy_action_probs = torch.zeros(self.policy_action_probs.shape)
+        self.rollout_policy_action_probs = torch.zeros(self.rollout_policy_action_probs.shape)

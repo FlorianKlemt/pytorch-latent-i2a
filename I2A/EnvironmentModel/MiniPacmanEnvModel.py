@@ -10,7 +10,7 @@ import math
 
 def xavier_weights_init(m):
     if isinstance(m, nn.Conv2d):
-        init.xavier_uniform(m.weight.data)
+        init.xavier_uniform_(m.weight.data)
         m.weight.data.mul_(math.sqrt(2))
         if m.bias is not None:
             m.bias.data.fill_(0)

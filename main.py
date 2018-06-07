@@ -18,11 +18,11 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from envs import make_env
 from model import Policy
-from storage import RolloutStorage
+from storage import RolloutStorage, I2A_RolloutStorage
 from visualize import visdom_plot
 from visdom_plotter import VisdomPlotterA2C
 from A2C_Models.MiniModel import MiniModel
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper, I2A_ActorCritic
 from A2C_Models.I2A_MiniModel import I2A_MiniModel
 from I2A.I2A_Agent import I2A
 
@@ -100,15 +100,15 @@ def main():
         #build i2a model also wraps it with the A2C_PolicyWrapper
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
         label_prefix = 'labels' if args.use_class_labels else 'NoLabels'
-        actor_critic, rollout_policy = build_i2a_model(obs_shape=envs.observation_space.shape,
-                                                       frame_stack=args.num_stack,
-                                                       action_space=envs.action_space.n,
-                                                       i2a_rollout_steps=args.i2a_rollout_steps,
-                                                       em_model_reward_bins=em_model_reward_bins,
-                                                       use_cuda=args.cuda,
-                                                       environment_model_name=args.env_name + color_prefix + "_" + label_prefix + ".dat",
-                                                       use_copy_model=args.use_copy_model,
-                                                       use_class_labels=args.use_class_labels)
+        actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
+                                       frame_stack=args.num_stack,
+                                       action_space=envs.action_space.n,
+                                       i2a_rollout_steps=args.i2a_rollout_steps,
+                                       em_model_reward_bins=em_model_reward_bins,
+                                       use_cuda=args.cuda,
+                                       environment_model_name=args.env_name + color_prefix + "_" + label_prefix + ".dat",
+                                       use_copy_model=args.use_copy_model,
+                                       use_class_labels=args.use_class_labels)
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -164,10 +164,13 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
-    current_obs = torch.zeros(args.num_processes, *obs_shape)
+    if args.algo == 'i2a':
+        rollouts = I2A_RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space, actor_critic.state_size)
+    else:
+        rollouts = RolloutStorage(args.num_steps, args.num_processes, obs_shape, envs.action_space,
+                                  actor_critic.state_size)
 
-    policy_action_probs, rollout_policy_action_probs = None, None
+    current_obs = torch.zeros(args.num_processes, *obs_shape)
 
     def update_current_obs(obs):
         shape_dim0 = envs.observation_space.shape[0]
@@ -194,29 +197,10 @@ def main():
         for step in range(args.num_steps):
             if args.algo  == 'i2a':
                 # Sample actions
-                with torch.no_grad():
-                    value, action_prob = actor_critic.policy(rollouts.observations[step])
-                action = actor_critic.sample(action_prob, deterministic=False)
-                action_log_prob, _ = actor_critic.logprobs_and_entropy(action_prob, action)
-                with torch.no_grad():
-                    states = rollouts.states[step]
-
-                # we need to calculate the destillation loss for the I2A Rollout Policy
-                _, rp_actor = rollout_policy(rollouts.observations[step])
-                rollout_action_prob = F.softmax(rp_actor, dim=1)
-                #_, _, rollout_action_prob, _ = rollout_policy.act(Variable(rollouts.observations[step]), None, None)  #NO volatile here, because of distillation loss backprop
-
-                #old version: policy_action_probs[step].copy_(action_prob.data)
-                #not longer correct under pytorch 0.4.0 --> the next 2 if-else blocks
-                if policy_action_probs is None:
-                    policy_action_probs = action_prob.detach().unsqueeze(0)
-                else:
-                    policy_action_probs = torch.cat((policy_action_probs, action_prob.detach().unsqueeze(0)), dim=0)
-
-                if rollout_policy_action_probs is None:
-                    rollout_policy_action_probs = rollout_action_prob.detach().unsqueeze(0)
-                else:
-                    rollout_policy_action_probs = torch.cat((rollout_policy_action_probs, rollout_action_prob.detach().unsqueeze(0)), dim=0)
+                value, action, action_log_prob, states, policy_action_prob, rollout_action_prob = actor_critic.act(
+                    rollouts.observations[step].clone(),
+                    rollouts.states[step],
+                    rollouts.masks[step])
             else:
                 # Sample actions
                 with torch.no_grad():
@@ -246,7 +230,10 @@ def main():
                 current_obs *= masks
 
             update_current_obs(obs)
-            rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
+            if args.algo == "i2a":
+                rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks, policy_action_prob, rollout_action_prob)
+            else:
+                rollouts.insert(current_obs, states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
             next_value = actor_critic.get_value(rollouts.observations[-1],
@@ -256,10 +243,7 @@ def main():
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         if args.algo == 'i2a':
-            value_loss, action_loss, dist_entropy, distill_loss = agent.update(rollouts=rollouts, policy_action_probs=policy_action_probs,
-                                                                               rollout_policy_action_probs=rollout_policy_action_probs)
-            rollout_policy_action_probs = None
-            policy_action_probs = None
+            value_loss, action_loss, dist_entropy, distill_loss = agent.update(rollouts=rollouts)
         else:
             value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
@@ -352,16 +336,6 @@ def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_
         param.requires_grad = False
     env_model.eval()
 
-    #TODO: give option to load rollout_policy
-    #load_policy_model_dir = os.path.join(os.getcwd(), 'trained_models/a2c/')
-    #self.policy = load_policy(load_policy_model_dir=load_policy_model_dir,
-    #                          policy_file="RegularMiniPacmanNoFrameskip-v0.pt",
-    #                          action_space=action_space,
-    #                          use_cuda=use_cuda,
-    #                          policy_name="MiniModel")
-
-    #obs_shape = (4, (obs_shape[1:]))   #legacy, if the next line breaks try this
-
     rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape_frame_stack, action_space=action_space, use_cuda=use_cuda))
     for param in rollout_policy.parameters():
         param.requires_grad = True
@@ -375,13 +349,14 @@ def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_
     imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
                                        grey_scale=args.grey_scale, frame_stack=args.num_stack)
 
-    i2a_model = A2C_PolicyWrapper(I2A(obs_shape=obs_shape_frame_stack,
-                                      action_space=action_space,
-                                      imagination_core=imagination_core,
-                                      rollout_steps=i2a_rollout_steps,
-                                      use_cuda=args.cuda))
+    i2a_model = I2A_ActorCritic(policy=I2A(obs_shape=obs_shape_frame_stack,
+                                           action_space=action_space,
+                                           imagination_core=imagination_core,
+                                           rollout_steps=i2a_rollout_steps,
+                                           use_cuda=args.cuda),
+                                rollout_policy=rollout_policy)
 
-    return i2a_model, rollout_policy
+    return i2a_model
 
 if __name__ == "__main__":
     main()

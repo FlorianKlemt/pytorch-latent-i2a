@@ -135,5 +135,9 @@ class I2A_RolloutStorage(RolloutStorage):
 
     def after_update(self):
         super(I2A_RolloutStorage, self).after_update()
+        use_cuda = self.policy_action_probs.is_cuda #assumes both are cuda
         self.policy_action_probs = torch.zeros(self.policy_action_probs.shape)
         self.rollout_policy_action_probs = torch.zeros(self.rollout_policy_action_probs.shape)
+        if use_cuda:
+            self.policy_action_probs = self.policy_action_probs.cuda()
+            self.rollout_policy_action_probs = self.rollout_policy_action_probs.cuda()

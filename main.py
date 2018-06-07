@@ -99,14 +99,16 @@ def main():
     if args.algo == 'i2a':
         #build i2a model also wraps it with the A2C_PolicyWrapper
         color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
+        label_prefix = 'labels' if args.use_class_labels else 'NoLabels'
         actor_critic, rollout_policy = build_i2a_model(obs_shape=envs.observation_space.shape,
                                                        frame_stack=args.num_stack,
                                                        action_space=envs.action_space.n,
                                                        i2a_rollout_steps=args.i2a_rollout_steps,
                                                        em_model_reward_bins=em_model_reward_bins,
                                                        use_cuda=args.cuda,
-                                                       environment_model_name=args.env_name + color_prefix + ".dat",
-                                                       use_copy_model=args.use_copy_model)
+                                                       environment_model_name=args.env_name + color_prefix + "_" + label_prefix + ".dat",
+                                                       use_copy_model=args.use_copy_model,
+                                                       use_class_labels=args.use_class_labels)
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -320,8 +322,8 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model):
-    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel, CopyEnvModel
+def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model, use_class_labels):
+    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
     from I2A.load_utils import load_em_model
     from I2A.ImaginationCore import ImaginationCore
 
@@ -332,7 +334,13 @@ def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_
     else:
         # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
         load_environment_model_dir = 'trained_models/environment_models/'
-        env_model = load_em_model(EMModel=MiniPacmanEnvModel,
+        if use_class_labels:
+            obs_shape = (7, *obs_shape[1:])
+            EMModel = MiniPacmanEnvModelClassLabels
+        else:
+            EMModel = MiniPacmanEnvModel
+
+        env_model = load_em_model(EMModel=EMModel,
                                  load_environment_model_dir=load_environment_model_dir,
                                  environment_model_name=environment_model_name,
                                  obs_shape=obs_shape,

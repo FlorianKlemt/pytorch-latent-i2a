@@ -1,5 +1,5 @@
 import argparse
-from visdom_plotter import VisdomPlotterA2C
+from rl_visualization.visdom_plotter import VisdomPlotterA2C
 
 
 def main():

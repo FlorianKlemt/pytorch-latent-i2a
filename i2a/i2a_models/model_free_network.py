@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from I2A.utils import get_linear_dims_after_conv
+from i2a.utils import get_linear_dims_after_conv
 
 # see B.1: model free path uses identical network as the standard model-free baseline agent (withput the fc layers)
 class ModelFreeNetworkMiniPacman(nn.Module):

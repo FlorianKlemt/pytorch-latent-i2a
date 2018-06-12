@@ -1,7 +1,6 @@
 import os
-from visdom_plotter import VisdomPlotterEM
+from rl_visualization.visdom_plotter import VisdomPlotterEM
 import time
-import numpy as np
 import sys
 
 class LogFile():

@@ -1,13 +1,6 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
-import numpy as np
 
-from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel
-from I2A.load_utils import load_policy, load_em_model
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
-from A2C_Models.I2A_MiniModel import I2A_MiniModel
-import os
 
 class ImaginationCore(nn.Module):
     def __init__(self, env_model=None, rollout_policy=None, grey_scale=False, frame_stack=4):

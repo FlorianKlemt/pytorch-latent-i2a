@@ -3,8 +3,7 @@ import numpy as np
 import time
 import cv2
 from random import randint
-from I2A.ImaginationCore import ImaginationCore
-import gym_minipacman
+from i2a.imagination_core import ImaginationCore
 
 from multiprocessing import Process
 
@@ -71,7 +70,7 @@ def play_with_imagination_core(imagination_core, env, args):
         state = numpy_to_variable(observation, args.cuda)
 
     # todo remove only used for testing rgb to class converter
-    from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+    from environment_model.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
     x = MiniPacmanRGBToClassConverter(args.cuda)
     p = x.minipacman_rgb_to_class(state)
     p = x.minipacman_class_to_rgb(p)

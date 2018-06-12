@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from I2A.utils import get_linear_dims_after_conv, get_conv_output_dims
+from i2a.utils import get_linear_dims_after_conv, get_conv_output_dims
 from functools import reduce
 
 class EncoderCNNNetwork(nn.Module):

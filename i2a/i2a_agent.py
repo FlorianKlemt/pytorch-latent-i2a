@@ -1,9 +1,9 @@
 import torch
-from I2A.I2A_Models.ModelBasedNetwork import ModelBasedNetwork
-from I2A.I2A_Models.ModelFreeNetwork import ModelFreeNetworkMiniPacman
-from I2A.I2A_Models.OutputPolicyNetwork import OutputPolicyNetwork
+from i2a.i2a_models.model_based_network import ModelBasedNetwork
+from i2a.i2a_models.model_free_network import ModelFreeNetworkMiniPacman
+from i2a.i2a_models.output_policy_network import OutputPolicyNetwork
 
-#TODO: give I2A a parameter that defines the model to use, solve intriinsics here
+#TODO: give i2a a parameter that defines the model to use, solve intriinsics here
 #def ConfigModel():
 #    if Model == "MiniPacman"
 

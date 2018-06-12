@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 
 
-from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+from environment_model.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
 import torch.nn.init as init
 import math
 

@@ -1,21 +1,17 @@
 import torch
 import torch.nn.functional as F
-import gym
-import gym_minipacman
-from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModelClassLabels, MiniPacmanEnvModel
-from I2A.EnvironmentModel.EnvironmentModelOptimizer import EnvironmentModelOptimizer, MiniPacmanEnvironmentModelOptimizer
-from I2A.EnvironmentModel.RenderTrainEM import RenderTrainEM
-from logger import LogTrainEM
+from environment_model.minipacman_env_model import MiniPacmanEnvModelClassLabels, MiniPacmanEnvModel
+from environment_model.env_model_optimizer import EnvironmentModelOptimizer, MiniPacmanEnvironmentModelOptimizer
+from rl_visualization.logger import LogTrainEM
 from custom_envs import make_custom_env
 import random
+import gym
+import gym_minipacman
+from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
 
-from I2A.EnvironmentModel.test_environment_model import TestEnvironmentModel
-
-from A2C_Models.I2A_MiniModel import I2A_MiniModel
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+from a2c_models.i2a_mini_model import I2A_MiniModel
+from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 import argparse
-import numpy as np
-import os
 import copy
 
 import multiprocessing as mp
@@ -24,11 +20,11 @@ def main():
     args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
     args_parser.add_argument('--load-environment-model', action='store_true', default=False,
                              help='flag to continue training on pretrained env_model')
-    args_parser.add_argument('--save-environment-model-dir', default="../../trained_models/environment_models/",
+    args_parser.add_argument('--save-environment-model-dir', default="trained_models/environment_models/",
                              help='relative path to folder from which a environment model should be loaded.')
     args_parser.add_argument('--load-policy-model', action='store_true', default=False,
                              help='use trained policy model for environment model training')
-    args_parser.add_argument('--load-policy-model-dir', default='../../trained_models/a2c/',
+    args_parser.add_argument('--load-policy-model-dir', default='trained_models/a2c/',
                              help='directory to save agent logs (default: ./trained_models/)')
     args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
                              help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
@@ -237,7 +233,6 @@ class EnvironmentModelTrainer():
 
     def train_env_model_batchwise(self, episoden = 10000):
         from collections import deque
-        import math
         print("create training data")
         create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
@@ -275,7 +270,7 @@ class EnvironmentModelTrainer():
 
         sample_memory = self.create_x_samples(x_samples)
 
-        from I2A.EnvironmentModel.test_environment_model import RenderImaginationCore
+        from rl_visualization.environment_model.test_environment_model import RenderImaginationCore
         import time
         renderer = RenderImaginationCore(False)
 

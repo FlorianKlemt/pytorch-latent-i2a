@@ -1,23 +1,5 @@
 import torch
 import torch.nn as nn
-from collections import deque
-import numpy as np
-#from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
-
-'''
-def numpy_state_to_variable(state, use_cuda):
-    state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
-    if use_cuda:
-        state = state.cuda()
-    return state
-
-
-def numpy_reward_to_variable(reward, use_cuda):
-    reward = Variable(torch.from_numpy(np.array([reward]))).float()
-    if use_cuda:
-        reward = reward.cuda()
-    return reward
-'''
 
 
 class EnvironmentModelOptimizer():
@@ -111,7 +93,7 @@ class MiniPacmanEnvironmentModelOptimizer():
                                           eps=args.eps,
                                           weight_decay=args.weight_decay)
 
-        from I2A.EnvironmentModel.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
+        from environment_model.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
         self.rgb_to_class = MiniPacmanRGBToClassConverter(use_cuda=args.cuda)
 
     def optimizer_step(self,

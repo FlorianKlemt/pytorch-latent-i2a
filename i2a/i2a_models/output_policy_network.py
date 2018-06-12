@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from I2A.utils import norm_col_init
+from i2a.utils import norm_col_init
 
 class OutputPolicyNetwork(nn.Module):
     def __init__(self, input_size, nr_actions):

@@ -53,8 +53,8 @@ def main():
     plt.ion()
 
     use_cuda = True
-    from A2C_Models.I2A_MiniModel import I2A_MiniModel
-    from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper
+    from a2c_models.i2a_mini_model import I2A_MiniModel
+    from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
     #create environment to train on
     if "MiniPacman" in args.env:

@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from model import Policy
-from I2A.utils import get_linear_dims_after_conv
+from i2a.utils import get_linear_dims_after_conv
 
 def weights_init(m):
     classname = m.__class__.__name__

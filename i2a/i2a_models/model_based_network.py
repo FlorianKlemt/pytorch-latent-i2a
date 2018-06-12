@@ -1,5 +1,5 @@
 import torch
-from I2A.RolloutEncoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
+from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
 import numpy as np
 
 class ModelBasedNetwork(torch.nn.Module):

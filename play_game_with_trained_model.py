@@ -75,7 +75,7 @@ class TestEnvironment():
             if self.use_cuda:
                 input = input.cuda()
 
-            _, actions, _, _ = self.model.act(input, None, None)
+            _, actions, _, _, _, _ = self.model.act(input, None, None)
             cpu_actions = actions.item()
 
             self.state, reward, done, info = self.env.step(cpu_actions)

@@ -13,7 +13,7 @@ from a2c_models.i2a_mini_model import I2A_MiniModel
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 import argparse
 import copy
-
+import time
 import multiprocessing as mp
 
 def main():
@@ -25,11 +25,15 @@ def main():
     args_parser.add_argument('--load-policy-model', action='store_true', default=False,
                              help='use trained policy model for environment model training')
     args_parser.add_argument('--load-policy-model-dir', default='trained_models/a2c/',
-                             help='directory to save agent logs (default: ./trained_models/)')
+                             help='directory to save agent logs (default: trained_models/a2c)')
+    args_parser.add_argument('--load-policy-model-name', default='RegularMiniPacmanNoFrameskip-v0',
+                             help='directory to save agent logs (default: RegularMiniPacmanNoFrameskip-v0)')
     args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
                              help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
     args_parser.add_argument('--render',  action='store_true', default=False,
                              help='starts an progress that play and render games with the current model')
+    args_parser.add_argument('--no-training', action='store_true', default=False,
+                             help='true if you do not want to train the model')
     args_parser.add_argument('--no-cuda', action='store_true', default=False,
                              help='disables CUDA training')
     args_parser.add_argument('--no-vis', action='store_true', default=False,
@@ -74,7 +78,7 @@ def main():
                                                   class_labels_prefix)
 
 
-    load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.env_name)
+    load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.load_policy_model_name)
 
     env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=args.grey_scale)() #wtf
 
@@ -83,7 +87,6 @@ def main():
                           load_policy_model_path=load_policy_model_path,
                           use_cuda=args.cuda)
 
-    #relative_load_environment_model_dir = os.path.join('../../', args.load_environment_model_dir)
     environment_model = build_em_model(env=env,
                                        load_environment_model=args.load_environment_model,
                                        load_environment_model_path=save_model_path,
@@ -102,18 +105,20 @@ def main():
                                             rollout_policy=policy,
                                             args=args)
 
+    if args.no_training:
+        time.sleep(100000)
+    else:
+        trainer = EnvironmentModelTrainer(args = args,
+                                          env=env,
+                                          policy=policy,
+                                          optimizer=optimizer,
+                                          save_model_path = save_model_path,
+                                          log_path = log_path)
 
-    trainer = EnvironmentModelTrainer(args = args,
-                                      env=env,
-                                      policy=policy,
-                                      optimizer=optimizer,
-                                      save_model_path = save_model_path,
-                                      log_path = log_path)
-
-    trainer.train_env_model_batchwise(1000000)
-    #trainer.train_overfit_on_x_samples(1000000, x_samples=100)
-    #trainer.train_env_model(1000)
-    #trainer.train_env_model_batchwise_on_rollouts(10000,rollout_length=5)
+        trainer.train_env_model_batchwise(1000000)
+        #trainer.train_overfit_on_x_samples(1000000, x_samples=100)
+        #trainer.train_env_model(1000)
+        #trainer.train_env_model_batchwise_on_rollouts(10000,rollout_length=5)
 
     if args.render:
         test_process.stop()
@@ -376,6 +381,8 @@ def build_em_model(env, load_environment_model=False, load_environment_model_pat
         print("Load environment model", load_environment_model_path)
         saved_state = torch.load(load_environment_model_path, map_location=lambda storage, loc: storage)
         environment_model.load_state_dict(saved_state)
+    else:
+        print("Save environment model under", load_environment_model_path)
 
     if use_cuda:
         environment_model.cuda()

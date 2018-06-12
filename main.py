@@ -17,7 +17,7 @@ from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper, I2A_ActorCritic
 from a2c_models.i2a_mini_model import I2A_MiniModel
 from i2a.i2a_agent import I2A
 
-from rl_visualization.a2c.play_game_with_trained_model import TestPolicy
+from rl_visualization.play_game_with_trained_model import TestPolicy
 import gym_minipacman
 import time
 import sys

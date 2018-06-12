@@ -48,7 +48,7 @@ class VisdomPlotGraph():
         self.history.extend(value)
 
     def plot_values(self, frames, values):
-        if self.viz is not None and len(self.history) > self.plot_after_history_size:
+        if self.viz is not None and len(self.history) >= self.plot_after_history_size:
             frames_in_mio = frames / 1000000
             self.plot_win = plot_line(self.viz,
                                       self.plot_win,
@@ -74,29 +74,30 @@ class VisdomPlotGraph():
 
 
 class VisdomPlotterA2C():
-    def __init__(self, viz, plot_distill_loss = False):
+    def __init__(self, viz, plot_distill_loss = False,
+                 entropy_plot_cnf = [2000, 200], reward_plot_cnf=[20000, 2000], loss_plot_cnf = [2000, 200]):
         # from visdom import Visdom
         self.viz = viz
         self.plot_distill_loss = plot_distill_loss
         self.dist_entropy_plotter = VisdomPlotGraph(viz,
                                                     "Distribution Entropy",
                                                     "Entropy",
-                                                    running_mean_n=2000,
-                                                    plot_after_n_inserts=200)
+                                                    running_mean_n=entropy_plot_cnf[0],
+                                                    plot_after_n_inserts=entropy_plot_cnf[1])
         self.reward_plotter = VisdomPlotGraph(viz,
                                               "Reward",
                                               "Reward",
                                               ["Mean Reward", "Median Reward"],
-                                              running_mean_n=20000,
-                                              plot_after_n_inserts=2000)
+                                              running_mean_n=reward_plot_cnf[0],
+                                              plot_after_n_inserts=reward_plot_cnf[1])
 
         if self.plot_distill_loss:
             loss_legend = ["Value Loss", "Policy Loss", "Distill Loss"]
         else:
             loss_legend = ["Value Loss", "Policy Loss"]
         self.loss_plotter = VisdomPlotGraph(viz, "Loss", "Loss", loss_legend,
-                                            running_mean_n = 2000,
-                                            plot_after_n_inserts=200)
+                                            running_mean_n = loss_plot_cnf[0],
+                                            plot_after_n_inserts=loss_plot_cnf[1])
 
 
     def append(self, dist_entropy, reward, value_loss, action_loss, distill_loss=None):

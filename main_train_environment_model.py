@@ -22,7 +22,7 @@ def main():
                              help='flag to continue training on pretrained env_model')
     args_parser.add_argument('--save-environment-model-dir', default="trained_models/environment_models/",
                              help='relative path to folder from which a environment model should be loaded.')
-    args_parser.add_argument('--load-policy-model', action='store_true', default=False,
+    args_parser.add_argument('--no-policy-model-loading', action='store_true', default=False,
                              help='use trained policy model for environment model training')
     args_parser.add_argument('--load-policy-model-dir', default='trained_models/a2c/',
                              help='directory to save agent logs (default: trained_models/a2c)')
@@ -33,7 +33,7 @@ def main():
     args_parser.add_argument('--render',  action='store_true', default=False,
                              help='starts an progress that play and render games with the current model')
     args_parser.add_argument('--no-training', action='store_true', default=False,
-                             help='true if you do not want to train the model')
+                             help='true to render a already trained env model')
     args_parser.add_argument('--no-cuda', action='store_true', default=False,
                              help='disables CUDA training')
     args_parser.add_argument('--no-vis', action='store_true', default=False,
@@ -42,26 +42,28 @@ def main():
                              help='port to run the server on (default: 8097)')
     args_parser.add_argument('--grey_scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
-    args_parser.add_argument('--save-interval', type=int, default=10,
+    args_parser.add_argument('--save-interval', type=int, default=100,
                              help='save model each n episodes (default: 10)')
     args_parser.add_argument('--use-class-labels', action='store_true', default=False,
                              help='true to use pixelwise cross-entropy-loss and make'
                                   'the color of each pixel a classification task')
     args_parser.add_argument('--batch-size', type=int, default=100,
                              help='batch size (default: 100)')
-    args_parser.add_argument('--lr', type=float, default=7e-4, #1e-4
+    args_parser.add_argument('--lr', type=float, default=7e-4,
                              help='learning rate (default: 7e-4)')
-    args_parser.add_argument('--eps', type=float, default=1e-5, #1e-8
-                             help='RMSprop optimizer epsilon (default: 1e-5)')
-    args_parser.add_argument('--weight-decay', type=float, default=0,
+    args_parser.add_argument('--eps', type=float, default=1e-8,
+                             help='RMSprop optimizer epsilon (default: 1e-8)')
+    args_parser.add_argument('--weight-decay', type=float, default=0.05,
                              help='weight decay (default: 0)')
-    args_parser.add_argument('--reward-loss-coef', type=float, default=0.5,
-                             help='reward loss coef (default: 0.5)')
+    args_parser.add_argument('--reward-loss-coef', type=float, default=0.01,
+                             help='reward loss coef (default: 0.01)')
     args = args_parser.parse_args()
 
-    #args.save_environment_model_dir = os.path.join('../../', 'trained_models/environment_models/')
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
+
+    if args.no_training:
+        args.render = True
 
     if args.render:
         mp.set_start_method('spawn')
@@ -73,9 +75,9 @@ def main():
                                                 color_prefix,
                                                 class_labels_prefix)
     log_path = '{0}env_{1}{2}{3}.log'.format(args.save_environment_model_dir,
-                                                  args.env_name,
-                                                  color_prefix,
-                                                  class_labels_prefix)
+                                             args.env_name,
+                                             color_prefix,
+                                             class_labels_prefix)
 
 
     load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.load_policy_model_name)
@@ -83,7 +85,7 @@ def main():
     env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=args.grey_scale)() #wtf
 
     policy = build_policy(env=env,
-                          load_policy_model=args.load_policy_model,
+                          no_policy_model_loading=args.no_policy_model_loading,
                           load_policy_model_path=load_policy_model_path,
                           use_cuda=args.cuda)
 
@@ -348,12 +350,12 @@ class EnvironmentModelTrainer():
                 torch.save(state_to_save, self.save_model_path)
 
 
-def build_policy(env, load_policy_model, load_policy_model_path, use_cuda):
+def build_policy(env, no_policy_model_loading, load_policy_model_path, use_cuda):
     policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda))
     if use_cuda:
         policy.cuda()
 
-    if load_policy_model:
+    if not no_policy_model_loading:
         saved_state = torch.load(load_policy_model_path, map_location=lambda storage, loc: storage)
         print("Load Policy Model", load_policy_model_path)
         policy.load_state_dict(saved_state)

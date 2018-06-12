@@ -21,7 +21,7 @@ class EnvEncoderModel(torch.nn.Module):
         #x = torch.cat((inputs,broadcasted_action),1)
 
         # TODO: assuming batch size 1
-        inputs = inputs.unsqueeze(0)    #TODO: fml, do this line if and only if is it minipacman
+        #inputs = inputs.unsqueeze(0)    #TODO: fml, do this line if and only if is it minipacman
         broadcasted_action = action.repeat(1, self.action_broadcast_size).float()
         x = torch.cat((inputs,broadcasted_action),1)
 

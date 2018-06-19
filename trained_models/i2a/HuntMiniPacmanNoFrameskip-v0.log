@@ -1,1 +1,0 @@
-command line args: /home/meins/Studium/GuidedResearch/master_guided_research/main.py --env-name HuntMiniPacmanNoFrameskip-v0 --algo i2a --use-class-labels --num-stack 1 --num-frames 0 --render-game

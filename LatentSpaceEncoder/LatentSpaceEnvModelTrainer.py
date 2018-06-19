@@ -52,12 +52,10 @@ class LatentSpaceEnvModelTrainer():
 
 
         # first-to-second forward
-        action_variable = Variable(torch.from_numpy(np.array([action])).float())
-        if self.use_cuda:
-            action_variable = action_variable.cuda()
-        latent_prediction, reward_prediction = self.env_encoder_model(first_state_latent_prediction, action_variable)
+        latent_prediction, reward_prediction = self.env_encoder_model(first_state_latent_prediction, action)
         latent_target = second_state_latent_prediction
-        latent_target = Variable(latent_target.data, requires_grad=False)
+        #latent_target = Variable(latent_target.data, requires_grad=False)
+        latent_target = latent_target.detach()
         latent_loss = self.loss_criterion(latent_prediction, latent_target)
 
         reward_loss = self.loss_criterion(reward_prediction, reward_target)
@@ -85,7 +83,7 @@ class LatentSpaceEnvModelTrainer():
             render_observation_in_window('current_ground_truth', first_state_variable, None, grey_scale=self.args.grey_scale, is_mini_pacman=self.is_mini_pacman)
             render_observation_in_window('substracted_auto_encoder', first_state_variable - first_state_prediction, None, grey_scale=self.args.grey_scale, is_mini_pacman=self.is_mini_pacman)
 
-        return first_state_loss, latent_loss
+        return first_state_loss.item(), latent_loss.item()
 
 
     def train_env_encoder(self, env, policy, use_cuda):
@@ -93,18 +91,15 @@ class LatentSpaceEnvModelTrainer():
         chance_of_random_action = 0.25
         for i_episode in range(10000):
             loss_printer.reset()
-            state = env.reset()
+            first_state = env.reset()
+            first_state = torch.from_numpy(first_state).unsqueeze(0).float()
+            if use_cuda:
+                first_state = first_state.cuda()
 
             done = False
             while not done:
-                state = torch.from_numpy(state)
-
-                first_state_variable = Variable(state.unsqueeze(0)).float()
-                if use_cuda:
-                    first_state_variable = first_state_variable.cuda()
-
                 # let policy decide on next action
-                critic, actor = policy(first_state_variable)
+                critic, actor = policy(first_state)
 
                 action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n,
                                                          chance_of_random_action=chance_of_random_action)
@@ -112,19 +107,20 @@ class LatentSpaceEnvModelTrainer():
                 # perform action to get next state
                 next_state, reward, done, _ = env.step(action)
 
-                second_state_variable = Variable(torch.from_numpy(next_state).unsqueeze(0)).float()
-                reward = Variable(torch.FloatTensor([reward]).unsqueeze(0))
+                next_state = torch.from_numpy(next_state).unsqueeze(0).float()
+                reward = torch.FloatTensor([reward]).unsqueeze(0)
                 if use_cuda:
-                    second_state_variable = second_state_variable.cuda()
+                    next_state = next_state.cuda()
                     reward = reward.cuda()
+                    action = action.cuda()
 
                 first_state_loss, latent_loss = self.train_env_model_step(
-                    first_state_variable=first_state_variable, second_state_variable=second_state_variable, reward_target=reward,
+                    first_state_variable=first_state, second_state_variable=next_state, reward_target=reward,
                     action=action)
 
-                loss_printer.add_loss(first_state_loss.data[0], latent_loss.data[0])
+                loss_printer.add_loss(first_state_loss, latent_loss)
 
-                state = next_state
+                first_state = next_state
 
             loss_printer.print_episode(i_episode=i_episode)
 
@@ -141,7 +137,7 @@ class LatentSpaceEnvModelTrainer():
         for i_episode in range(10000):
             loss_printer.reset()
             state = env.reset()
-            state = Variable(torch.from_numpy(state).unsqueeze(0)).float()
+            state = torch.from_numpy(state).unsqueeze(0).float()
             if use_cuda:
                 state = state.cuda()
 
@@ -151,12 +147,14 @@ class LatentSpaceEnvModelTrainer():
                 critic, actor = policy(state)
                 action = sample_action_from_distribution(actor=actor, action_space=env.action_space.n,
                                                          chance_of_random_action=chance_of_random_action)
-                next_state, reward, done, _ = env.step(action)
-                next_state = Variable(torch.from_numpy(next_state).unsqueeze(0)).float()
-                reward = Variable(torch.FloatTensor([reward]).unsqueeze(0))
+                a = action.item()
+                next_state, reward, done, _ = env.step(action.item())
+                next_state = torch.from_numpy(next_state).unsqueeze(0).float()
+                reward = torch.FloatTensor([reward]).unsqueeze(0)
                 if use_cuda:
                     next_state = next_state.cuda()
                     reward = reward.cuda()
+                    action = action.cuda()
 
                 # add current state, next-state pair to replay memory
                 sample_memory.append((state, next_state, reward, action))
@@ -169,7 +167,7 @@ class LatentSpaceEnvModelTrainer():
                     reward_target=sample_reward,
                     action=sample_action)
 
-                loss_printer.add_loss(first_state_loss.data[0], latent_loss.data[0])
+                loss_printer.add_loss(first_state_loss, latent_loss)
 
                 state = next_state
 
@@ -193,10 +191,10 @@ class LatentSpaceEnvModelTrainer():
 
 def sample_action_from_distribution(actor, action_space, chance_of_random_action=0.25):
     prob = F.softmax(actor, dim=1)
-    action = prob.multinomial().data
-    action = action[0][0]
+    action = prob.multinomial(num_samples=1)
     if random.random() < chance_of_random_action:
         action = random.randint(0, action_space - 1)
+        action = torch.LongTensor([[action]]).cuda()
     return action
 
 
@@ -204,9 +202,9 @@ import numpy as np
 import cv2
 def render_observation_in_window(window_name, observation, mean_image=None, grey_scale=False, is_mini_pacman=True):
     if grey_scale:
-        drawable_state = observation.view(-1, 1, observation.data.shape[2], observation.data.shape[3])[-1]
+        drawable_state = observation.view(-1, 1, observation.shape[2], observation.shape[3])[-1]
     else:
-        drawable_state = observation.view(-1, 3, observation.data.shape[2], observation.data.shape[3])[-1]
+        drawable_state = observation.view(-1, 3, observation.shape[2], observation.shape[3])[-1]
     drawable_state = drawable_state.data.cpu().numpy()
 
     if mean_image is not None:
@@ -227,7 +225,7 @@ def render_observation_in_window(window_name, observation, mean_image=None, grey
         if not is_mini_pacman:
             cv2_frame_data = cv2.cvtColor(np.transpose(frame_data, (1,2,0)), cv2.COLOR_BGR2RGB)
         else:   #for MiniPacman
-            cv2_frame_data = cv2.cvtColor(frame_data.reshape(observation.data.shape[2], observation.data.shape[3], observation.data.shape[1]), cv2.COLOR_BGR2RGB)
+            cv2_frame_data = cv2.cvtColor(frame_data.reshape(observation.shape[2], observation.shape[3], observation.shape[1]), cv2.COLOR_BGR2RGB)
 
     cv2.imshow(window_name, cv2_frame_data)
     cv2.waitKey(1)

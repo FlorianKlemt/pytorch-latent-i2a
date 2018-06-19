@@ -77,9 +77,14 @@ def get_args():
                         help='number of steps the imagination core rollouts in the I2A training (default: 5)')
     parser.add_argument('--use-class-labels', action='store_true', default=False,
                         help='True to compute rollouts on class labels')
+    parser.add_argument('--no-training', action='store_true', default=False,
+                        help='true to render a already trained model')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
+    if args.no_training:
+        args.num_frames = 0
+        args.render_game = True
 
     return args

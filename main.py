@@ -1,33 +1,24 @@
 import copy
 import glob
 import os
-import time
 
-import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-
-import gym_minipacman
 
 from arguments import get_args
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
-from envs import make_env
 from model import Policy
 from storage import RolloutStorage, I2A_RolloutStorage
 from visualize import visdom_plot
-from visdom_plotter import VisdomPlotterA2C
-from A2C_Models.MiniModel import MiniModel
-from A2C_Models.A2C_PolicyWrapper import A2C_PolicyWrapper, I2A_ActorCritic
-from A2C_Models.I2A_MiniModel import I2A_MiniModel
-from I2A.I2A_Agent import I2A
+from rl_visualization.visdom_plotter import VisdomPlotterA2C
+from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper, I2A_ActorCritic
+from a2c_models.i2a_mini_model import I2A_MiniModel
+from i2a.i2a_agent import I2A
 
-from play_game_with_trained_model import TestPolicy
-
+from rl_visualization.play_game_with_trained_model import TestPolicy
+import gym_minipacman
 import time
 import sys
 import multiprocessing as mp
@@ -307,9 +298,9 @@ def main():
 
 
 def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model, use_class_labels):
-    from I2A.EnvironmentModel.MiniPacmanEnvModel import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
-    from I2A.load_utils import load_em_model
-    from I2A.ImaginationCore import ImaginationCore
+    from environment_model.minipacman_env_model import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
+    from i2a.load_utils import load_em_model
+    from i2a.imagination_core import ImaginationCore
 
     input_channels = obs_shape[0]
     obs_shape_frame_stack = (obs_shape[0] * frame_stack, *obs_shape[1:])

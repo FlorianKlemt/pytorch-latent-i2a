@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from LatentSpaceEncoder.models_from_paper.depth2space import DepthToSpace, SpaceToDepth
+import math
 
 
 
@@ -24,9 +25,13 @@ class ConvStack(nn.Module):
         super(ConvStack, self).__init__()
         assert(len(kernel_sizes)==len(output_channels)==3)
 
-        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=output_channels[0], kernel_size=kernel_sizes[0], stride=1)
-        self.conv2 = nn.Conv2d(in_channels=output_channels[0], out_channels=output_channels[1], kernel_size=kernel_sizes[1], stride=1, padding=2) #padding 2 is not in the paper but it doesnt seem to work otherwise (at least for 84,84 obs size)
-        self.conv3 = nn.Conv2d(in_channels=output_channels[1], out_channels=output_channels[2], kernel_size=kernel_sizes[2], stride=1)
+        conv_paddings = [(n-1)/2 for n in kernel_sizes]
+        #conv_paddings = (kernel_sizes[:]-1)/2   #conv2 needs to be size preserving
+        assert(all(padding==math.floor(padding) for padding in conv_paddings))
+
+        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=output_channels[0], kernel_size=kernel_sizes[0], stride=1, padding=conv_paddings[0])
+        self.conv2 = nn.Conv2d(in_channels=output_channels[0], out_channels=output_channels[1], kernel_size=kernel_sizes[1], stride=1, padding=conv_paddings[1]) #padding is not in the paper
+        self.conv3 = nn.Conv2d(in_channels=output_channels[1], out_channels=output_channels[2], kernel_size=kernel_sizes[2], stride=1, padding=conv_paddings[2])
 
     def forward(self, x):
         intermediate_result = F.relu(self.conv1(x))
@@ -41,17 +46,19 @@ class ConvStack(nn.Module):
 class ResConv(nn.Module):
     def __init__(self, input_channels):
         super(ResConv, self).__init__()
+        #paddings are not given in the paper, but it does not make sense otherwise (can't compute state + intermediate_result in forward)
         self.res_conv = nn.Sequential(
-            nn.Conv2d(in_channels=input_channels, out_channels=32, kernel_size=3, stride=1),
+            nn.Conv2d(in_channels=input_channels, out_channels=32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=5, stride=1),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=5, stride=1, padding=2),
             nn.ReLU(),
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
         )
 
-    def forward(self, x):
-        intermediate_result = self.res_conv(x)
-        output = x + intermediate_result
+    #TODO: ask Tim and/or Weber, sizes as given in the paper do not match
+    def forward(self, state, input):
+        intermediate_result = self.res_conv(input)
+        output = state + intermediate_result
         return output
 
 
@@ -60,7 +67,8 @@ class PoolAndInject(nn.Module):
         super(PoolAndInject, self).__init__()
         assert(len(size)==2)
         self.W, self.H = size
-        self.conv = nn.Conv2d(in_channels=input_channels, out_channels=32, kernel_size=3, stride=1)
+        #padding is not given in the paper, but it is not size-preserving otherwise
+        self.conv = nn.Conv2d(in_channels=input_channels, out_channels=32, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=(self.W, self.H))
 
     def forward(self,input):
@@ -76,24 +84,25 @@ class StateTransition(nn.Module):
         super(StateTransition, self).__init__()
         self.use_cuda = use_cuda
         self.num_actions = num_actions  #needed to broadcast the action (they are broadcasted to as many channels as there are actions)
-        input_channels = state_input_channels + num_actions + 1 #state channels + channels of broadcasted action + 1 channel of broadcasted z
-        self.transition = nn.Sequential(
-            ResConv(input_channels=input_channels),
-            nn.ReLU(),
-            PoolAndInject(input_channels=64, size=(10,10)), #TODO: size is wrong!! placeholder  #output channels of res_conv should always be 64 channels
-            ResConv(input_channels=96) #pool-and-inject output channels should be nr input channels + 32
-        )
+        input_channels = state_input_channels + num_actions #+ 1 #state channels + channels of broadcasted action + 1 channel of broadcasted z
+
+        self.res_conv1 = ResConv(input_channels=input_channels)
+        self.pool_and_inject = PoolAndInject(input_channels=64, size=(25,20)) #TODO: maybe remove hardcoding of size
+        self.res_conv2 = ResConv(input_channels=96) #pool-and-inject output channels should be nr input channels + 32
 
     def forward(self, state, action, z):
         broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=state.shape[2:], use_cuda=self.use_cuda)
 
-        #we broadcast z to 1 channel --> TODO: check if this is correct
-        broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])  #assumes z is given as a torch tensor
+        if z is not None:
+            #we broadcast z to 1 channel --> TODO: check if this is correct
+            broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])  #assumes z is given as a torch tensor
+            concatenated = torch.cat((state, broadcasted_action, broadcasted_z), 1)
+        else:
+            concatenated = torch.cat((state, broadcasted_action), 1)
 
-        # concatinate observation and broadcasted action
-        concatenated = torch.cat((state, broadcasted_action, broadcasted_z), 1)
-
-        x = self.transition(concatenated)
+        x = F.relu(self.res_conv1(state, concatenated))
+        x = self.pool_and_inject(x)
+        x = self.res_conv2(state,x) #TODO: wtf is the input here, as given in the paper does not work
         return x
 
 
@@ -102,11 +111,15 @@ class EncoderModule(nn.Module):
     def __init__(self, input_channels):
         super(EncoderModule, self).__init__()
         first_space_to_depth_block_size = 4
+        conv_stack1_input_channels = input_channels * pow(first_space_to_depth_block_size, 2)
+        conv_stack1_output_channels = 64
+        second_space_to_depth_block_size = 2
+        conv_stack2_input_channels = conv_stack1_output_channels * pow(second_space_to_depth_block_size, 2)
         self.encoder = nn.Sequential(
             SpaceToDepth(block_size=first_space_to_depth_block_size),
-            ConvStack(input_channels=input_channels*pow(first_space_to_depth_block_size,2), kernel_sizes=(3,5,3), output_channels=(16,16,64)),
-            SpaceToDepth(block_size=2),
-            ConvStack(input_channels=1, kernel_sizes=(3,5,3), output_channels=(32,32,64)),  #TODO: input channels are wrong!! placeholder
+            ConvStack(input_channels=conv_stack1_input_channels, kernel_sizes=(3,5,3), output_channels=(16,16,conv_stack1_output_channels)),
+            SpaceToDepth(block_size=second_space_to_depth_block_size),
+            ConvStack(input_channels=conv_stack2_input_channels, kernel_sizes=(3,5,3), output_channels=(32,32,64)),
             nn.ReLU()
         )
 
@@ -129,22 +142,26 @@ class DecoderModule(nn.Module):
             nn.Conv2d(in_channels=state_input_channels, out_channels=24, kernel_size=3, stride=1),
             nn.ReLU(),
             Flatten(),  #the paper says only reshape, but should be a Flatten as it is followed by a Linear layer
-            nn.Linear(in_features=1, out_features=1)    #TODO: channels are both wrong!! only placeholder
+            nn.Linear(in_features=9936, out_features=1)    #TODO: out features are wrong!! only placeholder
         )
 
+        input_channels = state_input_channels  # +1 for broadcasted z
         self.image_head = nn.Sequential(
-            ConvStack(input_channels=state_input_channels+1, kernel_sizes=(1,5,3), output_channels=(32,32,64)),
+            ConvStack(input_channels=input_channels, kernel_sizes=(1,5,3), output_channels=(32,32,64)),
             DepthToSpace(block_size=2),
-            ConvStack(input_channels=1, kernel_sizes=(3,3,1), output_channels=(64,64,48)), #TODO: input channels are wrong!! only placeholder
+            ConvStack(input_channels=16, kernel_sizes=(3,3,1), output_channels=(64,64,48)), #input_channels = output_channels_convstack1/(block_size*block_size)
             DepthToSpace(block_size=4)
         )
 
     def forward(self, state, z):
         reward_log_probs = self.reward_head(state)
 
-        #we broadcast z to 1 channel --> TODO: check if this is correct
-        broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])
-        concatenated = torch.cat((state, broadcasted_z), 1)
+        if z is not None:
+            #we broadcast z to 1 channel
+            broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])
+            concatenated = torch.cat((state, broadcasted_z), 1)
+        else:
+            concatenated = state
 
         image_log_probs = self.image_head(concatenated)
         return image_log_probs, reward_log_probs

@@ -8,31 +8,62 @@ from model import Policy
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
 from LatentSpaceEncoder.env_encoder import make_env
+from custom_envs import ClipAtariFrameSizeTo200x160
+from rl_visualization.logger import LogTrainEM
+from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
+import copy
+import multiprocessing as mp
 #from envs import make_env
 
 def main():
     args_parser = argparse.ArgumentParser(description='StateSpaceEncoder')  #TODO: make actual args
     args = args_parser.parse_args()
     args.use_cuda = True
+    args.cuda = args.use_cuda
     args.batch_size = 100
+    args.save_env_model_dir = "../../trained_models/environment_models/"
+    args.vis = True
+    args.port = 8097
+    args.save_interval = 20
+    args.render = True
+    args.env_name ="MsPacmanNoFrameskip-v0"
+    args.grey_scale = False
 
+    if args.render:
+        mp.set_start_method('spawn')
+
+    save_model_path = '{0}{1}{2}.dat'.format(args.save_env_model_dir,
+                                                  args.env_name,
+                                                  "state_space")
 
     #env = make_env("MsPacmanNoFrameskip-v0", 1, 1, None, False)()
-    env = make_env("MsPacmanNoFrameskip-v0", 1, 1, None, False, False)()
+    env = make_env(args.env_name, 1, 1, None, False, False)()
+    env = ClipAtariFrameSizeTo200x160(env=env)
+
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=5, use_cuda=True)
+    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
     if args.use_cuda:
         policy.cuda()
         model.cuda()
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0005, weight_decay=1e-5)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.00005, weight_decay=1e-5)
     loss_criterion = torch.nn.MSELoss()
 
-    trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy, optimizer=optimizer, loss_criterion=loss_criterion)
-    trainer.train_env_model_batchwise(episoden=1000)
+    if args.render:
+        test_process = TestEnvironmentModel(env=env,
+                                            environment_model=copy.deepcopy(model),
+                                            load_path=save_model_path,
+                                            rollout_policy=policy,
+                                            args=args)
+
+    trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy, optimizer=optimizer, loss_criterion=loss_criterion,
+                                     save_model_path = save_model_path)
+    #import time
+    #time.sleep(100000000)
+    trainer.train_env_model_batchwise(episoden=100000)
 
 
 class StateSpaceModelTrainer():
-    def __init__(self, args, env, model, policy, optimizer, loss_criterion):
+    def __init__(self, args, env, model, policy, optimizer, loss_criterion, save_model_path):
         self.model = model
         self.args = args
         self.env = env
@@ -42,6 +73,25 @@ class StateSpaceModelTrainer():
         self.use_cuda = args.use_cuda
         self.batch_size = args.batch_size
         self.sample_memory_size = 100000
+
+        self.log_path = '{0}env_{1}{2}.log'.format(args.save_env_model_dir,
+                                                   args.env_name,
+                                                   "state_space")
+
+        self.save_model_path = save_model_path
+
+
+
+        if args.vis:
+            from visdom import Visdom
+            viz = Visdom(port=args.port)
+        else:
+            viz = None
+        self.loss_printer = LogTrainEM(log_name=self.log_path,
+                                       batch_size=self.batch_size,
+                                       delete_log_file=True,
+                                       viz=viz)
+
 
     def train_env_model_batchwise(self, episoden = 10000):
         from collections import deque
@@ -63,10 +113,20 @@ class StateSpaceModelTrainer():
             self.optimizer.step()
 
 
-            #if i_episode % self.args.save_interval == 0:
-            #    print("Save model", self.save_model_path)
-            #    state_to_save = self.optimizer.model.state_dict()
-            #    torch.save(state_to_save, self.save_model_path)
+            # log and print infos
+            if self.loss_printer:
+                self.loss_printer.log_loss_and_reward((loss,loss), torch.zeros(1), torch.zeros(1), i_episode)
+                if self.loss_printer.frames % 10 == 0:
+                    self.loss_printer.print_episode(episode=i_episode)
+
+            if i_episode % self.args.save_interval == 0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
+
+                saved_state = torch.load(self.save_model_path, map_location=lambda storage, loc: storage)
+                a = copy.deepcopy(self.model)
+                a.load_state_dict(saved_state)
 
             if i_episode != 0 and i_episode % len(sample_memory) == 0:
                 print("create more training data")

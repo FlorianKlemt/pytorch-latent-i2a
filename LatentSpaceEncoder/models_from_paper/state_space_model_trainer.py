@@ -45,7 +45,7 @@ def main():
     if args.use_cuda:
         policy.cuda()
         model.cuda()
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.00005, weight_decay=1e-5)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0002, weight_decay=0)  #0.00005, 1e-5
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:
@@ -123,10 +123,6 @@ class StateSpaceModelTrainer():
                 print("Save model", self.save_model_path)
                 state_to_save = self.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
-
-                saved_state = torch.load(self.save_model_path, map_location=lambda storage, loc: storage)
-                a = copy.deepcopy(self.model)
-                a.load_state_dict(saved_state)
 
             if i_episode != 0 and i_episode % len(sample_memory) == 0:
                 print("create more training data")

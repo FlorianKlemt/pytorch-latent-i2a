@@ -47,7 +47,9 @@ class ModelBasedNetwork(torch.nn.Module):
         # model-based side
         states = input_state.repeat(self.number_actions, 1, 1, 1, 1)
         states = states.permute(1, 0, 2, 3, 4).contiguous()
+        #batchwise for all rollouts -> each rollout gets a different first action
         actions = torch.arange(self.number_actions).long().unsqueeze(1)
+        #batchwise for all processes -> repeat the broadcasted actions for each batch
         actions = actions.repeat(input_state.shape[0], 1, 1)
         if self.use_cuda:
             actions = actions.cuda()

@@ -133,3 +133,17 @@ def make_custom_env_squared(env_id, seed, rank, log_dir):
         return env
 
     return _thunk
+
+
+#for State Space Encoder
+class ClipAtariFrameSizeTo200x160(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        self.height = 200
+        self.width = 160
+        self.channels = self.observation_space.shape[0]
+        self.observation_space = spaces.Box(low=0., high=1.,
+            shape=(self.channels, self.height, self.width), dtype=np.float)
+
+    def observation(self, frame):
+        return frame[:, :self.height, :self.width]

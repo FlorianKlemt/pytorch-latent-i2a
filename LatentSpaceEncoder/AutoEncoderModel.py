@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from I2A.utils import get_conv_output_dims, get_possible_sizes
+from i2a.utils import get_conv_output_dims, get_possible_sizes
 from functools import reduce
 
 import torch.nn as nn

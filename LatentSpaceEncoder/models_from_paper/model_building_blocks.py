@@ -80,11 +80,15 @@ class PoolAndInject(nn.Module):
 
 #Transition Module for computing the state transition function s_t=g(s_t-1, z_t, a_t-1)
 class StateTransition(nn.Module):
-    def __init__(self, state_input_channels, num_actions, use_cuda):
+    def __init__(self, state_input_channels, num_actions, use_stochastic, use_cuda):
         super(StateTransition, self).__init__()
         self.use_cuda = use_cuda
         self.num_actions = num_actions  #needed to broadcast the action (they are broadcasted to as many channels as there are actions)
-        input_channels = state_input_channels + num_actions #+ 1 #state channels + channels of broadcasted action + 1 channel of broadcasted z
+        self.use_stochastic = use_stochastic
+        if use_stochastic:
+            input_channels = state_input_channels + num_actions + 2*state_input_channels #state channels + channels of broadcasted action + 2 channels of broadcasted z
+        else:
+            input_channels = state_input_channels + num_actions
 
         self.res_conv1 = ResConv(input_channels=input_channels)
         self.pool_and_inject = PoolAndInject(input_channels=64, size=(25,20)) #TODO: maybe remove hardcoding of size
@@ -93,10 +97,10 @@ class StateTransition(nn.Module):
     def forward(self, state, action, z):
         broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=state.shape[2:], use_cuda=self.use_cuda)
 
-        if z is not None:
-            #we broadcast z to 1 channel --> TODO: check if this is correct
-            broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])  #assumes z is given as a torch tensor
-            concatenated = torch.cat((state, broadcasted_action, broadcasted_z), 1)
+        if self.use_stochastic and z is not None:
+            #z consists of a tuple of z_mu and z_sigma --> broadcast each to 1 channel --> TODO: check if this is correct
+            z_mu, z_sigma = z
+            concatenated = torch.cat((state, broadcasted_action, z_mu, z_sigma), 1)
         else:
             concatenated = torch.cat((state, broadcasted_action), 1)
 
@@ -136,8 +140,9 @@ class Flatten(torch.nn.Module):
 
 
 class DecoderModule(nn.Module):
-    def __init__(self, state_input_channels):
+    def __init__(self, state_input_channels, use_vae):
         super(DecoderModule, self).__init__()
+        self.use_vae = use_vae
         self.reward_head = nn.Sequential(
             nn.Conv2d(in_channels=state_input_channels, out_channels=24, kernel_size=3, stride=1),
             nn.ReLU(),
@@ -145,7 +150,11 @@ class DecoderModule(nn.Module):
             nn.Linear(in_features=9936, out_features=1)    #TODO: out features are wrong!! only placeholder
         )
 
-        input_channels = state_input_channels  # +1 for broadcasted z
+        if self.use_vae:
+            input_channels = state_input_channels + 2*state_input_channels # +2*state_input_channels for z
+        else:
+            input_channels = state_input_channels
+
         self.image_head = nn.Sequential(
             ConvStack(input_channels=input_channels, kernel_sizes=(1,5,3), output_channels=(32,32,64)),
             DepthToSpace(block_size=2),
@@ -156,10 +165,9 @@ class DecoderModule(nn.Module):
     def forward(self, state, z):
         reward_log_probs = self.reward_head(state)
 
-        if z is not None:
-            #we broadcast z to 1 channel
-            broadcasted_z = z.repeat(1, 1, state.shape[2], state.shape[3])
-            concatenated = torch.cat((state, broadcasted_z), 1)
+        if self.use_vae and z is not None:
+            z_mu, z_sigma = z
+            concatenated = torch.cat((state, z_mu, z_sigma), 1)
         else:
             concatenated = state
 
@@ -191,8 +199,9 @@ class PriorModule(nn.Module):
 #Posterior Module for computing mean μ'_z_t and diagonal variance σ'_z_t of the normal distribution q(z_z|s_t-1, a_t-1, o_t).
 #   The posterior gets as additional inputs the prior statistics μ_z_t, σ_z_t.
 class PosteriorModule(nn.Module):
-    def __init__(self, state_input_channels, num_actions):
+    def __init__(self, state_input_channels, num_actions, use_cuda):
         super(PosteriorModule, self).__init__()
+        self.use_cuda = use_cuda
         #state channels + action broadcast channels + encoded obs always should have 64 channels + 1 channel broadcasted mu + 1 channel broadcasted sigma
         input_channels = state_input_channels + num_actions + 64 + 1 + 1
         self.conv_stack = ConvStack(input_channels=input_channels, kernel_sizes=(1,3,3), output_channels=(32,32,64))

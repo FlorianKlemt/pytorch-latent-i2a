@@ -3,6 +3,7 @@ import random
 import torch.functional as F
 import gym
 from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
+from LatentSpaceEncoder.models_from_paper.sSSM import sSSM
 import argparse
 from model import Policy
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
@@ -20,7 +21,7 @@ def main():
     args = args_parser.parse_args()
     args.use_cuda = True
     args.cuda = args.use_cuda
-    args.batch_size = 100
+    args.batch_size = 20
     args.save_env_model_dir = "../../trained_models/environment_models/"
     args.vis = True
     args.port = 8097
@@ -41,12 +42,14 @@ def main():
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
     if args.use_cuda:
         policy.cuda()
         model.cuda()
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0002, weight_decay=0)  #0.00005, 1e-5
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0001, weight_decay=0)  #0.00005, 1e-5
     loss_criterion = torch.nn.MSELoss()
+    #loss_criterion = torch.nn.BCELoss()
 
     if args.render:
         test_process = TestEnvironmentModel(env=env,
@@ -72,7 +75,8 @@ class StateSpaceModelTrainer():
         self.loss_criterion = loss_criterion
         self.use_cuda = args.use_cuda
         self.batch_size = args.batch_size
-        self.sample_memory_size = 100000
+        self.sample_memory_size = 200 #500 #100000
+        self.frame_stack = 4
 
         self.log_path = '{0}env_{1}{2}.log'.format(args.save_env_model_dir,
                                                    args.env_name,
@@ -124,8 +128,9 @@ class StateSpaceModelTrainer():
                 state_to_save = self.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
 
-            if i_episode != 0 and i_episode % len(sample_memory) == 0:
-                print("create more training data")
+            #if i_episode != 0 and i_episode % len(sample_memory) == 0:
+            if i_episode != 0 and i_episode % create_n_samples == 0:
+                print("create more training data ", len(sample_memory))
                 sample_memory.extend(self.create_x_samples(create_n_samples))
 
 
@@ -142,13 +147,26 @@ class StateSpaceModelTrainer():
                 state = state.cuda()
             done = False
             while not done:
-                # let policy decide on next action and perform it
-                value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
-                next_state, reward, done, _ = self.do_env_step(action=action)
+                state_stack = None
+                action_stack = None
+                for _ in range(self.frame_stack):
+                    # let policy decide on next action and perform it
+                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
+                    if state_stack is not None and action_stack is not None:
+                        state_stack = torch.cat((state_stack,state))
+                        action_stack = torch.cat((action_stack, action))
+                    else:
+                        state_stack = state
+                        action_stack = action
+
+                    state, reward, done, _ = self.do_env_step(action=action)
+
 
                 # add current state, next-state pair to replay memory
-                sample_memory.append([state, action, next_state, reward])
-                state = next_state
+                #sample_memory.append([state, action, next_state, reward])
+                #state = next_state
+                target_state = torch.cat((state_stack[1:], state))
+                sample_memory.append([state_stack, action_stack, target_state, reward])
 
                 if len(sample_memory) >= number_of_samples:
                     break

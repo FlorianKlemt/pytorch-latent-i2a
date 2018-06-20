@@ -193,7 +193,7 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
         env = gym.make(env_id)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
-            env = make_atari(env_id)
+            env = custom_make_atari(env_id)
         env.seed(seed + rank)
         if log_dir is not None:
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
@@ -216,6 +216,14 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
         return env
 
     return _thunk
+
+def custom_make_atari(env_id):
+    from baselines.common.atari_wrappers import NoopResetEnv
+    env = gym.make(env_id)
+    assert 'NoFrameskip' in env.spec.id
+    env = NoopResetEnv(env, noop_max=30)
+    #env = MaxAndSkipEnv(env, skip=4)   #TODO: maybe 2 skip
+    return env
 
 if __name__ == '__main__':
     main()

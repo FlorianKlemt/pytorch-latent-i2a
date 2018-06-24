@@ -29,6 +29,7 @@ def main():
     args.render = True
     args.env_name ="MsPacmanNoFrameskip-v0"
     args.grey_scale = False
+    args.load_environment_model = False
 
     if args.render:
         mp.set_start_method('spawn')
@@ -42,14 +43,21 @@ def main():
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
-    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    #model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    if args.load_environment_model:
+        load_environment_model_path = save_model_path
+        print("Load environment model", load_environment_model_path)
+        saved_state = torch.load(load_environment_model_path, map_location=lambda storage, loc: storage)
+        model.load_state_dict(saved_state)
+
     if args.use_cuda:
         policy.cuda()
         model.cuda()
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0001, weight_decay=0)  #0.00005, 1e-5
+    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0001, weight_decay=0)  #0.00005, 1e-5
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.00001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_criterion = torch.nn.MSELoss()
-    #loss_criterion = torch.nn.BCELoss()
 
     if args.render:
         test_process = TestEnvironmentModel(env=env,
@@ -62,7 +70,9 @@ def main():
                                      save_model_path = save_model_path)
     #import time
     #time.sleep(100000000)
-    trainer.train_env_model_batchwise(episoden=100000)
+    #trainer.train_env_model_batchwise(episoden=100000)
+
+    trainer.train_new(episoden=10000)
 
 
 class StateSpaceModelTrainer():
@@ -76,7 +86,7 @@ class StateSpaceModelTrainer():
         self.use_cuda = args.use_cuda
         self.batch_size = args.batch_size
         self.sample_memory_size = 200 #500 #100000
-        self.frame_stack = 4
+        self.frame_stack = 1
 
         self.log_path = '{0}env_{1}{2}.log'.format(args.save_env_model_dir,
                                                    args.env_name,
@@ -95,6 +105,80 @@ class StateSpaceModelTrainer():
                                        batch_size=self.batch_size,
                                        delete_log_file=True,
                                        viz=viz)
+
+
+    def train_new(self, episoden = 1000):
+        from collections import deque
+        print("create training data")
+        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
+        sample_memory = deque(maxlen=self.sample_memory_size)
+        sample_memory.extend(self.create_x_samples(create_n_samples))
+        import torch.nn as nn
+        #criterion = nn.KLDivLoss()
+        criterion = torch.nn.BCELoss()
+
+        for i_episode in range(episoden):
+            # sample a state, next-state pair randomly from replay memory for a training step
+            sample_observation, sample_action, sample_next_observation, sample_reward = [torch.cat(a) for a in zip
+                (*random.sample(sample_memory, self.batch_size))]
+
+            #action_list = [sample_action]
+            #image_log_probs = self.model.forward_multiple(sample_observation, action_list)
+            image_log_probs, _ = self.model(sample_observation, sample_action)
+            # not sure if we actually have the logs here or if we still have to log
+            # assume x is state_stack
+            #image_log_probs = torch.clamp(image_log_probs, 0.0001, 1)
+            #image_log_probs = torch.nn.functional.sigmoid(image_log_probs)
+            #image_log_probs = torch.log(image_log_probs)
+            #foo_bar_hate = torch.distributions.bernoulli.Bernoulli(logits=image_log_probs)
+            #image_log_probs = foo_bar_hate.log_prob(foo_bar_hate.sample())
+
+
+            loss = criterion(image_log_probs, sample_next_observation)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            '''
+            for i_episode in range(episoden):
+            first_state = self.env.reset()
+            first_state = torch.from_numpy(first_state).unsqueeze(0).float()
+            if self.use_cuda:
+                first_state = first_state.cuda()
+            done = False
+            state = first_state
+            while not done:
+                action_list = []
+                state_stack = None
+                for n in range(1):
+                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)
+                    action_list.append(action)
+                    if state_stack is not None:
+                        state_stack = torch.cat((state_stack, state))
+                    else:
+                        state_stack = state
+                    state, reward, done, _ = self.do_env_step(action=action)
+
+                image_log_probs = self.model.forward_multiple(first_state, action_list)
+                #not sure if we actually have the logs here or if we still have to log
+                #assume x is state_stack
+                loss = criterion(image_log_probs, state_stack)
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()'''
+
+            # log and print infos
+            if self.loss_printer:
+                self.loss_printer.log_loss_and_reward((loss, loss), torch.zeros(1), torch.zeros(1), i_episode)
+                if self.loss_printer.frames % 10 == 0:
+                    self.loss_printer.print_episode(episode=i_episode)
+
+            if i_episode % self.args.save_interval == 0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
+
+
 
 
     def train_env_model_batchwise(self, episoden = 10000):

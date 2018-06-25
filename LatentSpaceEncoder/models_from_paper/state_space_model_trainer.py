@@ -54,9 +54,9 @@ def main():
     if args.use_cuda:
         policy.cuda()
         model.cuda()
-    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.0001, weight_decay=0)  #0.00005, 1e-5
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.00001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:
@@ -72,7 +72,7 @@ def main():
     #time.sleep(100000000)
     #trainer.train_env_model_batchwise(episoden=100000)
 
-    trainer.train_new(episoden=10000)
+    trainer.train_new(episoden=1000000)
 
 
 class StateSpaceModelTrainer():
@@ -122,19 +122,37 @@ class StateSpaceModelTrainer():
             sample_observation, sample_action, sample_next_observation, sample_reward = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
+            sample_next_observation = torch.clamp(sample_next_observation, 0.0001, 1)
+
             #action_list = [sample_action]
             #image_log_probs = self.model.forward_multiple(sample_observation, action_list)
             image_log_probs, _ = self.model(sample_observation, sample_action)
             # not sure if we actually have the logs here or if we still have to log
             # assume x is state_stack
-            #image_log_probs = torch.clamp(image_log_probs, 0.0001, 1)
-            #image_log_probs = torch.nn.functional.sigmoid(image_log_probs)
-            #image_log_probs = torch.log(image_log_probs)
-            #foo_bar_hate = torch.distributions.bernoulli.Bernoulli(logits=image_log_probs)
-            #image_log_probs = foo_bar_hate.log_prob(foo_bar_hate.sample())
+            image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
+            pre_log = image_log_probs
+            image_log_probs = torch.log(image_log_probs)
 
+            predicted_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=image_log_probs)
+            #image_log_probs = predicted_bernoulli.log_prob(sample_next_observation)
 
-            loss = criterion(image_log_probs, sample_next_observation)
+            ground_truth_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=torch.log(sample_next_observation))
+            #loss = torch.distributions.kl.kl_divergence(predicted_bernoulli, ground_truth_bernoulli)
+            kl_loss = torch.distributions.kl._kl_bernoulli_bernoulli(predicted_bernoulli, ground_truth_bernoulli)
+            kl_loss = torch.mean(kl_loss)
+
+            #reconstruction_loss = criterion(pre_log, sample_next_observation)
+
+            #loss = reconstruction_loss + kl_loss
+
+            loss = kl_loss
+
+            #loss = - torch.sum(sample_next_observation * (log_y + image_log_probs))
+
+            #loss_part1 = - torch.mean(sample_next_observation * image_log_probs)
+            #loss_part2 = - torch.mean(sample_next_observation * log_y)
+            #loss = loss_part1 + loss_part2
+
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -177,6 +195,10 @@ class StateSpaceModelTrainer():
                 print("Save model", self.save_model_path)
                 state_to_save = self.model.state_dict()
                 torch.save(state_to_save, self.save_model_path)
+
+            if i_episode != 0 and i_episode % create_n_samples == 0:
+                print("create more training data ", len(sample_memory))
+                sample_memory.extend(self.create_x_samples(create_n_samples))
 
 
 

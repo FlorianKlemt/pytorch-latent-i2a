@@ -22,7 +22,7 @@ def main():
     args.use_cuda = True
     args.cuda = args.use_cuda
     args.batch_size = 20
-    args.save_env_model_dir = "../../trained_models/environment_models/"
+    args.save_env_model_dir = "trained_models/environment_models/"
     args.vis = True
     args.port = 8097
     args.save_interval = 20
@@ -55,8 +55,8 @@ def main():
         policy.cuda()
         model.cuda()
     #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:
@@ -122,13 +122,12 @@ class StateSpaceModelTrainer():
             sample_observation, sample_action, sample_next_observation, sample_reward = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            sample_next_observation = torch.clamp(sample_next_observation, 0.0001, 1)
+            sample_next_observation = torch.clamp(sample_next_observation, 0.00000001, 1)
 
             #action_list = [sample_action]
             #image_log_probs = self.model.forward_multiple(sample_observation, action_list)
             image_log_probs, _ = self.model(sample_observation, sample_action)
-            # not sure if we actually have the logs here or if we still have to log
-            # assume x is state_stack
+
             image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
             pre_log = image_log_probs
             image_log_probs = torch.log(image_log_probs)
@@ -141,49 +140,15 @@ class StateSpaceModelTrainer():
             kl_loss = torch.distributions.kl._kl_bernoulli_bernoulli(predicted_bernoulli, ground_truth_bernoulli)
             kl_loss = torch.mean(kl_loss)
 
-            #reconstruction_loss = criterion(pre_log, sample_next_observation)
+            reconstruction_loss = criterion(pre_log, sample_next_observation)
 
-            #loss = reconstruction_loss + kl_loss
+            loss = reconstruction_loss + kl_loss
 
-            loss = kl_loss
-
-            #loss = - torch.sum(sample_next_observation * (log_y + image_log_probs))
-
-            #loss_part1 = - torch.mean(sample_next_observation * image_log_probs)
-            #loss_part2 = - torch.mean(sample_next_observation * log_y)
-            #loss = loss_part1 + loss_part2
+            #loss = kl_loss
 
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-
-            '''
-            for i_episode in range(episoden):
-            first_state = self.env.reset()
-            first_state = torch.from_numpy(first_state).unsqueeze(0).float()
-            if self.use_cuda:
-                first_state = first_state.cuda()
-            done = False
-            state = first_state
-            while not done:
-                action_list = []
-                state_stack = None
-                for n in range(1):
-                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)
-                    action_list.append(action)
-                    if state_stack is not None:
-                        state_stack = torch.cat((state_stack, state))
-                    else:
-                        state_stack = state
-                    state, reward, done, _ = self.do_env_step(action=action)
-
-                image_log_probs = self.model.forward_multiple(first_state, action_list)
-                #not sure if we actually have the logs here or if we still have to log
-                #assume x is state_stack
-                loss = criterion(image_log_probs, state_stack)
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()'''
 
             # log and print infos
             if self.loss_printer:

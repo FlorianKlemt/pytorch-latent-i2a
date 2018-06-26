@@ -5,7 +5,7 @@ import gym
 from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
 from LatentSpaceEncoder.models_from_paper.sSSM import sSSM
 import argparse
-from model import Policy
+from bigger_models import Policy
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
 from LatentSpaceEncoder.env_encoder import make_env
@@ -56,7 +56,7 @@ def main():
         model.cuda()
     #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:

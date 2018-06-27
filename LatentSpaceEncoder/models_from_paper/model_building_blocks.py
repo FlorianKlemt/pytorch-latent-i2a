@@ -25,7 +25,7 @@ class ConvStack(nn.Module):
         super(ConvStack, self).__init__()
         assert(len(kernel_sizes)==len(output_channels)==3)
 
-        conv_paddings = [(n-1)/2 for n in kernel_sizes]
+        conv_paddings = [(int)((n-1)/2) for n in kernel_sizes]
         #conv_paddings = (kernel_sizes[:]-1)/2   #conv2 needs to be size preserving
         assert(all(padding==math.floor(padding) for padding in conv_paddings))
 

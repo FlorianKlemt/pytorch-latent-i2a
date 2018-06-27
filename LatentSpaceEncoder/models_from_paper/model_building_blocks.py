@@ -161,6 +161,7 @@ class DecoderModule(nn.Module):
             ConvStack(input_channels=16, kernel_sizes=(3,3,1), output_channels=(64,64,48)), #input_channels = output_channels_convstack1/(block_size*block_size)
             DepthToSpace(block_size=4)
         )
+        self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, state, z):
         reward_log_probs = self.reward_head(state)
@@ -172,6 +173,7 @@ class DecoderModule(nn.Module):
             concatenated = state
 
         image_log_probs = self.image_head(concatenated)
+        image_log_probs = self.sigmoid(image_log_probs)
         return image_log_probs, reward_log_probs
 
 

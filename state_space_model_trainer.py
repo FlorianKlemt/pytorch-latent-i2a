@@ -21,7 +21,7 @@ def main():
     args = args_parser.parse_args()
     args.use_cuda = True
     args.cuda = args.use_cuda
-    args.batch_size = 20
+    args.batch_size = 5
     args.save_env_model_dir = "trained_models/environment_models/"
     args.vis = True
     args.port = 8097
@@ -56,7 +56,7 @@ def main():
         model.cuda()
     #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:
@@ -107,40 +107,38 @@ class StateSpaceModelTrainer():
                                        viz=viz)
 
 
-    def train_new(self, episoden = 1000):
+    def train_new(self, episoden = 1000, T=10):
         from collections import deque
         print("create training data")
         create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
-        sample_memory.extend(self.create_x_samples(create_n_samples))
+        sample_memory.extend(self.create_x_samples_T_forward(create_n_samples, T))
         import torch.nn as nn
         #criterion = nn.KLDivLoss()
         criterion = torch.nn.BCELoss()
 
         for i_episode in range(episoden):
             # sample a state, next-state pair randomly from replay memory for a training step
-            sample_observation, sample_action, sample_next_observation, sample_reward = [torch.cat(a) for a in zip
+            sample_observation, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            sample_next_observation = torch.clamp(sample_next_observation, 0.00000001, 1)
+            sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
 
-            #action_list = [sample_action]
-            #image_log_probs = self.model.forward_multiple(sample_observation, action_list)
-            image_log_probs, _ = self.model(sample_observation, sample_action)
+            image_log_probs = self.model.forward_multiple(sample_observation, sample_action_T)
+            #image_log_probs, _ = self.model(sample_observation, sample_action)
 
             image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
             pre_log = image_log_probs
             image_log_probs = torch.log(image_log_probs)
 
             predicted_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=image_log_probs)
-            #image_log_probs = predicted_bernoulli.log_prob(sample_next_observation)
 
-            ground_truth_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=torch.log(sample_next_observation))
+            ground_truth_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=torch.log(sample_next_observation_T))
             #loss = torch.distributions.kl.kl_divergence(predicted_bernoulli, ground_truth_bernoulli)
             kl_loss = torch.distributions.kl._kl_bernoulli_bernoulli(predicted_bernoulli, ground_truth_bernoulli)
             kl_loss = torch.mean(kl_loss)
 
-            reconstruction_loss = criterion(pre_log, sample_next_observation)
+            reconstruction_loss = criterion(pre_log, sample_next_observation_T)
 
             loss = reconstruction_loss + kl_loss
 
@@ -163,7 +161,7 @@ class StateSpaceModelTrainer():
 
             if i_episode != 0 and i_episode % create_n_samples == 0:
                 print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples(create_n_samples))
+                sample_memory.extend(self.create_x_samples_T_forward(create_n_samples, T))
 
 
 
@@ -238,6 +236,46 @@ class StateSpaceModelTrainer():
                 #state = next_state
                 target_state = torch.cat((state_stack[1:], state))
                 sample_memory.append([state_stack, action_stack, target_state, reward])
+
+                if len(sample_memory) >= number_of_samples:
+                    break
+        return sample_memory
+
+
+
+    def create_x_samples_T_forward(self, number_of_samples, T):
+        from collections import deque
+        sample_memory = deque(maxlen=number_of_samples)
+
+        while len(sample_memory) < number_of_samples:
+            state = self.env.reset()
+            state = torch.from_numpy(state).unsqueeze(0).float()
+            if self.use_cuda:
+                state = state.cuda()
+            done = False
+            while not done:
+                state_stack = None
+                action_stack = None
+                reward_stack = None
+                for _ in range(T):
+                    # let policy decide on next action and perform it
+                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
+                    if state_stack is not None and action_stack is not None:
+                        state_stack = torch.cat((state_stack,state))
+                        action_stack = torch.cat((action_stack, action))
+                    else:
+                        state_stack = state
+                        action_stack = action
+
+                    state, reward, done, _ = self.do_env_step(action=action)
+                    if reward_stack is not None:
+                        reward_stack = torch.cat((reward_stack, reward))
+                    else:
+                        reward_stack = reward
+
+                target_state = torch.cat((state_stack[1:], state))
+                #unsqueeze action, target_state and reward stack for batch dimension
+                sample_memory.append([state_stack[:1], action_stack.unsqueeze(0), target_state.unsqueeze(0), reward_stack.unsqueeze(0)])
 
                 if len(sample_memory) >= number_of_samples:
                     break

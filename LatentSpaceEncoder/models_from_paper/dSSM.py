@@ -11,6 +11,18 @@ class dSSM_DET(nn.Module):
 
         self.sigmoid = torch.nn.Sigmoid()
 
+    def encode(self, observation):
+        return self.encoder(observation)
+
+    def next_latent_space(self, latent_space, action):
+        return self.state_transition(latent_space, action, None)
+
+    def reward(self, latent_space):
+        return self.decoder.reward_head(latent_space)
+
+    def decode(self, latent_space):
+        predicted_observation = self.decoder(latent_space)
+        return self.sigmoid(predicted_observation)
 
     def forward(self, observation, action):
         encoding = self.encoder(observation)

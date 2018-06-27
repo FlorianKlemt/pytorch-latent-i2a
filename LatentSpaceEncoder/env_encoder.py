@@ -184,6 +184,8 @@ class EncoderFrameStack(gym.Wrapper):
         return np.concatenate(self.frames)  #here we use concatenate instead of stack
 
 
+
+
 def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
     from baselines import bench
     from baselines.common.atari_wrappers import make_atari, wrap_deepmind, EpisodicLifeEnv, ClipRewardEnv
@@ -217,6 +219,7 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
 
     return _thunk
 
+
 def custom_make_atari(env_id):
     from baselines.common.atari_wrappers import NoopResetEnv
     env = gym.make(env_id)
@@ -224,6 +227,40 @@ def custom_make_atari(env_id):
     env = NoopResetEnv(env, noop_max=30)
     #env = MaxAndSkipEnv(env, skip=4)   #TODO: maybe 2 skip
     return env
+
+
+def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_frames):
+    from baselines import bench
+    from baselines.common.atari_wrappers import EpisodicLifeEnv, ClipRewardEnv
+    import os
+    env = gym.make(env_id)
+    is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+    if is_atari:
+        env = custom_make_atari(env_id)
+    env.seed(seed + rank)
+    if log_dir is not None:
+        env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
+    if is_atari:
+        env = EpisodicLifeEnv(env)
+        env = ClipRewardEnv(env)
+    env = FrameUIntToFloat(env)
+    if grey_scale:
+        env = WarpFrameGrayScale(env)
+    else:
+        env = ReshapeRGBChannels(env)
+    if stack_frames > 1:
+        env = EncoderFrameStack(env, stack_frames)
+    return env
+
+def make_env_ms_pacman(env_id, seed, rank, log_dir, grey_scale, stack_frames):
+    from custom_envs import ClipAtariFrameSizeTo200x160
+    def _thunk():
+        env = create_atari_environment(env_id=env_id, seed= seed, rank=rank, log_dir=log_dir, grey_scale=grey_scale, stack_frames=stack_frames)
+        env = ClipAtariFrameSizeTo200x160(env=env)
+        return env
+
+    return _thunk
+
 
 if __name__ == '__main__':
     main()

@@ -24,6 +24,7 @@ import sys
 import multiprocessing as mp
 import algo
 from algo.i2a_algo import I2A_ALGO
+from i2a.i2a_factory import build_i2a_model, build_latent_space_i2a_model
 
 args = get_args()
 
@@ -66,6 +67,15 @@ def main():
         from custom_envs import make_custom_env
         envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
+    elif args.algo == 'i2a':
+        from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        envs = [make_env_ms_pacman(env_id = args.env_name,
+                                   seed = args.seed,
+                                   rank = i,
+                                   log_dir = args.log_dir,
+                                   grey_scale = False,
+                                   stack_frames = 1)
+                for i in range(args.num_processes)]
     else:
         from envs import make_env
         envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
@@ -87,19 +97,16 @@ def main():
     obs_shape = envs.observation_space.shape
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
-    if args.algo == 'i2a':
+    if args.algo == 'i2a' and 'MiniPacman' in args.env_name:
         #build i2a model also wraps it with the A2C_PolicyWrapper
-        color_prefix = 'grey_scale' if args.grey_scale else 'RGB'
-        label_prefix = 'labels' if args.use_class_labels else 'NoLabels'
         actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
-                                       frame_stack=args.num_stack,
                                        action_space=envs.action_space.n,
-                                       i2a_rollout_steps=args.i2a_rollout_steps,
-                                       em_model_reward_bins=em_model_reward_bins,
-                                       use_cuda=args.cuda,
-                                       environment_model_name=args.env_name + color_prefix + "_" + label_prefix + ".dat",
-                                       use_copy_model=args.use_copy_model,
-                                       use_class_labels=args.use_class_labels)
+                                       args = args,
+                                       em_model_reward_bins=em_model_reward_bins)
+    elif args.algo == 'i2a':
+        actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
+                                                    action_space=envs.action_space,
+                                                    args=args)
 
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
@@ -297,57 +304,6 @@ def main():
 
 
 
-def build_i2a_model(obs_shape, frame_stack, action_space, i2a_rollout_steps, em_model_reward_bins, use_cuda, environment_model_name, use_copy_model, use_class_labels):
-    from environment_model.minipacman_env_model import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
-    from i2a.load_utils import load_em_model
-    from i2a.imagination_core import ImaginationCore
-
-    input_channels = obs_shape[0]
-    obs_shape_frame_stack = (obs_shape[0] * frame_stack, *obs_shape[1:])
-    if use_copy_model:
-        env_model = CopyEnvModel()
-    else:
-        # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
-        load_environment_model_dir = 'trained_models/environment_models/'
-        if use_class_labels:
-            obs_shape = (7, *obs_shape[1:])
-            EMModel = MiniPacmanEnvModelClassLabels
-        else:
-            EMModel = MiniPacmanEnvModel
-
-        env_model = load_em_model(EMModel=EMModel,
-                                 load_environment_model_dir=load_environment_model_dir,
-                                 environment_model_name=environment_model_name,
-                                 obs_shape=obs_shape,
-                                 action_space=action_space,
-                                 reward_bins=em_model_reward_bins,
-                                 use_cuda=use_cuda)
-
-    for param in env_model.parameters():
-        param.requires_grad = False
-    env_model.eval()
-
-    rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape_frame_stack, action_space=action_space, use_cuda=use_cuda))
-    for param in rollout_policy.parameters():
-        param.requires_grad = True
-    rollout_policy.train()
-
-    if use_cuda:
-        env_model.cuda()
-        rollout_policy.cuda()
-
-
-    imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
-                                       grey_scale=args.grey_scale, frame_stack=args.num_stack)
-
-    i2a_model = I2A_ActorCritic(policy=I2A(obs_shape=obs_shape_frame_stack,
-                                           action_space=action_space,
-                                           imagination_core=imagination_core,
-                                           rollout_steps=i2a_rollout_steps,
-                                           use_cuda=args.cuda),
-                                rollout_policy=rollout_policy)
-
-    return i2a_model
 
 if __name__ == "__main__":
     main()

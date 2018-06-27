@@ -143,8 +143,8 @@ def main():
     if args.render_game:
         load_path = os.path.join(args.save_dir, args.algo)
         test_process = TestPolicy(model=copy.deepcopy(actor_critic),
-                                load_path=load_path,
-                                args=args)
+                                  load_path=load_path,
+                                  args=args)
 
     if args.algo == 'i2a':
         agent = I2A_ALGO(actor_critic=actor_critic, obs_shape=obs_shape, action_shape=action_shape, args=args)

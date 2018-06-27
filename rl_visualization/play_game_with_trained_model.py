@@ -41,6 +41,9 @@ def make_test_env(env_id, grey_scale, frame_stack):
     if 'MiniPacman' in env_id:
         env = make_custom_env(env_id, 42, 1, None, grey_scale=grey_scale)()
         env = FrameStack(env, frame_stack)
+    elif 'MsPacman' in env_id:
+        from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=1)()
     else:
         env = gym.make(env_id)
         env = wrap_deepmind(env)
@@ -71,7 +74,7 @@ class TestEnvironment():
 
     def step(self):
         with torch.no_grad():
-            input = torch.from_numpy(self.state).float()
+            input = torch.from_numpy(self.state).float().unsqueeze(0)
             if self.use_cuda:
                 input = input.cuda()
 

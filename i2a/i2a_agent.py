@@ -1,6 +1,7 @@
 import torch
 from i2a.i2a_models.model_based_network import ModelBasedNetwork
 from i2a.i2a_models.latent_space_model_based_network import LatentSpaceModelBasedNetwork
+from i2a.i2a_models.latent_space_model_free_network import LatentSpaceModelFreeNetwork
 from i2a.i2a_models.model_free_network import ModelFreeNetworkMiniPacman
 from i2a.i2a_models.output_policy_network import OutputPolicyNetwork
 
@@ -66,7 +67,7 @@ class I2ALatentSpace(torch.nn.Module):
                                                          self.action_space)
 
         # model-free path
-        self.model_free_network = ModelFreeNetworkMiniPacman(obs_shape=obs_shape,
+        self.model_free_network = LatentSpaceModelFreeNetwork(obs_shape=obs_shape,
                                                              num_outputs=self.model_free_output_size)
 
         # model-based path

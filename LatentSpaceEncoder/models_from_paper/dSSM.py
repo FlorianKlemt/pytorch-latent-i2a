@@ -9,7 +9,6 @@ class dSSM_DET(nn.Module):
         self.state_transition = StateTransition(state_input_channels=state_input_channels, num_actions=num_actions, use_stochastic=False, use_cuda=use_cuda)
         self.decoder = DecoderModule(state_input_channels=state_input_channels, use_vae=False)
 
-        self.sigmoid = torch.nn.Sigmoid()
 
     def encode(self, observation):
         return self.encoder(observation)
@@ -28,23 +27,22 @@ class dSSM_DET(nn.Module):
         encoding = self.encoder(observation)
         latent_state_prediction = self.state_transition(encoding, action, None) #no latent z for now
         image_log_probs, reward_log_probs = self.decoder(latent_state_prediction, None) #no latent z for now
-        image_log_probs = self.sigmoid(image_log_probs)
         return image_log_probs, reward_log_probs
 
-    '''def forward_multiple(self, observation, action_list):
+    def forward_multiple(self, observation, action_list):
         total_image_log_probs = None
         encoding = self.encoder(observation)
 
-        for action in action_list:
+        #iterate over T actions, but pass action t for all batches simultaneously
+        for action in action_list.transpose_(0, 1):
             encoding = self.state_transition(encoding, action, None)  # no latent z for now
             image_log_probs, reward_log_probs = self.decoder(encoding, None)  # no latent z for now
-            #image_log_probs = self.log_sigmoid(image_log_probs)
-            image_log_probs = torch.clamp(image_log_probs, 0.001, 1.) #???
-            image_log_probs = torch.log(image_log_probs)              #???
+
+            #image_log_probs are unsqueezed at 1 to create a stack dimension between batch_dimension(0) and channel_dimension(1)
             if total_image_log_probs is not None:
-                total_image_log_probs = torch.cat((total_image_log_probs, image_log_probs))
+                total_image_log_probs = torch.cat((total_image_log_probs, image_log_probs.unsqueeze(1)), dim=1)
             else:
-                total_image_log_probs = image_log_probs
+                total_image_log_probs = image_log_probs.unsqueeze(1)
 
         #stack of predicted observations
-        return total_image_log_probs'''
+        return total_image_log_probs

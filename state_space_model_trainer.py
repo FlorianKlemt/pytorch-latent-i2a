@@ -16,6 +16,8 @@ import copy
 import multiprocessing as mp
 #from envs import make_env
 
+from torch.distributions.normal import Normal
+
 def main():
     args_parser = argparse.ArgumentParser(description='StateSpaceEncoder')  #TODO: make actual args
     args = args_parser.parse_args()
@@ -43,8 +45,8 @@ def main():
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
-    #model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
     if args.load_environment_model:
         load_environment_model_path = save_model_path
         print("Load environment model", load_environment_model_path)
@@ -72,7 +74,8 @@ def main():
     #time.sleep(100000000)
     #trainer.train_env_model_batchwise(episoden=100000)
 
-    trainer.train_new(episoden=1000000)
+    #trainer.train_dSSM(episoden=1000000)
+    trainer.train_sSSM(episoden=10000)
 
 
 class StateSpaceModelTrainer():
@@ -107,24 +110,23 @@ class StateSpaceModelTrainer():
                                        viz=viz)
 
 
-    def train_new(self, episoden = 1000, T=10):
+    def train_dSSM(self, episoden = 1000, T=10, initial_context_size=3):
         from collections import deque
         print("create training data")
         create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
-        sample_memory.extend(self.create_x_samples_T_forward(create_n_samples, T))
+        sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size))
         import torch.nn as nn
-        #criterion = nn.KLDivLoss()
         criterion = torch.nn.BCELoss()
 
         for i_episode in range(episoden):
             # sample a state, next-state pair randomly from replay memory for a training step
-            sample_observation, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
+            sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
             sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
 
-            image_log_probs = self.model.forward_multiple(sample_observation, sample_action_T)
+            image_log_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
             #image_log_probs, _ = self.model(sample_observation, sample_action)
 
             image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
@@ -161,7 +163,79 @@ class StateSpaceModelTrainer():
 
             if i_episode != 0 and i_episode % create_n_samples == 0:
                 print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples_T_forward(create_n_samples, T))
+                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size))
+
+
+
+
+    def train_sSSM(self, episoden = 1000, T=10):
+        from collections import deque
+        print("create training data")
+        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
+        sample_memory = deque(maxlen=self.sample_memory_size)
+        sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=1))
+        import torch.nn as nn
+        criterion = torch.nn.BCELoss()
+
+        for i_episode in range(episoden):
+            # sample a state, next-state pair randomly from replay memory for a training step
+            sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
+                (*random.sample(sample_memory, self.batch_size))]
+
+            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
+
+            image_log_probs, reward_log_probs, total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior \
+                    = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+
+            '''for b in range(self.batch_size):
+                for i in range(T):
+                    #logits = torch.log(image_log_probs[b,i])
+                    ##predicted_bernoulli = torch.distributions.bernoulli.Bernoulli(probs=image_log_probs[b,i])
+                    #reconstruction = predicted_bernoulli.log_prob(observation[:,0]).mean()
+                    #reconstruction = image_log_probs[b,i].mean()
+
+                    reconstruction_loss = criterion(image_log_probs[b,i], sample_next_observation_T[b,i])
+
+                    # begin test
+                    prior_gaussian = Normal(loc=total_z_mu_prior[b,i], scale=total_z_sigma_prior[b,i])
+                    #prior_log_prob = prior_gaussian.log_prob(prior_gaussian.mean).mean()
+
+                    posterior_gaussian = Normal(loc=total_z_mu_posterior[b,i], scale=total_z_sigma_posterior[b,i])
+                    #posterior_log_prob = posterior_gaussian.log_prob(posterior_gaussian.mean).mean()
+
+                    kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
+
+                    elbo += reconstruction_loss + kl_div_loss.mean()
+
+                    #print(reconstruction_loss, "   ", kl_div_loss.mean())
+            '''
+            reconstruction_loss = criterion(image_log_probs, sample_next_observation_T)
+
+            prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)
+            posterior_gaussian = Normal(loc=total_z_mu_posterior, scale=total_z_sigma_posterior)
+            kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
+            loss = reconstruction_loss + kl_div_loss.mean() #loss is elbo
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            # log and print infos
+            if self.loss_printer:
+                self.loss_printer.log_loss_and_reward((loss, loss), torch.zeros(1), torch.zeros(1), i_episode)
+                if self.loss_printer.frames % 10 == 0:
+                    self.loss_printer.print_episode(episode=i_episode)
+
+            if i_episode % self.args.save_interval == 0:
+                print("Save model", self.save_model_path)
+                state_to_save = self.model.state_dict()
+                torch.save(state_to_save, self.save_model_path)
+
+            if i_episode != 0 and i_episode % create_n_samples == 0:
+                print("create more training data ", len(sample_memory))
+                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=1))
+
+
 
 
 
@@ -243,7 +317,7 @@ class StateSpaceModelTrainer():
 
 
 
-    def create_x_samples_T_forward(self, number_of_samples, T):
+    def create_x_samples_T_steps(self, number_of_samples, T, initial_context_size):
         from collections import deque
         sample_memory = deque(maxlen=number_of_samples)
 
@@ -254,17 +328,30 @@ class StateSpaceModelTrainer():
                 state = state.cuda()
             done = False
             while not done:
-                state_stack = None
+                initial_context_stack = None
                 action_stack = None
                 reward_stack = None
-                for _ in range(T):
+                target_state_stack = None
+
+                for i in range(initial_context_size):
+                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  # no state and mask
+                    if initial_context_stack is not None:
+                        initial_context_stack = torch.cat((initial_context_stack, state))
+                    else:
+                        initial_context_stack = state
+                    state, reward, done, _ = self.do_env_step(action=action)
+
+                for i in range(T):
                     # let policy decide on next action and perform it
                     value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
-                    if state_stack is not None and action_stack is not None:
-                        state_stack = torch.cat((state_stack,state))
+                    if target_state_stack is not None:
+                        target_state_stack = torch.cat((target_state_stack,state))
+                    else:
+                        target_state_stack = state
+
+                    if action_stack is not None:
                         action_stack = torch.cat((action_stack, action))
                     else:
-                        state_stack = state
                         action_stack = action
 
                     state, reward, done, _ = self.do_env_step(action=action)
@@ -273,9 +360,11 @@ class StateSpaceModelTrainer():
                     else:
                         reward_stack = reward
 
-                target_state = torch.cat((state_stack[1:], state))
-                #unsqueeze action, target_state and reward stack for batch dimension
-                sample_memory.append([state_stack[:1], action_stack.unsqueeze(0), target_state.unsqueeze(0), reward_stack.unsqueeze(0)])
+                #unsqueeze initial_context, action, target_state and reward stack for batch dimension
+                sample_memory.append([initial_context_stack.unsqueeze(0), action_stack.unsqueeze(0),
+                                      target_state_stack.unsqueeze(0), reward_stack.unsqueeze(0)])
+
+
 
                 if len(sample_memory) >= number_of_samples:
                     break

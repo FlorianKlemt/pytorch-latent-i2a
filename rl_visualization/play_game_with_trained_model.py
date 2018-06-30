@@ -10,7 +10,6 @@ from multiprocessing import Process
 from baselines.common.atari_wrappers import *
 import collections
 
-
 class FrameStack(gym.Wrapper):
     def __init__(self, env, num_frames, low = 0., high = 1.):
         """Buffer observations and stack across channels (last axis)."""
@@ -43,7 +42,7 @@ def make_test_env(env_id, grey_scale, frame_stack):
         env = FrameStack(env, frame_stack)
     elif 'MsPacman' in env_id:
         from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
-        env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=1)()
+        env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=frame_stack)()
     else:
         env = gym.make(env_id)
         env = wrap_deepmind(env)
@@ -78,10 +77,14 @@ class TestEnvironment():
             if self.use_cuda:
                 input = input.cuda()
 
-            _, actions, _, _, _, _ = self.model.act(input, None, None)
-            cpu_actions = actions.item()
+            value, actor = self.model(input)
+            probs = F.softmax(actor, dim=1)
+            action = probs.multinomial(num_samples=1)
 
-            self.state, reward, done, info = self.env.step(cpu_actions)
+            #_, actions, _, _, _, _ = self.model.act(input, None, None)
+            cpu_action = action.item()
+
+            self.state, reward, done, info = self.env.step(cpu_action)
             self.reward += reward
 
         return done
@@ -94,7 +97,7 @@ class TestEnvironment():
         self.reset()
         while (self.step() == False):
             self.render()   #this always renders RGB (the computation should be done correctly)
-            time.sleep(0.2)
+            time.sleep(0.05)
         self.render()
         return self.reward
 

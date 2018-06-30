@@ -1,5 +1,5 @@
 import torch.nn as nn
-from LatentSpaceEncoder.models_from_paper.model_building_blocks import StateTransition, EncoderModule, DecoderModule, PriorModule, PosteriorModule
+from LatentSpaceEncoder.models_from_paper.model_building_blocks import StateTransition, EncoderModule, InitialStateModule, DecoderModule, PriorModule, PosteriorModule
 import torch
 from torch.distributions.normal import Normal
 
@@ -9,10 +9,31 @@ class sSSM(nn.Module):
         self.encoder = EncoderModule(input_channels=observation_input_channels)
         self.state_transition = StateTransition(state_input_channels=state_input_channels, num_actions=num_actions, use_stochastic=True, use_cuda=use_cuda)
         self.decoder = DecoderModule(state_input_channels=state_input_channels, use_vae=True)
-
+        self.initial_state_module = InitialStateModule()
         self.prior_z = PriorModule(state_input_channels=state_input_channels, num_actions=num_actions, use_cuda=use_cuda)
 
         self.posterior_z = PosteriorModule(state_input_channels=state_input_channels, num_actions=num_actions, use_cuda=use_cuda)
+
+    def encode(self, observation):
+        t0_encoding = self.encoder(observation[:,2])
+        one_before_encoding = self.encoder(observation[:,1])
+        two_before_encoding = self.encoder(observation[:,0])
+        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
+
+        return state # self.encoder(observation)
+
+    def next_latent_space(self, latent_space, action):
+        mu_prior, sigma_prior = self.prior_z(latent_space, action)
+        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
+        # get latent variable by sampling from prior gaussian
+        z_prior = prior_gaussian.sample()
+        return self.state_transition(latent_space, action, z_prior), z_prior
+
+    def reward(self, latent_space):
+        return self.decoder.reward_head(latent_space)
+
+    def decode(self, latent_space, z_prior):
+        return self.decoder(latent_space, z_prior)
 
     def forward(self, observation, action):
         state = self.encoder(observation)
@@ -27,13 +48,17 @@ class sSSM(nn.Module):
         return image_log_probs, reward_log_probs
 
 
-    def forward_multiple(self, observation, action_list):
+    def forward_multiple(self, observation_initial_context, action_list):
         total_image_log_probs = None
         total_mu_prior = None
         total_sigma_prior = None
         total_mu_posterior = None
         total_sigma_posterior = None
-        state = self.encoder(observation[:,0])  #there is a batch for an initial context, even though it is not used here
+
+        t0_encoding = self.encoder(observation_initial_context[:,2])
+        one_before_encoding = self.encoder(observation_initial_context[:,1])
+        two_before_encoding = self.encoder(observation_initial_context[:,0])
+        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
 
         for action in action_list.transpose_(0, 1):
             #compute mean and variance of p(z_t|s_t-1, a_t-1, o_t)

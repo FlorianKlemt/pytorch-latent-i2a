@@ -25,7 +25,7 @@ def main():
     args = args_parser.parse_args()
     args.use_cuda = True
     args.cuda = args.use_cuda
-    args.batch_size = 5
+    args.batch_size = 2
     args.save_env_model_dir = "trained_models/environment_models/"
     args.vis = True
     args.port = 8097
@@ -34,6 +34,7 @@ def main():
     args.env_name ="MsPacmanNoFrameskip-v0"
     args.grey_scale = False
     args.load_environment_model = False
+    args.use_latent_space = True
 
     if args.render:
         mp.set_start_method('spawn')
@@ -92,7 +93,7 @@ class StateSpaceModelTrainer():
         self.loss_criterion = loss_criterion
         self.use_cuda = args.use_cuda
         self.batch_size = args.batch_size
-        self.sample_memory_size = 200 #500 #100000
+        self.sample_memory_size = 50 #500 #100000
         self.frame_stack = 1
 
         self.log_path = '{0}env_{1}{2}.log'.format(args.save_env_model_dir,
@@ -171,12 +172,12 @@ class StateSpaceModelTrainer():
 
 
 
-    def train_sSSM(self, episoden = 1000, T=10):
+    def train_sSSM(self, episoden = 1000, T=10, initial_context_size = 3):
         from collections import deque
         print("create training data")
         create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
-        sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=1))
+        sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size))
         import torch.nn as nn
         criterion = torch.nn.BCELoss()
 
@@ -236,7 +237,7 @@ class StateSpaceModelTrainer():
 
             if i_episode != 0 and i_episode % create_n_samples == 0:
                 print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=1))
+                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size))
 
 
 

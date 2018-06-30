@@ -11,7 +11,12 @@ class dSSM_DET(nn.Module):
         self.decoder = DecoderModule(state_input_channels=state_input_channels, use_vae=False)
 
     def encode(self, observation):
-        return self.encoder(observation)
+        t0_encoding = self.encoder(observation[:,2])
+        one_before_encoding = self.encoder(observation[:,1])
+        two_before_encoding = self.encoder(observation[:,0])
+        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
+
+        return state # self.encoder(observation)
 
     def next_latent_space(self, latent_space, action):
         return self.state_transition(latent_space, action, None)

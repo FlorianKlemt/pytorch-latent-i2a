@@ -9,12 +9,16 @@ class LatentSpaceImaginationCore(nn.Module):
         self.rollout_policy = rollout_policy
 
     def forward(self, latent_state, action):
-        next_latent_state = self.env_model.next_latent_space(latent_state, action)
+        next_latent_state, z_prior = self.env_model.next_latent_space(latent_state, action)
         reward = self.env_model.reward(next_latent_state)
-        return next_latent_state, reward
+        return next_latent_state, z_prior, reward
 
     def encode(self, state):
-        latent_space = self.env_model.encoder(state)
+        latent_space = self.env_model.encode(state)
+        return latent_space
+
+    def decode(self, state, z_prior):
+        latent_space = self.env_model.decode(state, z_prior)
         return latent_space
 
     def sample(self, input_state):

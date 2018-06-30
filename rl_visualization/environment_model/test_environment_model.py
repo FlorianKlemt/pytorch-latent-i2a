@@ -3,7 +3,7 @@ import numpy as np
 import time
 import cv2
 from random import randint
-from i2a.imagination_core import ImaginationCore
+
 
 from multiprocessing import Process
 
@@ -100,33 +100,46 @@ def play_with_imagination_core(imagination_core, env, args):
 
     observation = env.reset()
     state = numpy_to_variable(observation, args.cuda)
+    state_stack = torch.cat((state, state, state), 0)
 
     # do 20 random actions to get different start observations
     for i in range(randint(20, 50)):
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
+        state_stack = torch.cat((state_stack, state), 0)
+        state_stack = state_stack[1:]
 
-    # todo remove only used for testing rgb to class converter
-    #from environment_model.minipacman_rgb_class_converter import MiniPacmanRGBToClassConverter
-    #x = MiniPacmanRGBToClassConverter(args.cuda)
-    #p = x.minipacman_rgb_to_class(state)
-    #p = x.minipacman_class_to_rgb(p)
-    # end remove
 
     renderer.render_observation(state[0], state[0], reward, reward, 0)
 
     predicted_state = state
+    predicted_state_stack = state_stack
 
     for t in range(5):
-        action = imagination_core.sample(predicted_state)
-        predicted_state, predicted_reward = imagination_core(predicted_state, action)
+
+        if args.use_latent_space:
+            action = np.random.choice(env.action_space.n, 1)
+            action = torch.from_numpy(action).unsqueeze(0)
+            if args.cuda:
+                action = action.cuda()
+            latent_state = imagination_core.encode(predicted_state_stack.unsqueeze(0))
+            next_latent_state, z_prior, predicted_reward = imagination_core(latent_state, action)
+            predicted_state, predicted_reward = imagination_core.decode(next_latent_state, z_prior)
+            predicted_state_stack = torch.cat((predicted_state_stack, predicted_state), 0)
+            predicted_state_stack = predicted_state_stack[1:]
+        else:
+            action = imagination_core.sample(predicted_state)
+            predicted_state, predicted_reward = imagination_core(predicted_state, action)
 
         predicted_reward = predicted_reward.detach().cpu().numpy()
         observation, reward, done, _ = env.step(action.item())
         state = numpy_to_variable(observation, args.cuda)
+        state_stack = torch.cat((state_stack, state), 0)
+        state_stack = state_stack[1:]
 
         if render:
             renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward.item(), t+1)
+
 
 
 def test_environment_model(env, environment_model, load_path, rollout_policy, args):
@@ -143,8 +156,18 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
         if args.cuda:
             environment_model.cuda()
 
-        imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=rollout_policy,
-                                           grey_scale = False, frame_stack = 1)
+        if args.use_latent_space:
+            from i2a.i2a_models.latent_space_imagination_core import LatentSpaceImaginationCore
+            imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
+                                                          rollout_policy=rollout_policy,
+                                                          grey_scale=False,
+                                                          frame_stack=4)
+        else:
+            from i2a.imagination_core import ImaginationCore
+            imagination_core = ImaginationCore(env_model=environment_model,
+                                               rollout_policy=rollout_policy,
+                                               grey_scale = False,
+                                               frame_stack = 1)
 
         print("started game", i)
         play_with_imagination_core(imagination_core, env=env, args=args)

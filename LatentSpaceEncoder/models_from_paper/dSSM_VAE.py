@@ -3,15 +3,14 @@ from LatentSpaceEncoder.models_from_paper.model_building_blocks import StateTran
 import torch
 from torch.distributions.normal import Normal
 
-class sSSM(nn.Module):
+class dSSM_VAE(nn.Module):
     def __init__(self, observation_input_channels, state_input_channels, num_actions, use_cuda):
-        super(sSSM, self).__init__()
+        super(dSSM_VAE, self).__init__()
         self.encoder = EncoderModule(input_channels=observation_input_channels)
         self.state_transition = StateTransition(state_input_channels=state_input_channels, num_actions=num_actions, use_stochastic=True, use_cuda=use_cuda)
         self.decoder = DecoderModule(state_input_channels=state_input_channels, use_vae=True)
 
         self.prior_z = PriorModule(state_input_channels=state_input_channels, num_actions=num_actions, use_cuda=use_cuda)
-
         self.posterior_z = PosteriorModule(state_input_channels=state_input_channels, num_actions=num_actions, use_cuda=use_cuda)
 
     def forward(self, observation, action):
@@ -19,7 +18,9 @@ class sSSM(nn.Module):
 
         mu_prior, sigma_prior = self.prior_z(state, action)
         prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-        z_prior = prior_gaussian.sample()
+
+        #here is the difference to sSSM: mean instead of sample
+        z_prior = mu_prior #prior_gaussian.mean
 
         next_state_prediction = self.state_transition(state, action, z_prior)
         image_log_probs, reward_log_probs = self.decoder(next_state_prediction, z_prior)
@@ -39,8 +40,9 @@ class sSSM(nn.Module):
             #compute mean and variance of p(z_t|s_t-1, a_t-1, o_t)
             mu_prior, sigma_prior = self.prior_z(state, action)
             prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-            #get latent variable by sampling from prior gaussian
-            z_prior = prior_gaussian.sample()
+
+            # here is the difference to sSSM: mean instead of sample
+            z_prior = mu_prior#prior_gaussian.mean
 
             next_state_prediction = self.state_transition(state, action, z_prior)
             image_log_probs, reward_log_probs = self.decoder(next_state_prediction, z_prior)

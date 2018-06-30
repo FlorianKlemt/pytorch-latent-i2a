@@ -86,7 +86,7 @@ class StateTransition(nn.Module):
         self.num_actions = num_actions  #needed to broadcast the action (they are broadcasted to as many channels as there are actions)
         self.use_stochastic = use_stochastic
         if use_stochastic:
-            input_channels = state_input_channels + num_actions + 2*state_input_channels #state channels + channels of broadcasted action + 2 channels of broadcasted z
+            input_channels = state_input_channels + num_actions + state_input_channels #state channels + channels of broadcasted action + broadcasted z
         else:
             input_channels = state_input_channels + num_actions
 
@@ -98,9 +98,7 @@ class StateTransition(nn.Module):
         broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=state.shape[2:], use_cuda=self.use_cuda)
 
         if self.use_stochastic and z is not None:
-            #z consists of a tuple of z_mu and z_sigma --> broadcast each to 1 channel --> TODO: check if this is correct
-            z_mu, z_sigma = z
-            concatenated = torch.cat((state, broadcasted_action, z_mu, z_sigma), 1)
+            concatenated = torch.cat((state, broadcasted_action, z), 1)
         else:
             concatenated = torch.cat((state, broadcasted_action), 1)
 
@@ -151,7 +149,7 @@ class DecoderModule(nn.Module):
         )
 
         if self.use_vae:
-            input_channels = state_input_channels + 2*state_input_channels # +2*state_input_channels for z
+            input_channels = state_input_channels + state_input_channels # +state_input_channels for z
         else:
             input_channels = state_input_channels
 
@@ -167,8 +165,7 @@ class DecoderModule(nn.Module):
         reward_log_probs = self.reward_head(state)
 
         if self.use_vae and z is not None:
-            z_mu, z_sigma = z
-            concatenated = torch.cat((state, z_mu, z_sigma), 1)
+            concatenated = torch.cat((state, z), 1)
         else:
             concatenated = state
 

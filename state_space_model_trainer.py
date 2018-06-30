@@ -4,6 +4,8 @@ import torch.functional as F
 import gym
 from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
 from LatentSpaceEncoder.models_from_paper.sSSM import sSSM
+from LatentSpaceEncoder.models_from_paper.dSSM_VAE import dSSM_VAE
+
 import argparse
 from bigger_models import Policy
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
@@ -45,8 +47,10 @@ def main():
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
-    #model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+
+    #model = dSSM_VAE(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
     if args.load_environment_model:
         load_environment_model_path = save_model_path
         print("Load environment model", load_environment_model_path)
@@ -58,7 +62,7 @@ def main():
         model.cuda()
     #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
     #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)  #0.001
     loss_criterion = torch.nn.MSELoss()
 
     if args.render:
@@ -74,8 +78,8 @@ def main():
     #time.sleep(100000000)
     #trainer.train_env_model_batchwise(episoden=100000)
 
-    trainer.train_dSSM(episoden=1000000)
-    #trainer.train_sSSM(episoden=10000)
+    #trainer.train_dSSM(episoden=1000000)
+    trainer.train_sSSM(episoden=10000)
 
 
 class StateSpaceModelTrainer():

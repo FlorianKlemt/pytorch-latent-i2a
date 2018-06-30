@@ -67,7 +67,7 @@ def main():
         from custom_envs import make_custom_env
         envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
-    elif args.algo == 'i2a':
+    elif args.algo == 'i2a' or args.train_on_200x160_pixel:
         from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
         envs = [make_env_ms_pacman(env_id = args.env_name,
                                    seed = args.seed,
@@ -107,10 +107,14 @@ def main():
         actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
                                                     action_space=envs.action_space,
                                                     args=args)
-
     elif 'MiniPacman' in args.env_name:
         #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
         actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
+    elif args.train_on_200x160_pixel:
+        from a2c_models.atari_model import AtariModel
+        actor_critic = A2C_PolicyWrapper(AtariModel(obs_shape=obs_shape,
+                                                    action_space=envs.action_space.n,
+                                                    use_cuda=args.cuda))
     else:
         actor_critic = Policy(obs_shape, envs.action_space, args.recurrent_policy)
 

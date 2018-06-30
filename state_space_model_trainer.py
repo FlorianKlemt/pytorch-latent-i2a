@@ -45,8 +45,8 @@ def main():
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
-    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    #model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
     if args.load_environment_model:
         load_environment_model_path = save_model_path
         print("Load environment model", load_environment_model_path)
@@ -74,8 +74,8 @@ def main():
     #time.sleep(100000000)
     #trainer.train_env_model_batchwise(episoden=100000)
 
-    #trainer.train_dSSM(episoden=1000000)
-    trainer.train_sSSM(episoden=10000)
+    trainer.train_dSSM(episoden=1000000)
+    #trainer.train_sSSM(episoden=10000)
 
 
 class StateSpaceModelTrainer():
@@ -124,12 +124,11 @@ class StateSpaceModelTrainer():
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
+            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
 
             image_log_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
-            #image_log_probs, _ = self.model(sample_observation, sample_action)
 
-            image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
+            '''image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
             pre_log = image_log_probs
             image_log_probs = torch.log(image_log_probs)
 
@@ -142,9 +141,9 @@ class StateSpaceModelTrainer():
 
             reconstruction_loss = criterion(pre_log, sample_next_observation_T)
 
-            loss = reconstruction_loss + kl_loss
+            loss = reconstruction_loss + kl_loss'''
 
-            #loss = kl_loss
+            loss = criterion(image_log_probs, sample_next_observation_T)
 
             self.optimizer.zero_grad()
             loss.backward()

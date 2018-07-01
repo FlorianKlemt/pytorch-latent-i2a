@@ -113,20 +113,19 @@ def play_with_imagination_core(imagination_core, env, args):
     renderer.render_observation(state[0], state[0], reward, reward, 0)
 
     predicted_state = state
-    predicted_state_stack = state_stack
+
+    latent_state = None
 
     for t in range(5):
-
         if args.use_latent_space:
             action = np.random.choice(env.action_space.n, 1)
             action = torch.from_numpy(action).unsqueeze(0)
             if args.cuda:
                 action = action.cuda()
-            latent_state = imagination_core.encode(predicted_state_stack.unsqueeze(0))
-            next_latent_state, z_prior, predicted_reward = imagination_core(latent_state, action)
-            predicted_state, predicted_reward = imagination_core.decode(next_latent_state, z_prior)
-            predicted_state_stack = torch.cat((predicted_state_stack, predicted_state), 0)
-            predicted_state_stack = predicted_state_stack[1:]
+            if latent_state is None:
+                latent_state = imagination_core.encode(state_stack.unsqueeze(0))
+            latent_state, z_prior, predicted_reward = imagination_core(latent_state, action)
+            predicted_state, predicted_reward = imagination_core.decode(latent_state, z_prior)
         else:
             action = imagination_core.sample(predicted_state)
             predicted_state, predicted_reward = imagination_core(predicted_state, action)

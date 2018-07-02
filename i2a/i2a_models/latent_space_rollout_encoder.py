@@ -74,14 +74,14 @@ class LatentSpaceRolloutEncoder():
         imagined_rewards = []
 
         latent_space = self.imagination_core.encode(input_state)
-        next_latent_state, reward = self.imagination_core.forward(latent_space, start_action)
+        next_latent_state, z_prior, reward = self.imagination_core.forward(latent_space, start_action)
         imagined_states.append(next_latent_state)
         imagined_rewards.append(reward)
 
         for i in range(self.rollout_steps-1):
             current_latent_state = next_latent_state
             action = self.imagination_core.sample(current_latent_state)
-            next_latent_state, reward = self.imagination_core.forward(current_latent_state, action)
+            next_latent_state, z_prior, reward = self.imagination_core.forward(current_latent_state, action)
             imagined_states.append(next_latent_state)
             imagined_rewards.append(reward)
 

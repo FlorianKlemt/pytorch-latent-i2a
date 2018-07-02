@@ -46,7 +46,11 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
 
         states_shape = states.shape
         batch_size = states_shape[0] * states_shape[1]
-        states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])
+        channels = 3
+        frames = (int)(states_shape[2] / channels)
+        #states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])
+        # TODO fix shape
+        states = states.view(batch_size, frames, channels, states_shape[3], states_shape[4])
         actions = actions.view(actions.shape[0] * actions.shape[1], -1)
         self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=batch_size)
         rollout_results = self.rollout_encoder.forward(states, actions)

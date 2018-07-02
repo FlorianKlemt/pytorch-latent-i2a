@@ -145,6 +145,9 @@ class I2ALatentSpaceActorCritic(nn.Module):
         action_log_prob, _ = self.logprobs_and_entropy(policy_action_probs, action)
 
         # we need to calculate the destillation loss for the I2A Rollout Policy
+        channels = 3
+        frames = (int)(observation.shape[1] / channels)
+        observation = observation.view(observation.shape[0], frames, channels, observation.shape[2], observation.shape[3])
         latent_space = self.imagination_core.encode(observation)
         _, rp_actor = self.imagination_core.rollout_policy(latent_space)
         rollout_policy_action_probs = F.softmax(rp_actor, dim=1)

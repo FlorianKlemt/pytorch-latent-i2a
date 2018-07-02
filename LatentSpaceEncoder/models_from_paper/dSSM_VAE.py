@@ -15,9 +15,9 @@ class dSSM_VAE(nn.Module):
         self.posterior_z = PosteriorModule(state_input_channels=state_input_channels, num_actions=num_actions, use_cuda=use_cuda)
 
     def encode(self, observation):
-        encoding_t2 = self.encoder(observation[:,2]) # t0
-        encoding_t1 = self.encoder(observation[:,1]) # t-1
-        encoding_t0 = self.encoder(observation[:,0]) # t-2
+        encoding_t2 = self.encoder(observation[:,-1]) # t0
+        encoding_t1 = self.encoder(observation[:,-2]) # t-1
+        encoding_t0 = self.encoder(observation[:,-3]) # t-2
         state = self.initial_state_module(encoding_t2, encoding_t1, encoding_t0)
         return state
 

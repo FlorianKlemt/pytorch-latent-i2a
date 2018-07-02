@@ -71,9 +71,20 @@ def build_i2a_model(obs_shape,
     return i2a_model
 
 
-def load_latent_space_environment_model(load_environment_model_path, action_space, use_cuda):
-    from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
-    environment_model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=action_space, use_cuda=use_cuda)
+def load_latent_space_environment_model(load_environment_model_path, latent_space_model, action_space, use_cuda):
+
+    if latent_space_model == "dSSM_DET":
+        from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
+        environment_model = dSSM_DET(observation_input_channels=3, state_input_channels=64,
+                                     num_actions=action_space, use_cuda=use_cuda)
+    elif latent_space_model == "dSSM_VAE":
+        from LatentSpaceEncoder.models_from_paper.dSSM_VAE import dSSM_VAE
+        environment_model = dSSM_VAE(observation_input_channels=3, state_input_channels=64,
+                                     num_actions=action_space, use_cuda=use_cuda)
+    elif latent_space_model == "sSSM":
+        from LatentSpaceEncoder.models_from_paper.sSSM import sSSM
+        environment_model = sSSM(observation_input_channels=3, state_input_channels=64,
+                                 num_actions=action_space, use_cuda=use_cuda)
 
     print("Load environment model", load_environment_model_path)
     saved_state = torch.load(load_environment_model_path, map_location=lambda storage, loc: storage)
@@ -93,7 +104,7 @@ def build_latent_space_i2a_model(obs_shape,
     frame_stack = args.num_stack
     i2a_rollout_steps = args.i2a_rollout_steps
     use_cuda = args.cuda
-    environment_model_name = args.env_name + "state_space.dat"
+    environment_model_name = args.env_name + "_" + args.latent_space_model + ".dat"
 
     from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
 
@@ -105,8 +116,9 @@ def build_latent_space_i2a_model(obs_shape,
     # Load Environment model
     load_environment_model_path = 'trained_models/environment_models/' + environment_model_name
     environment_model = load_latent_space_environment_model(load_environment_model_path=load_environment_model_path,
+                                                            latent_space_model=args.latent_space_model,
                                                             action_space=action_space.n,
-                                                            use_cuda=use_cuda)
+                                                            use_cuda=args.cuda)
     # TODO policy input size is latent space size
 
     from i2a.rollout_policy import RolloutPolicy

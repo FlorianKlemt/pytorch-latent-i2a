@@ -81,6 +81,10 @@ def get_args():
                         help='True to compute rollouts on class labels')
     parser.add_argument('--no-training', action='store_true', default=False,
                         help='true to render a already trained model')
+    parser.add_argument('--latent-space-model', default='dSSM_DET',
+                        help='latent space model (default: dSSM_DET)'
+                             'models = (dSSM_DET, dSSM_VAE, sSSM)')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

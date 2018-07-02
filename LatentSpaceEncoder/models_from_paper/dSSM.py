@@ -11,22 +11,24 @@ class dSSM_DET(nn.Module):
         self.decoder = DecoderModule(state_input_channels=state_input_channels, use_vae=False)
 
     def encode(self, observation):
-        t0_encoding = self.encoder(observation[:,2])
-        one_before_encoding = self.encoder(observation[:,1])
-        two_before_encoding = self.encoder(observation[:,0])
-        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
-
-        return state # self.encoder(observation)
+        encoding_t2 = self.encoder(observation[:,2]) # t0
+        encoding_t1 = self.encoder(observation[:,1]) # t-1
+        encoding_t0 = self.encoder(observation[:,0]) # t-2
+        state = self.initial_state_module(encoding_t2, encoding_t1, encoding_t0)
+        return state
 
     def next_latent_space(self, latent_space, action):
-        return self.state_transition(latent_space, action, None)
+        # don't sample from the latent variable use mean instead
+        # z_prior = self.prior_z.mean
+        #z_prior, _ = self.prior_z(latent_space, action)
+        z_prior = None
+        return self.state_transition(latent_space, action, z_prior), z_prior
 
     def reward(self, latent_space):
         return self.decoder.reward_head(latent_space)
 
-    def decode(self, latent_space):
-        predicted_observation = self.decoder(latent_space)
-        return self.sigmoid(predicted_observation)
+    def decode(self, latent_space, z_prior):
+        return self.decoder(latent_space, z_prior)
 
     def forward(self, observation, action):
         encoding = self.encoder(observation)
@@ -40,15 +42,12 @@ class dSSM_DET(nn.Module):
         total_image_log_probs = None
 
         #get initial context
-        t0_encoding = self.encoder(observation_initial_context[:,2])
-        one_before_encoding = self.encoder(observation_initial_context[:,1])
-        two_before_encoding = self.encoder(observation_initial_context[:,0])
-        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
+        state = self.encode(observation_initial_context)
 
         #iterate over T actions, but pass action t for all batches simultaneously
         for action in action_list.transpose_(0, 1):
-            state = self.state_transition(state, action, None)  # no latent z for now
-            image_log_probs, reward_log_probs = self.decoder(state, None)  # no latent z for now
+            state, z_prior = self.next_latent_space(state, action)
+            image_log_probs, reward_log_probs = self.decoder(state, z_prior)  # no latent z for now
 
             #image_log_probs are unsqueezed at 1 to create a stack dimension between batch_dimension(0) and channel_dimension(1)
             if total_image_log_probs is not None:

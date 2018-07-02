@@ -21,44 +21,76 @@ import multiprocessing as mp
 from torch.distributions.normal import Normal
 
 def main():
-    args_parser = argparse.ArgumentParser(description='StateSpaceEncoder')  #TODO: make actual args
+    args_parser = argparse.ArgumentParser(description='Train State Space Encoder Args')  #TODO: make actual args
+    args_parser.add_argument('--load-environment-model', action='store_true', default=False,
+                             help='flag to continue training on pretrained env_model')
+    args_parser.add_argument('--save-environment-model-dir', default="trained_models/environment_models/",
+                             help='relative path to folder from which a environment model should be loaded.')
+    args_parser.add_argument('--env-name', default='MsPacmanNoFrameskip-v0',
+                             help='environment to train on (default: MsPacmanNoFrameskip-v0)')
+    args_parser.add_argument('--latent-space-model', default='dSSM_DET',
+                             help='latent space model (default: dSSM_DET)'
+                                  'models = (dSSM_DET, dSSM_VAE, sSSM)')
+    args_parser.add_argument('--render', action='store_true', default=False,
+                             help='starts an progress that play and render games with the current model')
+    args_parser.add_argument('--no-training', action='store_true', default=False,
+                             help='true to render a already trained env model')
+    args_parser.add_argument('--no-cuda', action='store_true', default=False,
+                             help='disables CUDA training')
+    args_parser.add_argument('--no-vis', action='store_true', default=False,
+                             help='disables visdom visualization')
+    args_parser.add_argument('--port', type=int, default=8097,
+                             help='port to run the server on (default: 8097)')
+    args_parser.add_argument('--save-interval', type=int, default=100,
+                             help='save model each n episodes (default: 10)')
+    args_parser.add_argument('--num-episodes', type=int, default=10000000,
+                             help='save model each n episodes (default: 10000000)')
+    args_parser.add_argument('--batch-size', type=int, default=100,
+                             help='batch size (default: 100)')
+    args_parser.add_argument('--lr', type=float, default=7e-4,
+                             help='learning rate (default: 7e-4)')
+    args_parser.add_argument('--eps', type=float, default=1e-8,
+                             help='RMSprop optimizer epsilon (default: 1e-8)')
+    args_parser.add_argument('--weight-decay', type=float, default=0.05,
+                             help='weight decay (default: 0)')
     args = args_parser.parse_args()
-    args.use_cuda = True
-    args.cuda = args.use_cuda
-    args.batch_size = 2
-    args.save_env_model_dir = "trained_models/environment_models/"
-    args.vis = True
-    args.port = 8097
+
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    args.vis = not args.no_vis
+
     args.save_interval = 20
-    args.render = True
-    args.env_name ="MsPacmanNoFrameskip-v0"
     args.grey_scale = False
-    args.load_environment_model = False
     args.use_latent_space = True
 
     if args.render:
         mp.set_start_method('spawn')
 
-    save_model_path = '{0}{1}{2}.dat'.format(args.save_env_model_dir,
-                                                  args.env_name,
-                                                  "state_space")
+    save_model_path = '{0}{1}_{2}.dat'.format(args.save_environment_model_dir,
+                                              args.env_name,
+                                              args.latent_space_model)
 
     #env = make_env("MsPacmanNoFrameskip-v0", 1, 1, None, False)()
     env = make_env(args.env_name, 1, 1, None, False, False)()
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
-    #model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
 
-    #model = dSSM_VAE(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
-    model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=True)
+    if args.latent_space_model == "dSSM_DET":
+        model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
+    elif args.latent_space_model == "dSSM_VAE":
+        model = dSSM_VAE(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
+    elif args.latent_space_model == "sSSM":
+        model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
+    else:
+        print("Model", args.latent_space_model, "unknown")
+
     if args.load_environment_model:
         load_environment_model_path = save_model_path
         print("Load environment model", load_environment_model_path)
         saved_state = torch.load(load_environment_model_path, map_location=lambda storage, loc: storage)
         model.load_state_dict(saved_state)
 
-    if args.use_cuda:
+    if args.cuda:
         policy.cuda()
         model.cuda()
     #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
@@ -79,8 +111,10 @@ def main():
     #time.sleep(100000000)
     #trainer.train_env_model_batchwise(episoden=100000)
 
-    #trainer.train_dSSM(episoden=1000000)
-    trainer.train_sSSM(episoden=10000)
+    if args.latent_space_model == "dSSM_DET":
+        trainer.train_dSSM(episoden=args.num_episodes)
+    else:
+        trainer.train_sSSM(episoden=args.num_episodes)
 
 
 class StateSpaceModelTrainer():
@@ -91,14 +125,13 @@ class StateSpaceModelTrainer():
         self.policy = policy
         self.optimizer = optimizer
         self.loss_criterion = loss_criterion
-        self.use_cuda = args.use_cuda
+        self.use_cuda = args.cuda
         self.batch_size = args.batch_size
         self.sample_memory_size = 50 #500 #100000
         self.frame_stack = 1
-
-        self.log_path = '{0}env_{1}{2}.log'.format(args.save_env_model_dir,
-                                                   args.env_name,
-                                                   "state_space")
+        self.log_path = '{0}{1}_{2}.log'.format(args.save_environment_model_dir,
+                                                args.env_name,
+                                                args.latent_space_model)
 
         self.save_model_path = save_model_path
 

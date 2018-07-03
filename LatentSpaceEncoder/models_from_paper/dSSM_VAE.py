@@ -22,12 +22,13 @@ class dSSM_VAE(nn.Module):
         return state
 
     def next_latent_space(self, latent_space, action):
-        # compute mean and variance of p(z_t|s_t-1, a_t-1, o_t)
         mu_prior, sigma_prior = self.prior_z(latent_space, action)
-        # prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-        # here is the difference to sSSM: mean instead of sample
-        z_prior = mu_prior  # prior_gaussian.mean
-        return self.state_transition(latent_space, action, z_prior), z_prior
+
+        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
+        z_prior = prior_gaussian.sample()
+        # state transition gets the mean of the prior distribution instead of a sample
+        # in dSSM_VAE, for gaussian the mean is mu_prior
+        return self.state_transition(latent_space, action, mu_prior), z_prior
 
     def reward(self, latent_space):
         return self.decoder.reward_head(latent_space)
@@ -35,18 +36,10 @@ class dSSM_VAE(nn.Module):
     def decode(self, latent_space, z_prior):
         return self.decoder(latent_space, z_prior)
 
-    def forward(self, observation, action):
-        state = self.encoder(observation)
-
-        mu_prior, sigma_prior = self.prior_z(state, action)
-        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-
-        #here is the difference to sSSM: mean instead of sample
-        z_prior = mu_prior #prior_gaussian.mean
-
-        next_state_prediction = self.state_transition(state, action, z_prior)
+    def forward(self, observation_initial_context, action):
+        state = self.encode(observation_initial_context)
+        next_state_prediction, z_prior = self.next_latent_space(state, action)
         image_log_probs, reward_log_probs = self.decoder(next_state_prediction, z_prior)
-
         return image_log_probs, reward_log_probs
 
 
@@ -60,18 +53,19 @@ class dSSM_VAE(nn.Module):
         state = self.encode(observation_initial_context)  #there is a batch for an initial context, even though it is not used here
 
         for action in action_list.transpose_(0, 1):
-            #compute mean and variance of p(z_t|s_t-1, a_t-1, o_t)
             mu_prior, sigma_prior = self.prior_z(state, action)
-            #prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-            # here is the difference to sSSM: mean instead of sample
-            z_prior = mu_prior#prior_gaussian.mean
 
-            next_state_prediction = self.state_transition(state, action, z_prior)
+            next_state_prediction = self.state_transition(state, action, mu_prior)
+
+            prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
+            z_prior = prior_gaussian.sample()
             image_log_probs, reward_log_probs = self.decoder(next_state_prediction, z_prior)
 
-            mu_posterior, sigma_posterior = self.posterior_z(prev_state=state, action=action,
-                                      encoded_obs=next_state_prediction, mu=mu_prior, sigma=sigma_prior)
-
+            mu_posterior, sigma_posterior = self.posterior_z(prev_state=state,
+                                                             action=action,
+                                                             encoded_obs=next_state_prediction,
+                                                             mu=mu_prior,
+                                                             sigma=sigma_prior)
 
             if total_image_log_probs is not None:
                 total_image_log_probs = torch.cat((total_image_log_probs, image_log_probs.unsqueeze(1)), dim=1)

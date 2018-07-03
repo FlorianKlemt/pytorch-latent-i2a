@@ -75,22 +75,17 @@ class RolloutEncoder():
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     def imagine_future(self,input_state, start_action):
-        imagined_states = []
-        imagined_rewards = []
-
         next_state, reward = self.imagination_core.forward(input_state, start_action)
-        imagined_states.append(next_state)
-        imagined_rewards.append(reward)
+        imagined_states = next_state.unsqueeze(1)
+        imagined_rewards = reward.unsqueeze(1)
 
         for i in range(self.rollout_steps-1):
             current_state = next_state
             action = self.imagination_core.sample(current_state)
             next_state, reward = self.imagination_core.forward(current_state, action)
-            imagined_states.append(next_state)
-            imagined_rewards.append(reward)
+            imagined_states = torch.cat((imagined_states, next_state.unsqueeze(1)), dim=1)
+            imagined_rewards = torch.cat((imagined_rewards, reward.unsqueeze(1)), dim=1)
 
-        imagined_states = torch.stack(imagined_states, 1)
-        imagined_rewards = torch.stack(imagined_rewards, 1)
         return imagined_states, imagined_rewards
 
     def encode(self, imagined_states_and_rewards):

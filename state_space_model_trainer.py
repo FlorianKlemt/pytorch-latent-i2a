@@ -198,7 +198,9 @@ class StateSpaceModelTrainer():
 
             if i_episode != 0 and i_episode % create_n_samples == 0:
                 print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size))
+                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T,
+                                                                   initial_context_size=initial_context_size,
+                                                                   policy_frame_stack=policy_frame_stack))
 
 
 
@@ -268,7 +270,9 @@ class StateSpaceModelTrainer():
 
             if i_episode != 0 and i_episode % create_n_samples == 0:
                 print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size))
+                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T,
+                                                                   initial_context_size=initial_context_size,
+                                                                   policy_frame_stack=policy_frame_stack))
 
 
 

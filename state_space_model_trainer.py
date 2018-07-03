@@ -5,6 +5,7 @@ import gym
 from LatentSpaceEncoder.models_from_paper.dSSM import dSSM_DET
 from LatentSpaceEncoder.models_from_paper.sSSM import sSSM
 from LatentSpaceEncoder.models_from_paper.dSSM_VAE import dSSM_VAE
+from LatentSpaceEncoder.models_from_paper.state_space_model import SSM
 
 import argparse
 from bigger_models import Policy
@@ -79,14 +80,11 @@ def main():
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
 
-    if args.latent_space_model == "dSSM_DET":
-        model = dSSM_DET(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
-    elif args.latent_space_model == "dSSM_VAE":
-        model = dSSM_VAE(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
-    elif args.latent_space_model == "sSSM":
-        model = sSSM(observation_input_channels=3, state_input_channels=64, num_actions=env.action_space.n, use_cuda=args.cuda)
-    else:
-        print("Model", args.latent_space_model, "unknown")
+    model = SSM(model_type=args.latent_space_model,
+                observation_input_channels=3,
+                state_input_channels=64,
+                num_actions=env.action_space.n,
+                use_cuda=args.cuda)
 
     if args.load_environment_model:
         load_environment_model_path = save_model_path
@@ -118,9 +116,9 @@ def main():
     #trainer.train_env_model_batchwise(episoden=100000)
 
     if args.latent_space_model == "dSSM_DET":
-        trainer.train_dSSM(episoden=args.num_episodes)
+        trainer.train_dSSM(episoden=args.num_episodes, T=10)
     else:
-        trainer.train_sSSM(episoden=args.num_episodes)
+        trainer.train_sSSM(episoden=args.num_episodes, T=10)
 
 
 class StateSpaceModelTrainer():
@@ -166,7 +164,7 @@ class StateSpaceModelTrainer():
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            image_log_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+            image_log_probs, reward = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
             loss = criterion(image_log_probs, sample_next_observation_T)
 
@@ -208,7 +206,8 @@ class StateSpaceModelTrainer():
 
             #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
 
-            image_log_probs, reward_log_probs, total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior \
+            image_log_probs, reward_log_probs, \
+            (total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior) \
                     = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
             '''for b in range(self.batch_size):
@@ -359,15 +358,18 @@ class StateSpaceModelTrainer():
 
                 for i in range(initial_context_size):
                     value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  # no state and mask
+                    state, reward, done, _ = self.do_env_step(action=action)
+
                     if initial_context_stack is not None:
                         initial_context_stack = torch.cat((initial_context_stack, state))
                     else:
                         initial_context_stack = state
-                    state, reward, done, _ = self.do_env_step(action=action)
 
                 for i in range(T):
                     # let policy decide on next action and perform it
                     value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
+                    state, reward, done, _ = self.do_env_step(action=action)
+
                     if target_state_stack is not None:
                         target_state_stack = torch.cat((target_state_stack,state))
                     else:
@@ -378,7 +380,6 @@ class StateSpaceModelTrainer():
                     else:
                         action_stack = action
 
-                    state, reward, done, _ = self.do_env_step(action=action)
                     if reward_stack is not None:
                         reward_stack = torch.cat((reward_stack, reward))
                     else:

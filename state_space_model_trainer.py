@@ -43,6 +43,8 @@ def main():
                              help='port to run the server on (default: 8097)')
     args_parser.add_argument('--save-interval', type=int, default=100,
                              help='save model each n episodes (default: 10)')
+    args_parser.add_argument('--skip-frames', type=int, default=1,
+                             help='skip frames (default: 1)')
     args_parser.add_argument('--num-episodes', type=int, default=10000000,
                              help='save model each n episodes (default: 10000000)')
     args_parser.add_argument('--batch-size', type=int, default=100,
@@ -70,7 +72,10 @@ def main():
                                               args.latent_space_model)
 
     #env = make_env("MsPacmanNoFrameskip-v0", 1, 1, None, False)()
-    env = make_env(args.env_name, 1, 1, None, False, False)()
+    #env = make_env(args.env_name, 1, 1, None, False, False)()
+    env = make_env(env_id = args.env_name, seed=1, rank=1,
+                   log_dir=None, grey_scale=False,
+                   skip_frames = args.skip_frames, stack_frames=1)()
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)

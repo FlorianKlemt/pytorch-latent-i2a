@@ -186,7 +186,7 @@ class EncoderFrameStack(gym.Wrapper):
 
 
 
-def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
+def make_env(env_id, seed, rank, log_dir, grey_scale, skip_frames = 1, stack_frames = 1):
     from baselines import bench
     from baselines.common.atari_wrappers import make_atari, wrap_deepmind, EpisodicLifeEnv, ClipRewardEnv
     import os
@@ -195,7 +195,7 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
         env = gym.make(env_id)
         is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
-            env = custom_make_atari(env_id)
+            env = custom_make_atari(env_id, skip_frames=skip_frames)
         env.seed(seed + rank)
         if log_dir is not None:
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
@@ -208,8 +208,8 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
             env = WarpFrameGrayScale(env)
         else:
             env = ReshapeRGBChannels(env)
-        if stack_frames:
-            env = EncoderFrameStack(env, 4)
+        if stack_frames > 1:
+            env = EncoderFrameStack(env, stack_frames)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         #obs_shape = env.observation_space.shape
         #if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
@@ -220,12 +220,13 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, stack_frames):
     return _thunk
 
 
-def custom_make_atari(env_id):
+def custom_make_atari(env_id, skip_frames = 1):
     from baselines.common.atari_wrappers import NoopResetEnv
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
-    #env = MaxAndSkipEnv(env, skip=4)   #TODO: maybe 2 skip
+    from baselines.common.atari_wrappers import MaxAndSkipEnv
+    env = MaxAndSkipEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
     return env
 
 

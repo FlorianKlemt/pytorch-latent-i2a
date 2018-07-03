@@ -21,6 +21,8 @@ import multiprocessing as mp
 #from envs import make_env
 
 from torch.distributions.normal import Normal
+from torch.distributions.bernoulli import Bernoulli
+import math
 
 def main():
     args_parser = argparse.ArgumentParser(description='Train State Space Encoder Args')  #TODO: make actual args
@@ -211,47 +213,50 @@ class StateSpaceModelTrainer():
         create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
         sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size, policy_frame_stack=policy_frame_stack))
-        criterion = torch.nn.BCELoss()
+        frame_criterion = torch.nn.BCELoss()
+        reward_criterion = torch.nn.BCEWithLogitsLoss()
 
         for i_episode in range(episoden):
             # sample a state, next-state pair randomly from replay memory for a training step
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
+            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.001, 1)
 
             image_log_probs, reward_log_probs, \
             (total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior) \
                     = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
-            '''for b in range(self.batch_size):
-                for i in range(T):
-                    #logits = torch.log(image_log_probs[b,i])
-                    ##predicted_bernoulli = torch.distributions.bernoulli.Bernoulli(probs=image_log_probs[b,i])
-                    #reconstruction = predicted_bernoulli.log_prob(observation[:,0]).mean()
-                    #reconstruction = image_log_probs[b,i].mean()
 
-                    reconstruction_loss = criterion(image_log_probs[b,i], sample_next_observation_T[b,i])
+            reward_bernoulli = Bernoulli(logits=reward_log_probs)
+            sampled_r = reward_bernoulli.sample()
 
-                    # begin test
-                    prior_gaussian = Normal(loc=total_z_mu_prior[b,i], scale=total_z_sigma_prior[b,i])
-                    #prior_log_prob = prior_gaussian.log_prob(prior_gaussian.mean).mean()
 
-                    posterior_gaussian = Normal(loc=total_z_mu_posterior[b,i], scale=total_z_sigma_posterior[b,i])
-                    #posterior_log_prob = posterior_gaussian.log_prob(posterior_gaussian.mean).mean()
+            r_true = torch.cuda.FloatTensor(sample_reward_T.shape[0], sample_reward_T.shape[1], 6).fill_(0)
+            for i in range(sample_reward_T.shape[0]):
+                for j in range(sample_reward_T.shape[1]):
+                    true_reward = math.floor(sample_reward_T[i,j].item()) #they floor in the paper too
+                    assert(-math.pow(2,6+1)<true_reward<math.pow(2,6+1))  #otherwise it cannot be modeled
+                    r_true[i,j,0] = int(true_reward == 0)
+                    r_true[i,j,1] = int(true_reward < 0)
+                    bits = [int(x) for x in list('{0:04b}'.format(abs(true_reward)))]
+                    for n in range(2,4+2):
+                        r_true[i,j,n] = bits[n-2]
+                    #print(r_true[i,j], true_reward)
 
-                    kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
 
-                    elbo += reconstruction_loss + kl_div_loss.mean()
+            reward_loss = reward_criterion(sampled_r, r_true)
+            #print(reward_loss)
 
-                    #print(reconstruction_loss, "   ", kl_div_loss.mean())
-            '''
-            reconstruction_loss = criterion(image_log_probs, sample_next_observation_T)
+            reconstruction_loss = frame_criterion(image_log_probs, sample_next_observation_T)
+            #print("Rec loss: ", reconstruction_loss)
 
             prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)
             posterior_gaussian = Normal(loc=total_z_mu_posterior, scale=total_z_sigma_posterior)
             kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
-            loss = reconstruction_loss + kl_div_loss.mean() #loss is elbo
+            frame_loss = reconstruction_loss + kl_div_loss.mean() #loss is elbo
+
+            loss = frame_loss + 1e-2*reward_loss
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -259,7 +264,7 @@ class StateSpaceModelTrainer():
 
             # log and print infos
             if self.loss_printer:
-                self.loss_printer.log_loss_and_reward((loss, loss), torch.zeros(1), torch.zeros(1), i_episode)
+                self.loss_printer.log_loss_and_reward((frame_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
                 if self.loss_printer.frames % 10 == 0:
                     self.loss_printer.print_episode(episode=i_episode)
 

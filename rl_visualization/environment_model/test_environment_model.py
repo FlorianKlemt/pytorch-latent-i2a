@@ -125,7 +125,7 @@ def play_with_imagination_core(imagination_core, env, args):
             if latent_state is None:
                 latent_state = imagination_core.encode(state_stack.unsqueeze(0))
             latent_state, z_prior, predicted_reward = imagination_core(latent_state, action)
-            predicted_state, predicted_reward = imagination_core.decode(latent_state, z_prior)
+            predicted_state, _ = imagination_core.decode(latent_state, z_prior)
         else:
             action = imagination_core.sample(predicted_state)
             predicted_state, predicted_reward = imagination_core(predicted_state, action)

@@ -2,6 +2,8 @@ import torch.nn as nn
 from LatentSpaceEncoder.models_from_paper.model_building_blocks import PosteriorModule, PriorModule, StateTransition, EncoderModule, DecoderModule, InitialStateModule
 import torch
 from torch.distributions.normal import Normal
+from torch.distributions.bernoulli import Bernoulli
+import math
 
 class SSM(nn.Module):
     def __init__(self,
@@ -47,7 +49,52 @@ class SSM(nn.Module):
         return state
 
     def reward(self, latent_space):
-        return self.decoder.reward_head(latent_space)
+        reward_logits = self.decoder.reward_head(latent_space)
+        return self.get_numerical_reward(reward_logits)
+
+    # convert predicted to number
+    def get_numerical_reward(self, reward_logits):
+        reward_bernoulli = Bernoulli(logits=reward_logits)
+        sampled_r = reward_bernoulli.sample()
+
+        r_out = torch.cuda.FloatTensor(sampled_r.shape[0], 1).fill_(0)
+        for i in range(sampled_r.shape[0]):
+            r = 0
+            if sampled_r[i, 0] == 1:
+                r_out[i] = 0
+            else:
+                for k in range(2, sampled_r.shape[1]):
+                    r += int(math.pow(2, sampled_r.shape[1] - 1 - k)) if sampled_r[i, k] == 1 else 0
+                if sampled_r[i, 1] == 1:
+                    r = -r
+                r_out[i] = r
+        return r_out
+
+        '''r_out = torch.cuda.FloatTensor(sampled_r.shape[0], sampled_r.shape[1]).fill_(0)
+        for i in range(sampled_r.shape[0]):
+            for j in range(sampled_r.shape[1]):
+                r = 0
+                if sampled_r[i,j,0] == 1:
+                    r_out[i,j] = 0
+                else:
+                    for k in range(2,sampled_r.shape[2]):
+                        r += int(math.pow(2,sampled_r.shape[2]-1-k)) if sampled_r[i,j,k]==1 else 0
+                    if sampled_r[i,j,1] == 1:
+                        r = -r
+                    r_out[i,j] = r
+        '''
+
+    '''def get_numerical_reward_2(self):
+        reward_bernoulli = Bernoulli(logits=reward_logits)
+        sampled_r = reward_bernoulli.sample()
+
+        r_out = torch.cuda.FloatTensor(sampled_r.shape[0], sampled_r.shape[1]).fill_(0)
+        r_out[sampled_r[:, :, 0] == 1] = 0
+        for i in range(2, 6):
+            r_out[sampled_r[:, :, i] == 1] = int(math.pow(2,sampled_r.shape[2]-1-k))
+  
+        r_out[sampled_r[:, :, 1] == 1] *= -1'''
+
 
     def decode(self, latent_space, z_prior):
         return self.decoder(latent_space, z_prior)
@@ -90,6 +137,7 @@ class SSM(nn.Module):
         total_sigma_posterior = None
 
         total_image_log_probs = None
+        total_reward_log_probs = None
 
         state = self.encode(observation_initial_context)
         # iterate over T actions, but pass action t for all batches simultaneously
@@ -119,13 +167,15 @@ class SSM(nn.Module):
 
             if total_image_log_probs is not None:
                 total_image_log_probs = torch.cat((total_image_log_probs, image_log_probs.unsqueeze(1)), dim=1)
+                total_reward_log_probs = torch.cat((total_reward_log_probs, reward_log_probs.unsqueeze(1)), dim=1)
             else:
                 total_image_log_probs = image_log_probs.unsqueeze(1)
+                total_reward_log_probs = reward_log_probs.unsqueeze(1)
 
             state = next_state_prediction
 
         latent_variables = (total_mu_prior, total_sigma_prior, total_mu_posterior, total_sigma_posterior)
-        return total_image_log_probs, reward_log_probs, latent_variables
+        return total_image_log_probs, total_reward_log_probs, latent_variables
 
 
 def _get_prior_dSSM_DET(mu_prior, sigma_prior):

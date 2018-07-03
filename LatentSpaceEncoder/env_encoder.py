@@ -220,13 +220,38 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, skip_frames = 1, stack_fra
     return _thunk
 
 
+class SkipFramesEnv(gym.Wrapper):
+    def __init__(self, env, skip=4):
+        """Return only every `skip`-th frame"""
+        gym.Wrapper.__init__(self, env)
+        self._skip       = skip
+
+    def reset(self):
+        return self.env.reset()
+
+    def step(self, action):
+        """Repeat action, sum reward, and max over last observations."""
+        total_reward = 0.0
+        done = None
+        for i in range(self._skip):
+            obs, reward, done, info = self.env.step(action)
+            total_reward += reward
+            if done:
+                break
+        # Note that the observation on the done=True frame
+        # doesn't matter
+        return obs, total_reward, done, info
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
+
 def custom_make_atari(env_id, skip_frames = 1):
     from baselines.common.atari_wrappers import NoopResetEnv
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
     from baselines.common.atari_wrappers import MaxAndSkipEnv
-    env = MaxAndSkipEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
+    env = SkipFramesEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
     return env
 
 

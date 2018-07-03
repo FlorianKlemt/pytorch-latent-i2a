@@ -103,7 +103,7 @@ def play_with_imagination_core(imagination_core, env, args):
     state_stack = torch.cat((state, state, state), 0)
 
     # do 20 random actions to get different start observations
-    for i in range(randint(20, 50)):
+    for i in range(randint(50, 100)):
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
         state_stack = torch.cat((state_stack, state), 0)

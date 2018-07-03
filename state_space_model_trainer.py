@@ -47,12 +47,12 @@ def main():
                              help='skip frames (default: 1)')
     args_parser.add_argument('--num-episodes', type=int, default=10000000,
                              help='save model each n episodes (default: 10000000)')
-    args_parser.add_argument('--batch-size', type=int, default=100,
-                             help='batch size (default: 100)')
-    args_parser.add_argument('--lr', type=float, default=7e-4,
+    args_parser.add_argument('--batch-size', type=int, default=2,
+                             help='batch size (default: 2)')
+    args_parser.add_argument('--sample-memory-size', type=int, default=50,
+                             help='batch size (default: 50)')
+    args_parser.add_argument('--lr', type=float, default=0.002,
                              help='learning rate (default: 7e-4)')
-    args_parser.add_argument('--eps', type=float, default=1e-8,
-                             help='RMSprop optimizer epsilon (default: 1e-8)')
     args_parser.add_argument('--weight-decay', type=float, default=0.05,
                              help='weight decay (default: 0)')
     args = args_parser.parse_args()
@@ -71,11 +71,10 @@ def main():
                                               args.env_name,
                                               args.latent_space_model)
 
-    #env = make_env("MsPacmanNoFrameskip-v0", 1, 1, None, False)()
-    #env = make_env(args.env_name, 1, 1, None, False, False)()
     env = make_env(env_id = args.env_name, seed=1, rank=1,
                    log_dir=None, grey_scale=False,
-                   skip_frames = args.skip_frames, stack_frames=1)()
+                   skip_frames = args.skip_frames,
+                   stack_frames=1)()
     env = ClipAtariFrameSizeTo200x160(env=env)
 
     policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
@@ -98,10 +97,11 @@ def main():
     if args.cuda:
         policy.cuda()
         model.cuda()
-    #optimizer = torch.optim.RMSprop(model.parameters(), lr=0.001, weight_decay=0)  #0.00005, 1e-5
-    #optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)  #0.001
-    loss_criterion = torch.nn.MSELoss()
+
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=args.lr,
+                                 weight_decay=args.weight_decay)
+
 
     if args.render:
         test_process = TestEnvironmentModel(env=env,
@@ -110,7 +110,8 @@ def main():
                                             rollout_policy=policy,
                                             args=args)
 
-    trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy, optimizer=optimizer, loss_criterion=loss_criterion,
+    trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy,
+                                     optimizer=optimizer,
                                      save_model_path = save_model_path)
     #import time
     #time.sleep(100000000)
@@ -123,17 +124,15 @@ def main():
 
 
 class StateSpaceModelTrainer():
-    def __init__(self, args, env, model, policy, optimizer, loss_criterion, save_model_path):
+    def __init__(self, args, env, model, policy, optimizer, save_model_path):
         self.model = model
         self.args = args
         self.env = env
         self.policy = policy
         self.optimizer = optimizer
-        self.loss_criterion = loss_criterion
         self.use_cuda = args.cuda
         self.batch_size = args.batch_size
-        self.sample_memory_size = 50 #500 #100000
-        self.frame_stack = 1
+        self.sample_memory_size = args.sample_memory_size
         self.log_path = '{0}{1}_{2}.log'.format(args.save_environment_model_dir,
                                                 args.env_name,
                                                 args.latent_space_model)
@@ -167,24 +166,7 @@ class StateSpaceModelTrainer():
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.00000001, 1)
-
             image_log_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
-
-            '''image_log_probs = torch.clamp(image_log_probs, 0.00000001, 1)
-            pre_log = image_log_probs
-            image_log_probs = torch.log(image_log_probs)
-
-            predicted_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=image_log_probs)
-
-            ground_truth_bernoulli = torch.distributions.bernoulli.Bernoulli(logits=torch.log(sample_next_observation_T))
-            #loss = torch.distributions.kl.kl_divergence(predicted_bernoulli, ground_truth_bernoulli)
-            kl_loss = torch.distributions.kl._kl_bernoulli_bernoulli(predicted_bernoulli, ground_truth_bernoulli)
-            kl_loss = torch.mean(kl_loss)
-
-            reconstruction_loss = criterion(pre_log, sample_next_observation_T)
-
-            loss = reconstruction_loss + kl_loss'''
 
             loss = criterion(image_log_probs, sample_next_observation_T)
 

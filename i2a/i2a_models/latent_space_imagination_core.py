@@ -13,15 +13,15 @@ class LatentSpaceImaginationCore(nn.Module):
         reward = self.env_model.reward(next_latent_state)
         return next_latent_state, z_prior, reward
 
-    def encode(self, state):
-        latent_space = self.env_model.encode(state)
+    def encode(self, observation_initial_context):
+        latent_space = self.env_model.encode(observation_initial_context)
         return latent_space
 
-    def decode(self, state, z_prior):
-        latent_space = self.env_model.decode(state, z_prior)
-        return latent_space
+    def decode(self, latent_space, z_prior):
+        predicted_observation = self.env_model.decode(latent_space, z_prior)
+        return predicted_observation
 
-    def sample(self, input_state):
-        value, actor = self.rollout_policy(input_state)
+    def sample(self, latent_space):
+        value, actor = self.rollout_policy(latent_space)
         action = self.rollout_policy.sample(actor)
         return action

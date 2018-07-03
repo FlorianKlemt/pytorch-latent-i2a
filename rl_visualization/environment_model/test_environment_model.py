@@ -109,11 +109,13 @@ def play_with_imagination_core(imagination_core, env, args):
         state_stack = torch.cat((state_stack, state), 0)
         state_stack = state_stack[1:]
 
-
-    renderer.render_observation(state[0], state[0], reward, reward, 0)
-
     predicted_state = state
 
+    if args.use_latent_space:
+        latent_state = imagination_core.encode(state_stack.unsqueeze(0))
+        predicted_state, predicted_reward = imagination_core.decode(latent_state, None)
+
+    renderer.render_observation(state[0], predicted_state[0], reward, reward, 0)
     latent_state = None
 
     for t in range(5):

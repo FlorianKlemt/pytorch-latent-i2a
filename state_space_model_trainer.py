@@ -55,6 +55,8 @@ def main():
                              help='batch size (default: 2)')
     args_parser.add_argument('--sample-memory-size', type=int, default=50,
                              help='batch size (default: 50)')
+    args_parser.add_argument('--rollout-steps', type=int, default=10,
+                             help='train with x rollouts (default: 10)')
     args_parser.add_argument('--lr', type=float, default=0.002,
                              help='learning rate (default: 7e-4)')
     args_parser.add_argument('--weight-decay', type=float, default=0.05,
@@ -128,9 +130,9 @@ def main():
     #trainer.train_env_model_batchwise(episoden=100000)
 
     if args.latent_space_model == "dSSM_DET":
-        trainer.train_dSSM(episoden=args.num_episodes, T=10)
+        trainer.train_dSSM(episoden=args.num_episodes, T=args.rollout_steps)
     else:
-        trainer.train_sSSM(episoden=args.num_episodes, T=10)
+        trainer.train_sSSM(episoden=args.num_episodes, T=args.rollout_steps)
 
 
 class StateSpaceModelTrainer():
@@ -372,16 +374,19 @@ class StateSpaceModelTrainer():
                 target_state_stack = None
 
                 for i in range(initial_context_size):
-                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  # no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                    state, reward, done, _ = self.do_env_step(action=action)
                     if initial_context_stack is not None:
                         initial_context_stack = torch.cat((initial_context_stack, state))
                     else:
                         initial_context_stack = state
-                    state, reward, done, _ = self.do_env_step(action=action)
+                    frame_stack = torch.cat((frame_stack[:, 3:], state), dim=1)
+
 
                 for i in range(T):
                     # let policy decide on next action and perform it
-                    value, action, _, _ = self.policy.act(inputs=state, states=None, masks=None)  #no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  #no state and mask
+                    state, reward, done, _ = self.do_env_step(action=action)
                     if target_state_stack is not None:
                         target_state_stack = torch.cat((target_state_stack,state))
                     else:
@@ -402,7 +407,6 @@ class StateSpaceModelTrainer():
                 #unsqueeze initial_context, action, target_state and reward stack for batch dimension
                 sample_memory.append([initial_context_stack.unsqueeze(0), action_stack.unsqueeze(0),
                                       target_state_stack.unsqueeze(0), reward_stack.unsqueeze(0)])
-
 
 
                 if len(sample_memory) >= number_of_samples:

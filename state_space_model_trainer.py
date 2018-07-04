@@ -197,13 +197,11 @@ class StateSpaceModelTrainer():
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            image_probs, reward_prob = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+            image_probs, reward_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
             # reward loss
-            reward_bernoulli = Bernoulli(logits=reward_prob)
-            predicted_reward = reward_bernoulli.sample()
             true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
-            reward_loss = reward_criterion(predicted_reward, true_reward)
+            reward_loss = reward_criterion(reward_probs, true_reward)
 
             # image loss
             reconstruction_loss = criterion(image_probs, sample_next_observation_T)
@@ -250,18 +248,15 @@ class StateSpaceModelTrainer():
 
             #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.001, 1)
 
-            image_log_probs, reward_log_probs, \
+            image_probs, reward_probs, \
             (total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior) \
                     = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
-
-            reward_bernoulli = Bernoulli(logits=reward_log_probs)
-            predicted_reward = reward_bernoulli.sample()
             true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
-            reward_loss = reward_criterion(predicted_reward, true_reward)
+            reward_loss = reward_criterion(reward_probs, true_reward)
             #print(reward_loss)
 
-            reconstruction_loss = frame_criterion(image_log_probs, sample_next_observation_T)
+            reconstruction_loss = frame_criterion(image_probs, sample_next_observation_T)
             #print("Rec loss: ", reconstruction_loss)
 
             prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)

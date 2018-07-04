@@ -13,6 +13,7 @@ class SSM(nn.Module):
                  num_actions,
                  use_cuda):
         super(SSM, self).__init__()
+        self.use_cuda = use_cuda
         self.encoder = EncoderModule(input_channels=observation_input_channels)
         self.initial_state_module = InitialStateModule()
         self.state_transition = StateTransition(state_input_channels=state_input_channels,
@@ -57,7 +58,9 @@ class SSM(nn.Module):
         reward_bernoulli = Bernoulli(logits=reward_logits)
         sampled_r = reward_bernoulli.sample()
 
-        r_out = torch.cuda.FloatTensor(sampled_r.shape[0], 1).fill_(0)
+        r_out = torch.FloatTensor(sampled_r.shape[0], 1).fill_(0)
+        if self.use_cuda:
+            r_out = r_out.cuda()
         for i in range(sampled_r.shape[0]):
             r = 0
             if sampled_r[i, 0] == 1:
@@ -117,17 +120,21 @@ class SSM(nn.Module):
 
     def _forward_multiple_DSSM(self, observation_initial_context, action_list):
         total_image_log_probs = None
+        total_reward_log_probs = None
         state = self.encode(observation_initial_context)
         # iterate over T actions, but pass action t for all batches simultaneously
         for action in action_list.transpose_(0, 1):
             state, decoder_z = self.next_latent_space(state, action)
             image_log_probs, reward_log_probs = self.decode(state, decoder_z)
 
+
             if total_image_log_probs is not None:
                 total_image_log_probs = torch.cat((total_image_log_probs, image_log_probs.unsqueeze(1)), dim=1)
+                total_reward_log_probs = torch.cat((total_reward_log_probs, reward_log_probs.unsqueeze(1)), dim=1)
             else:
                 total_image_log_probs = image_log_probs.unsqueeze(1)
-        return total_image_log_probs, reward_log_probs
+                total_reward_log_probs = reward_log_probs.unsqueeze(1)
+        return total_image_log_probs, total_reward_log_probs
 
 
     def _forward_multiple_Z(self, observation_initial_context, action_list):

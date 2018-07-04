@@ -166,6 +166,23 @@ class StateSpaceModelTrainer():
                                        viz=viz)
 
 
+    def numerical_reward_to_bit_array(self, rewards):
+        if self.args.cuda:
+            r_true = torch.cuda.FloatTensor(rewards.shape[0], rewards.shape[1], 6).fill_(0)
+        else:
+            r_true = torch.FloatTensor(rewards.shape[0], rewards.shape[1], 6).fill_(0)
+        for i in range(rewards.shape[0]):
+            for j in range(rewards.shape[1]):
+                true_reward = math.floor(rewards[i, j].item())  # they floor in the paper too
+                assert (-math.pow(2, 6 + 1) < true_reward < math.pow(2, 6 + 1))  # otherwise it cannot be modeled
+                r_true[i, j, 0] = int(true_reward == 0)
+                r_true[i, j, 1] = int(true_reward < 0)
+                bits = [int(x) for x in list('{0:04b}'.format(abs(true_reward)))]
+                for n in range(2, 4 + 2):
+                    r_true[i, j, n] = bits[n - 2]
+                # print(r_true[i,j], true_reward)
+        return r_true
+
     def train_dSSM(self, episoden = 1000, T=10, initial_context_size=3, policy_frame_stack=4):
         from collections import deque
         print("create training data")
@@ -173,15 +190,25 @@ class StateSpaceModelTrainer():
         sample_memory = deque(maxlen=self.sample_memory_size)
         sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size, policy_frame_stack=policy_frame_stack))
         criterion = torch.nn.BCELoss()
+        reward_criterion = torch.nn.BCEWithLogitsLoss()
 
         for i_episode in range(episoden):
             # sample a state, next-state pair randomly from replay memory for a training step
             sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
                 (*random.sample(sample_memory, self.batch_size))]
 
-            image_log_probs, reward = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+            image_probs, reward_prob = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
 
-            loss = criterion(image_log_probs, sample_next_observation_T)
+            # reward loss
+            reward_bernoulli = Bernoulli(logits=reward_prob)
+            predicted_reward = reward_bernoulli.sample()
+            true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
+            reward_loss = reward_criterion(predicted_reward, true_reward)
+
+            # image loss
+            reconstruction_loss = criterion(image_probs, sample_next_observation_T)
+
+            loss = reconstruction_loss + 1e-2*reward_loss
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -189,7 +216,7 @@ class StateSpaceModelTrainer():
 
             # log and print infos
             if self.loss_printer:
-                self.loss_printer.log_loss_and_reward((loss, loss), torch.zeros(1), torch.zeros(1), i_episode)
+                self.loss_printer.log_loss_and_reward((reconstruction_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
                 if self.loss_printer.frames % 10 == 0:
                     self.loss_printer.print_episode(episode=i_episode)
 
@@ -229,23 +256,9 @@ class StateSpaceModelTrainer():
 
 
             reward_bernoulli = Bernoulli(logits=reward_log_probs)
-            sampled_r = reward_bernoulli.sample()
-
-
-            r_true = torch.cuda.FloatTensor(sample_reward_T.shape[0], sample_reward_T.shape[1], 6).fill_(0)
-            for i in range(sample_reward_T.shape[0]):
-                for j in range(sample_reward_T.shape[1]):
-                    true_reward = math.floor(sample_reward_T[i,j].item()) #they floor in the paper too
-                    assert(-math.pow(2,6+1)<true_reward<math.pow(2,6+1))  #otherwise it cannot be modeled
-                    r_true[i,j,0] = int(true_reward == 0)
-                    r_true[i,j,1] = int(true_reward < 0)
-                    bits = [int(x) for x in list('{0:04b}'.format(abs(true_reward)))]
-                    for n in range(2,4+2):
-                        r_true[i,j,n] = bits[n-2]
-                    #print(r_true[i,j], true_reward)
-
-
-            reward_loss = reward_criterion(sampled_r, r_true)
+            predicted_reward = reward_bernoulli.sample()
+            true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
+            reward_loss = reward_criterion(predicted_reward, true_reward)
             #print(reward_loss)
 
             reconstruction_loss = frame_criterion(image_log_probs, sample_next_observation_T)

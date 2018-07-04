@@ -17,6 +17,7 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
         self.number_lstm_cells = number_lstm_cells
         self.number_actions = number_actions
         self.use_cuda = use_cuda
+        self.frame_stack = 4 #TODO
 
         self.imagination_core = imagination_core
 
@@ -32,28 +33,24 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
                                               self.rollout_steps,
                                               self.use_cuda)
 
-    def forward(self, input_state):
+    def forward(self, observation_initial_context):
         # model-based side
-        states = input_state.repeat(self.number_actions, 1, 1, 1, 1)
-        states = states.permute(1, 0, 2, 3, 4).contiguous()
+        states_shape = observation_initial_context.shape
+        observation_initial_context = observation_initial_context.view(states_shape[0], self.frame_stack, -1, states_shape[2], states_shape[3])
+        latent_space = self.rollout_encoder.imagination_core.encode(observation_initial_context)
+
+        latent_space = latent_space.repeat(self.number_actions, 1, 1, 1)
         #batchwise for all rollouts -> each rollout gets a different first action
+        #the unsqueeze is needed because a inplace scatter deep inside the rollout encoder needs this dimensionality
         actions = torch.arange(self.number_actions).long().unsqueeze(1)
         #batchwise for all processes -> repeat the broadcasted actions for each batch
-        actions = actions.repeat(input_state.shape[0], 1, 1)
+        actions = actions.repeat(states_shape[0], 1)
         if self.use_cuda:
             actions = actions.cuda()
         # compute rollout encoder final results
 
-        states_shape = states.shape
-        batch_size = states_shape[0] * states_shape[1]
-        channels = 3
-        frames = (int)(states_shape[2] / channels)
-        #states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])
-        # TODO fix shape
-        states = states.view(batch_size, frames, channels, states_shape[3], states_shape[4])
-        actions = actions.view(actions.shape[0] * actions.shape[1], -1)
-        self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=batch_size)
-        rollout_results = self.rollout_encoder.forward(states, actions)
+        self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=latent_space.shape[0])
+        rollout_results = self.rollout_encoder.forward(latent_space, actions)
 
         # Aggregator: aggregate all lstm outputs
         model_based_result = rollout_results.view(states_shape[0], -1)

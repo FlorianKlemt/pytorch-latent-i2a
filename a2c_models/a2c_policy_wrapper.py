@@ -125,10 +125,11 @@ class I2A_ActorCritic(nn.Module):
 
 
 class I2ALatentSpaceActorCritic(nn.Module):
-    def __init__(self, policy, imagination_core):
+    def __init__(self, policy, imagination_core, frame_stack):
         super(I2ALatentSpaceActorCritic, self).__init__()
         self.policy = policy
         self.imagination_core = imagination_core
+        self.frame_stack = frame_stack
 
     def forward(self, inputs, states=None, masks=None):
         if states is not None or masks is not None:
@@ -141,13 +142,13 @@ class I2ALatentSpaceActorCritic(nn.Module):
     def act(self, observation, states, masks, deterministic=False):
         with torch.no_grad():
             value, policy_action_probs = self.policy(observation)
+
         action = self.sample(policy_action_probs, deterministic=False)
         action_log_prob, _ = self.logprobs_and_entropy(policy_action_probs, action)
 
         # we need to calculate the destillation loss for the I2A Rollout Policy
-        channels = 3
-        frames = (int)(observation.shape[1] / channels)
-        observation = observation.view(observation.shape[0], frames, channels, observation.shape[2], observation.shape[3])
+        #-1 stands for number channels
+        observation = observation.view(observation.shape[0], self.frame_stack, -1, observation.shape[2], observation.shape[3])
         latent_space = self.imagination_core.encode(observation)
         _, rp_actor = self.imagination_core.rollout_policy(latent_space)
         rollout_policy_action_probs = F.softmax(rp_actor, dim=1)

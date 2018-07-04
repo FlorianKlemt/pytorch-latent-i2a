@@ -145,7 +145,7 @@ class DecoderModule(nn.Module):
             nn.Conv2d(in_channels=state_input_channels, out_channels=24, kernel_size=3, stride=1),
             nn.ReLU(),
             Flatten(),  #the paper says only reshape, but should be a Flatten as it is followed by a Linear layer
-            nn.Linear(in_features=9936, out_features=1)    #TODO: out features are wrong!! only placeholder
+            nn.Linear(in_features=9936, out_features=6)
         )
 
         if self.use_vae:
@@ -186,12 +186,13 @@ class PriorModule(nn.Module):
 
     #inputs are s_t-1 and a_t-1
     def forward(self, state, action):
-        broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=state.shape[2:], use_cuda=self.use_cuda)
+        assert(len(state.shape)==4)
+        broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=state.shape[-2:], use_cuda=self.use_cuda)
         concatenated = torch.cat((state, broadcasted_action), 1)
 
         mu = self.conv_stack(concatenated)
 
-        sigma = torch.log(1 + torch.exp(mu))    #?? should this be of mu? seems like it in the paper
+        sigma = torch.log(1 + torch.exp(mu))
         return mu, sigma
 
 

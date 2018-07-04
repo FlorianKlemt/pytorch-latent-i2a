@@ -51,13 +51,12 @@ class LatentSpaceEncoderLSTMNetwork(nn.Module):
         return x
 
     def repackage_lstm_hidden_variables(self, batch_size):
-        #self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
-        #self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
-        self.lstm_h = torch.zeros(batch_size, self.number_lstm_cells).float()
-        self.lstm_c = torch.zeros(batch_size, self.number_lstm_cells).float()
         if self.use_cuda:
-            self.lstm_h = self.lstm_h.cuda()
-            self.lstm_c = self.lstm_c.cuda()
+            self.lstm_h = torch.cuda.FloatTensor(batch_size, self.number_lstm_cells).fill_(0)
+            self.lstm_c = torch.cuda.FloatTensor(batch_size, self.number_lstm_cells).fill_(0)
+        else:
+            self.lstm_h = torch.FloatTensor(batch_size, self.number_lstm_cells).fill_(0)
+            self.lstm_c = torch.FloatTensor(batch_size, self.number_lstm_cells).fill_(0)
 
 
 class LatentSpaceRolloutEncoder():
@@ -69,24 +68,19 @@ class LatentSpaceRolloutEncoder():
         self.use_cuda = use_cuda
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-    def imagine_future(self,input_state, start_action):
-        imagined_states = []
-        imagined_rewards = []
-
-        latent_space = self.imagination_core.encode(input_state)
-        next_latent_state, z_prior, reward = self.imagination_core.forward(latent_space, start_action)
-        imagined_states.append(next_latent_state)
-        imagined_rewards.append(reward)
+    def imagine_future(self,input_latent_space, start_action):
+        next_latent_state, z_prior, reward = self.imagination_core.forward(input_latent_space, start_action)
+        imagined_states = next_latent_state.unsqueeze(1)
+        imagined_rewards = reward.unsqueeze(1)
 
         for i in range(self.rollout_steps-1):
             current_latent_state = next_latent_state
             action = self.imagination_core.sample(current_latent_state)
             next_latent_state, z_prior, reward = self.imagination_core.forward(current_latent_state, action)
-            imagined_states.append(next_latent_state)
-            imagined_rewards.append(reward)
 
-        imagined_states = torch.stack(imagined_states, 1)
-        imagined_rewards = torch.stack(imagined_rewards, 1)
+            imagined_states = torch.cat((imagined_states, next_latent_state.unsqueeze(1)), dim=1)
+            imagined_rewards = torch.cat((imagined_rewards, reward.unsqueeze(1)), dim=1)
+
         return imagined_states, imagined_rewards
 
     def encode(self, imagined_states_and_rewards):
@@ -110,7 +104,7 @@ class LatentSpaceRolloutEncoder():
             lstm_input = aggregated[i].contiguous()
             lstm_output = self.lstm_network.forward(lstm_input)
 
-        return lstm_output   #it is an [1x256] vector
+        return lstm_output   #it is an [batchsizex256] vector
 
     def forward(self, input_state, action):
         return self.encode(self.imagine_future(input_state, action))

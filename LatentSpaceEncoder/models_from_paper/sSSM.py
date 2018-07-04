@@ -24,8 +24,8 @@ class sSSM(nn.Module):
 
     def next_latent_space(self, latent_space, action):
         mu_prior, sigma_prior = self.prior_z(latent_space, action)
-        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
         # get latent variable by sampling from prior gaussian
+        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
         z_prior = prior_gaussian.sample()
         return self.state_transition(latent_space, action, z_prior), z_prior
 
@@ -36,15 +36,9 @@ class sSSM(nn.Module):
         return self.decoder(latent_space, z_prior)
 
     def forward(self, observation, action):
-        state = self.encoder(observation)
-
-        mu_prior, sigma_prior = self.prior_z(state, action)
-        prior_gaussian = Normal(loc=mu_prior, scale=sigma_prior)
-        z_prior = prior_gaussian.sample()
-
-        next_state_prediction = self.state_transition(state, action, z_prior)
+        state = self.encode(observation)
+        next_state_prediction, z_prior = self.next_latent_space(state, action)
         image_log_probs, reward_log_probs = self.decoder(next_state_prediction, z_prior)
-
         return image_log_probs, reward_log_probs
 
 
@@ -55,10 +49,7 @@ class sSSM(nn.Module):
         total_mu_posterior = None
         total_sigma_posterior = None
 
-        t0_encoding = self.encoder(observation_initial_context[:,2])
-        one_before_encoding = self.encoder(observation_initial_context[:,1])
-        two_before_encoding = self.encoder(observation_initial_context[:,0])
-        state = self.initial_state_module(t0_encoding, one_before_encoding, two_before_encoding)
+        state = self.encode(observation_initial_context)
 
         for action in action_list.transpose_(0, 1):
             #compute mean and variance of p(z_t|s_t-1, a_t-1, o_t)

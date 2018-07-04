@@ -145,7 +145,7 @@ class DecoderModule(nn.Module):
             nn.Conv2d(in_channels=state_input_channels, out_channels=24, kernel_size=3, stride=1),
             nn.ReLU(),
             Flatten(),  #the paper says only reshape, but should be a Flatten as it is followed by a Linear layer
-            nn.Linear(in_features=9936, out_features=1)    #TODO: out features are wrong!! only placeholder
+            nn.Linear(in_features=9936, out_features=6)
         )
 
         if self.use_vae:

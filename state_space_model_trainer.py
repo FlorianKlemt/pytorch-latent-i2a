@@ -18,7 +18,6 @@ from rl_visualization.logger import LogTrainEM
 from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
 import copy
 import multiprocessing as mp
-#from envs import make_env
 
 from torch.distributions.normal import Normal
 from torch.distributions.bernoulli import Bernoulli
@@ -118,23 +117,20 @@ def main():
 
 
     if args.render:
-        test_process = TestEnvironmentModel(env=env,
+        test_process = TestEnvironmentModel(env=copy.deepcopy(env),
                                             environment_model=copy.deepcopy(model),
                                             load_path=save_model_path,
                                             rollout_policy=policy,
                                             args=args)
 
-    trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy,
-                                     optimizer=optimizer,
-                                     save_model_path = save_model_path)
-    #import time
-    #time.sleep(100000000)
-    #trainer.train_env_model_batchwise(episoden=100000)
-
-    if args.latent_space_model == "dSSM_DET":
-        trainer.train_dSSM(episoden=args.num_episodes, T=args.rollout_steps)
-    else:
-        trainer.train_sSSM(episoden=args.num_episodes, T=args.rollout_steps)
+    if not args.no_training:
+        trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy,
+                                         optimizer=optimizer,
+                                         save_model_path = save_model_path)
+        if args.latent_space_model == "dSSM_DET":
+            trainer.train_dSSM(episoden=args.num_episodes, T=args.rollout_steps)
+        else:
+            trainer.train_sSSM(episoden=args.num_episodes, T=args.rollout_steps)
 
 
 class StateSpaceModelTrainer():
@@ -214,7 +210,12 @@ class StateSpaceModelTrainer():
 
             # log and print infos
             if self.loss_printer:
-                self.loss_printer.log_loss_and_reward((reconstruction_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
+                # The minimal cross entropy between the distributions p and q is the entropy of p
+                # so if they are equal the loss is equal to the distribution of p
+                image_entropy = Bernoulli(probs=image_probs).entropy()
+                entropy_normalized_loss = reconstruction_loss - image_entropy.mean()
+
+                self.loss_printer.log_loss_and_reward((entropy_normalized_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
                 if self.loss_printer.frames % 10 == 0:
                     self.loss_printer.print_episode(episode=i_episode)
 

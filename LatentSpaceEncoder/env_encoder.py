@@ -201,7 +201,7 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, skip_frames = 1, stack_fra
             env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
         if is_atari:
             env = EpisodicLifeEnv(env)
-            env = ClipRewardEnv(env)
+            #env = ClipRewardEnv(env)   #CARE: this will distort the rewards
             #env = wrap_deepmind(env)
         env = FrameUIntToFloat(env)
         if grey_scale:

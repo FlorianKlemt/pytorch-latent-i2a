@@ -74,7 +74,8 @@ def main():
                                    rank = i,
                                    log_dir = args.log_dir,
                                    grey_scale = False,
-                                   stack_frames = 1)
+                                   stack_frames = 1,
+                                   skip_frames = 4)
                 for i in range(args.num_processes)]
     else:
         from envs import make_env

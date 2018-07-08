@@ -187,38 +187,41 @@ class EncoderFrameStack(gym.Wrapper):
 
 
 def make_env(env_id, seed, rank, log_dir, grey_scale, skip_frames = 1, stack_frames = 1):
-    from baselines import bench
-    from baselines.common.atari_wrappers import make_atari, wrap_deepmind, EpisodicLifeEnv, ClipRewardEnv
-    import os
-    from envs import WrapPyTorch
     def _thunk():
-        env = gym.make(env_id)
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = custom_make_atari(env_id, skip_frames=skip_frames)
-        env.seed(seed + rank)
-        if log_dir is not None:
-            env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
-        if is_atari:
-            env = EpisodicLifeEnv(env)
-            #env = ClipRewardEnv(env)   #CARE: this will distort the rewards
-            #env = wrap_deepmind(env)
-        env = FrameUIntToFloat(env)
-        if grey_scale:
-            env = WarpFrameGrayScale(env)
-        else:
-            env = ReshapeRGBChannels(env)
-        if stack_frames > 1:
-            env = EncoderFrameStack(env, stack_frames)
-        # If the input has shape (W,H,3), wrap for PyTorch convolutions
-        #obs_shape = env.observation_space.shape
-        #if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
-        #    env = WrapPyTorch(env)
-
+        env = create_atari_environment(env_id=env_id,
+                                       seed=seed,
+                                       rank=rank,
+                                       log_dir=log_dir,
+                                       grey_scale=grey_scale,
+                                       stack_frames=stack_frames,
+                                       skip_frames=skip_frames)
         return env
 
     return _thunk
 
+
+def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_frames, skip_frames):
+    from baselines import bench
+    from baselines.common.atari_wrappers import EpisodicLifeEnv, ClipRewardEnv
+    import os
+    env = gym.make(env_id)
+    is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+    if is_atari:
+        env = custom_make_atari(env_id, skip_frames=skip_frames)
+    env.seed(seed + rank)
+    if log_dir is not None:
+        env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
+    if is_atari:
+        env = EpisodicLifeEnv(env)
+        #env = ClipRewardEnv(env) #CARE: this will distort the rewards
+    env = FrameUIntToFloat(env)
+    if grey_scale:
+        env = WarpFrameGrayScale(env)
+    else:
+        env = ReshapeRGBChannels(env)
+    if stack_frames > 1:
+        env = EncoderFrameStack(env, stack_frames)
+    return env
 
 class SkipFramesEnv(gym.Wrapper):
     def __init__(self, env, skip=4):
@@ -255,33 +258,14 @@ def custom_make_atari(env_id, skip_frames = 1):
     return env
 
 
-def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_frames):
-    from baselines import bench
-    from baselines.common.atari_wrappers import EpisodicLifeEnv, ClipRewardEnv
-    import os
-    env = gym.make(env_id)
-    is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-    if is_atari:
-        env = custom_make_atari(env_id)
-    env.seed(seed + rank)
-    if log_dir is not None:
-        env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
-    if is_atari:
-        env = EpisodicLifeEnv(env)
-        env = ClipRewardEnv(env)
-    env = FrameUIntToFloat(env)
-    if grey_scale:
-        env = WarpFrameGrayScale(env)
-    else:
-        env = ReshapeRGBChannels(env)
-    if stack_frames > 1:
-        env = EncoderFrameStack(env, stack_frames)
-    return env
 
-def make_env_ms_pacman(env_id, seed, rank, log_dir, grey_scale, stack_frames):
+
+def make_env_ms_pacman(env_id, seed, rank, log_dir, grey_scale, stack_frames, skip_frames):
     from custom_envs import ClipAtariFrameSizeTo200x160
     def _thunk():
-        env = create_atari_environment(env_id=env_id, seed= seed, rank=rank, log_dir=log_dir, grey_scale=grey_scale, stack_frames=stack_frames)
+        env = create_atari_environment(env_id=env_id, seed= seed, rank=rank,
+                                       log_dir=log_dir, grey_scale=grey_scale,
+                                       stack_frames=stack_frames, skip_frames=skip_frames)
         env = ClipAtariFrameSizeTo200x160(env=env)
         return env
 

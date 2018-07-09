@@ -138,14 +138,14 @@ class Flatten(torch.nn.Module):
 
 
 class DecoderModule(nn.Module):
-    def __init__(self, state_input_channels, use_vae):
+    def __init__(self, state_input_channels, use_vae, reward_prediction_bits):
         super(DecoderModule, self).__init__()
         self.use_vae = use_vae
         self.reward_head = nn.Sequential(
             nn.Conv2d(in_channels=state_input_channels, out_channels=24, kernel_size=3, stride=1),
             nn.ReLU(),
             Flatten(),  #the paper says only reshape, but should be a Flatten as it is followed by a Linear layer
-            nn.Linear(in_features=9936, out_features=6)
+            nn.Linear(in_features=9936, out_features=reward_prediction_bits)
         )
 
         if self.use_vae:

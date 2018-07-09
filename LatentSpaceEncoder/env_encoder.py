@@ -2,7 +2,7 @@ import torch
 from LatentSpaceEncoder.EnvEncoderModel import EnvEncoderModel
 from LatentSpaceEncoder.AutoEncoderModel import AutoEncoderModel, LinearAutoEncoderModel, CNNAutoEncoderModel
 from LatentSpaceEncoder.LatentSpaceEnvModelTrainer import LatentSpaceEnvModelTrainer
-from custom_envs import make_custom_env
+from custom_envs import make_custom_env, RewardScaling, NegativeRewardForDying
 import matplotlib.pyplot as plt
 import cv2
 import gym
@@ -211,9 +211,6 @@ def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_fram
     env.seed(seed + rank)
     if log_dir is not None:
         env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
-    if is_atari:
-        env = EpisodicLifeEnv(env)
-        #env = ClipRewardEnv(env) #CARE: this will distort the rewards
     env = FrameUIntToFloat(env)
     if grey_scale:
         env = WarpFrameGrayScale(env)
@@ -267,6 +264,8 @@ def make_env_ms_pacman(env_id, seed, rank, log_dir, grey_scale, stack_frames, sk
                                        log_dir=log_dir, grey_scale=grey_scale,
                                        stack_frames=stack_frames, skip_frames=skip_frames)
         env = ClipAtariFrameSizeTo200x160(env=env)
+        env = NegativeRewardForDying(env, -100)
+        env = RewardScaling(env, 0.1)
         return env
 
     return _thunk

@@ -12,7 +12,7 @@ from bigger_models import Policy
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 from a2c_models.atari_model import AtariModel
 
-from LatentSpaceEncoder.env_encoder import make_env
+from LatentSpaceEncoder.env_encoder import make_env, make_env_ms_pacman
 from custom_envs import ClipAtariFrameSizeTo200x160
 from rl_visualization.logger import LogTrainEM
 from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
@@ -78,11 +78,10 @@ def main():
                                               args.env_name,
                                               args.latent_space_model)
 
-    env = make_env(env_id = args.env_name, seed=1, rank=1,
+    env = make_env_ms_pacman(env_id = args.env_name, seed=1, rank=1,
                    log_dir=None, grey_scale=False,
                    skip_frames = args.skip_frames,
                    stack_frames=1)()
-    env = ClipAtariFrameSizeTo200x160(env=env)
 
     #policy = Policy(obs_shape=env.observation_space.shape, action_space=env.action_space, recurrent_policy=False)
 
@@ -99,7 +98,8 @@ def main():
                 observation_input_channels=3,
                 state_input_channels=64,
                 num_actions=env.action_space.n,
-                use_cuda=args.cuda)
+                use_cuda=args.cuda,
+                reward_prediction_bits = 8)
 
     if args.load_environment_model:
         load_environment_model_path = save_model_path
@@ -163,18 +163,22 @@ class StateSpaceModelTrainer():
 
 
     def numerical_reward_to_bit_array(self, rewards):
+        reward_prediction_bits = 8
+        # one bit for sign, and one bit for 0
+        reward_prediction_numerical_bits = reward_prediction_bits - 2
         if self.args.cuda:
-            r_true = torch.cuda.FloatTensor(rewards.shape[0], rewards.shape[1], 6).fill_(0)
+            r_true = torch.cuda.FloatTensor(rewards.shape[0], rewards.shape[1], reward_prediction_bits).fill_(0)
         else:
-            r_true = torch.FloatTensor(rewards.shape[0], rewards.shape[1], 6).fill_(0)
+            r_true = torch.FloatTensor(rewards.shape[0], rewards.shape[1], reward_prediction_bits).fill_(0)
         for i in range(rewards.shape[0]):
             for j in range(rewards.shape[1]):
                 true_reward = math.floor(rewards[i, j].item())  # they floor in the paper too
-                assert (-math.pow(2, 6 + 1) < true_reward < math.pow(2, 6 + 1))  # otherwise it cannot be modeled
+                assert (-math.pow(2, reward_prediction_numerical_bits + 1) < true_reward < math.pow(2, reward_prediction_numerical_bits + 1))  # otherwise it cannot be modeled
                 r_true[i, j, 0] = int(true_reward == 0)
                 r_true[i, j, 1] = int(true_reward < 0)
-                bits = [int(x) for x in list('{0:04b}'.format(abs(true_reward)))]
-                for n in range(2, 4 + 2):
+                number_str_format = '{0:0'+str(reward_prediction_numerical_bits)+'b}'
+                bits = [int(x) for x in list(number_str_format.format(abs(true_reward)))]
+                for n in range(2, reward_prediction_bits):
                     r_true[i, j, n] = bits[n - 2]
                 # print(r_true[i,j], true_reward)
         return r_true
@@ -212,8 +216,8 @@ class StateSpaceModelTrainer():
             if self.loss_printer:
                 # The minimal cross entropy between the distributions p and q is the entropy of p
                 # so if they are equal the loss is equal to the distribution of p
-                image_entropy = Bernoulli(probs=image_probs).entropy()
-                entropy_normalized_loss = reconstruction_loss - image_entropy.mean()
+                true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
+                entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
 
                 self.loss_printer.log_loss_and_reward((entropy_normalized_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
                 if self.loss_printer.frames % 10 == 0:
@@ -375,16 +379,21 @@ class StateSpaceModelTrainer():
         sample_memory = deque(maxlen=number_of_samples)
 
         while len(sample_memory) < number_of_samples:
+            done = False
             state = self.env.reset()
             state = torch.from_numpy(state).unsqueeze(0).float()
 
             frame_stack = state.repeat(1,policy_frame_stack,1,1)
 
             if self.use_cuda:
-                state = state.cuda()
                 frame_stack = frame_stack.cuda()
 
-            done = False
+            from random import randint
+            for i in range(randint(1, 100)):
+                value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                state, reward, done, _ = self.do_env_step(action=action)
+                frame_stack = torch.cat((frame_stack[:, 3:], state), dim=1)
+
             while not done:
                 initial_context_stack = None
                 action_stack = None

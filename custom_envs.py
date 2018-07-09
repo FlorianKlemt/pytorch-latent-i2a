@@ -147,3 +147,35 @@ class ClipAtariFrameSizeTo200x160(gym.ObservationWrapper):
 
     def observation(self, frame):
         return frame[:, :self.height, :self.width]
+
+class RewardScaling(gym.Wrapper):
+    def __init__(self, env, scaling_factor=0.1):    #0.1 is good for MsPacman
+        gym.Wrapper.__init__(self, env)
+        self.scaling_factor = scaling_factor
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+
+        reward *= self.scaling_factor
+        return obs, reward, done, info
+
+class NegativeRewardForDying(gym.Wrapper):
+    def __init__(self, env, reward_for_dying = -100):
+        gym.Wrapper.__init__(self, env)
+        self.lives = self.env.unwrapped.ale.lives()
+        self.reward_for_dying = reward_for_dying
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        lives = self.env.unwrapped.ale.lives()
+        if lives < self.lives:
+            reward += self.reward_for_dying
+
+        self.lives = self.unwrapped.ale.lives()
+        return obs, reward, done, info
+
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+        obs, _, _, _ = self.env.step(0)
+        self.lives = self.env.unwrapped.ale.lives()
+        return obs

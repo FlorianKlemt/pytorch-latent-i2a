@@ -11,7 +11,8 @@ class SSM(nn.Module):
                  observation_input_channels,
                  state_input_channels,
                  num_actions,
-                 use_cuda):
+                 use_cuda,
+                 reward_prediction_bits = 8):
         super(SSM, self).__init__()
         self.use_cuda = use_cuda
         self.encoder = EncoderModule(input_channels=observation_input_channels)
@@ -19,7 +20,8 @@ class SSM(nn.Module):
         self.state_transition = StateTransition(state_input_channels=state_input_channels,
                                                 num_actions=num_actions, use_stochastic=False, use_cuda=use_cuda)
         self.decoder = DecoderModule(state_input_channels=state_input_channels,
-                                     use_vae=False)
+                                     use_vae=False,
+                                     reward_prediction_bits=reward_prediction_bits)
         self.prior_z = PriorModule(state_input_channels=state_input_channels,
                                    num_actions=num_actions,
                                    use_cuda=use_cuda)

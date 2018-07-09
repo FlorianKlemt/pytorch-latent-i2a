@@ -167,7 +167,7 @@ class StateSpaceModelTrainer():
         reward_prediction_bits = self.args.reward_prediction_bits
         # one bit for sign, and one bit for 0
         reward_prediction_numerical_bits = reward_prediction_bits - 2
-        max_representable_reward = math.pow(2, reward_prediction_numerical_bits + 1) - 1
+        max_representable_reward = int(math.pow(2, reward_prediction_numerical_bits) - 1)
         if self.args.cuda:
             r_true = torch.cuda.FloatTensor(rewards.shape[0], rewards.shape[1], reward_prediction_bits).fill_(0)
         else:

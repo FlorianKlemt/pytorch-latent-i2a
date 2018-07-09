@@ -62,6 +62,8 @@ def main():
                              help='learning rate (default: 7e-4)')
     args_parser.add_argument('--weight-decay', type=float, default=0.05,
                              help='weight decay (default: 0)')
+    args_parser.add_argument('--reward-prediction-bits', type=int, default=8,
+                             help='bits used for reward prediction in reward head of decoder (default: 8)')
     args = args_parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -98,7 +100,7 @@ def main():
                 state_input_channels=64,
                 num_actions=env.action_space.n,
                 use_cuda=args.cuda,
-                reward_prediction_bits = 8)
+                reward_prediction_bits = args.reward_prediction_bits)
 
     if args.load_environment_model:
         load_environment_model_path = save_model_path
@@ -162,9 +164,10 @@ class StateSpaceModelTrainer():
 
 
     def numerical_reward_to_bit_array(self, rewards):
-        reward_prediction_bits = 8
+        reward_prediction_bits = self.args.reward_prediction_bits
         # one bit for sign, and one bit for 0
         reward_prediction_numerical_bits = reward_prediction_bits - 2
+        max_representable_reward = math.pow(2, reward_prediction_numerical_bits + 1) - 1
         if self.args.cuda:
             r_true = torch.cuda.FloatTensor(rewards.shape[0], rewards.shape[1], reward_prediction_bits).fill_(0)
         else:
@@ -172,7 +175,13 @@ class StateSpaceModelTrainer():
         for i in range(rewards.shape[0]):
             for j in range(rewards.shape[1]):
                 true_reward = math.floor(rewards[i, j].item())  # they floor in the paper too
-                assert (-math.pow(2, reward_prediction_numerical_bits + 1) < true_reward < math.pow(2, reward_prediction_numerical_bits + 1))  # otherwise it cannot be modeled
+                if true_reward < -max_representable_reward:
+                    print("True Reward too small to represent: ", true_reward, "<", -max_representable_reward)
+                    true_reward = -max_representable_reward
+                if true_reward > max_representable_reward:
+                    print("True Reward too large to represent: ", true_reward, ">", max_representable_reward)
+                    true_reward = max_representable_reward
+
                 r_true[i, j, 0] = int(true_reward == 0)
                 r_true[i, j, 1] = int(true_reward < 0)
                 number_str_format = '{0:0'+str(reward_prediction_numerical_bits)+'b}'

@@ -67,7 +67,6 @@ def main():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     args.vis = not args.no_vis
 
-    args.save_interval = 20
     args.grey_scale = False
     args.use_latent_space = True
 

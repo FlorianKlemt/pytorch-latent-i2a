@@ -253,7 +253,7 @@ class StateSpaceModelTrainer():
     def train(self, episoden = 1000, T=10, initial_context_size=3, policy_frame_stack=4):
         from collections import deque
         print("create training data")
-        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
+        create_n_samples = min(self.batch_size * 5, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
         sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size, policy_frame_stack=policy_frame_stack))
 
@@ -261,7 +261,7 @@ class StateSpaceModelTrainer():
             # sample a state, next-state pair randomly from replay memory for a training step
             sample = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
             if self.use_cuda:
-                sample = sample.cuda()
+                sample = [s.cuda() for s in sample]
 
             loss, reward_loss = self.train_episode(sample=sample)
 
@@ -373,12 +373,13 @@ class StateSpaceModelTrainer():
 
             frame_stack = state.repeat(1,policy_frame_stack,1,1)
 
-            if self.use_cuda:
+            if self.sample_memory_on_gpu:
                 frame_stack = frame_stack.cuda()
 
             from random import randint
             for i in range(randint(1, 100)):
-                value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                stack = frame_stack.cuda()
+                value, action, _, _ = self.policy.act(inputs=stack, states=None, masks=None)  # no state and mask
                 state, reward, done, _ = self.do_env_step(action=action)
                 frame_stack = torch.cat((frame_stack[:, 3:], state), dim=1)
 
@@ -389,7 +390,7 @@ class StateSpaceModelTrainer():
                 target_state_stack = None
 
                 for i in range(initial_context_size):
-                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack.cuda(), states=None, masks=None)  # no state and mask
                     state, reward, done, _ = self.do_env_step(action=action)
                     if initial_context_stack is not None:
                         initial_context_stack = torch.cat((initial_context_stack, state))
@@ -400,7 +401,7 @@ class StateSpaceModelTrainer():
 
                 for i in range(T):
                     # let policy decide on next action and perform it
-                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  #no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack.cuda(), states=None, masks=None)  #no state and mask
                     state, reward, done, _ = self.do_env_step(action=action)
                     if target_state_stack is not None:
                         target_state_stack = torch.cat((target_state_stack,state))
@@ -439,7 +440,7 @@ class StateSpaceModelTrainer():
         next_state, reward, done, info = self.env.step(action.item())
         next_state = torch.from_numpy(next_state).unsqueeze(0).float()
         reward = torch.FloatTensor([reward])
-        if self.use_cuda:
+        if self.sample_memory_on_gpu:
             next_state = next_state.cuda()
             reward = reward.cuda()
         return  next_state, reward, done, info

@@ -247,6 +247,13 @@ class StateSpaceModelTrainer():
         loss.backward()
         self.optimizer.step()
 
+        # log and print infos
+        if self.loss_printer:
+            # The minimal cross entropy between the distributions p and q is the entropy of p
+            # so if they are equal the loss is equal to the distribution of p
+            true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
+            entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
+            return entropy_normalized_loss + kl_div_loss.mean(), reward_loss
         return frame_loss, reward_loss
 
 

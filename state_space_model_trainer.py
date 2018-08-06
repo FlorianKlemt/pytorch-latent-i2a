@@ -128,10 +128,7 @@ def main():
         trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy,
                                          optimizer=optimizer,
                                          save_model_path = save_model_path)
-        if args.latent_space_model == "dSSM_DET":
-            trainer.train_dSSM(episoden=args.num_episodes, T=args.rollout_steps)
-        else:
-            trainer.train_sSSM(episoden=args.num_episodes, T=args.rollout_steps)
+        trainer.train(episoden=args.num_episodes, T=args.rollout_steps)
 
 
 class StateSpaceModelTrainer():
@@ -142,6 +139,7 @@ class StateSpaceModelTrainer():
         self.policy = policy
         self.optimizer = optimizer
         self.use_cuda = args.cuda
+        self.sample_memory_on_gpu = False
         self.batch_size = args.batch_size
         self.sample_memory_size = args.sample_memory_size
         self.log_path = '{0}{1}_{2}.log'.format(args.save_environment_model_dir,
@@ -150,7 +148,13 @@ class StateSpaceModelTrainer():
 
         self.save_model_path = save_model_path
 
+        self.frame_criterion = torch.nn.BCELoss()
+        self.reward_criterion = torch.nn.BCEWithLogitsLoss()
 
+        if args.latent_space_model == "dSSM_DET":
+            self.train_episode = self.train_episode_dSSM
+        else:
+            self.train_episode = self.train_episode_sSSM
 
         if args.vis:
             from visdom import Visdom
@@ -191,43 +195,86 @@ class StateSpaceModelTrainer():
                 # print(r_true[i,j], true_reward)
         return r_true
 
-    def train_dSSM(self, episoden = 1000, T=10, initial_context_size=3, policy_frame_stack=4):
+    def train_episode_dSSM(self, sample):
+        sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = sample
+        image_probs, reward_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+
+        # reward loss
+        true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
+        reward_loss = self.reward_criterion(reward_probs, true_reward)
+
+        # image loss
+        reconstruction_loss = self.frame_criterion(image_probs, sample_next_observation_T)
+
+        loss = reconstruction_loss + 1e-2 * reward_loss
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # log and print infos
+        if self.loss_printer:
+            # The minimal cross entropy between the distributions p and q is the entropy of p
+            # so if they are equal the loss is equal to the distribution of p
+            true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
+            entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
+            return entropy_normalized_loss, reward_loss
+        return reconstruction_loss, reward_loss
+
+    def train_episode_sSSM(self, sample):
+        sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = sample
+        # sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.001, 1)
+
+        image_probs, reward_probs, \
+        (total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior) \
+            = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
+
+        true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
+        reward_loss = self.reward_criterion(reward_probs, true_reward)
+        # print(reward_loss)
+
+        reconstruction_loss = self.frame_criterion(image_probs, sample_next_observation_T)
+        # print("Rec loss: ", reconstruction_loss)
+
+        prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)
+        posterior_gaussian = Normal(loc=total_z_mu_posterior, scale=total_z_sigma_posterior)
+        kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
+        frame_loss = reconstruction_loss + kl_div_loss.mean()  # loss is elbo
+
+        loss = frame_loss + 1e-2 * reward_loss
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # log and print infos
+        if self.loss_printer:
+            # The minimal cross entropy between the distributions p and q is the entropy of p
+            # so if they are equal the loss is equal to the distribution of p
+            true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
+            entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
+            return entropy_normalized_loss + kl_div_loss.mean(), reward_loss
+        return frame_loss, reward_loss
+
+
+    def train(self, episoden = 1000, T=10, initial_context_size=3, policy_frame_stack=4):
         from collections import deque
         print("create training data")
-        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
+        create_n_samples = min(self.batch_size * 5, self.sample_memory_size)
         sample_memory = deque(maxlen=self.sample_memory_size)
         sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size, policy_frame_stack=policy_frame_stack))
-        criterion = torch.nn.BCELoss()
-        reward_criterion = torch.nn.BCEWithLogitsLoss()
 
         for i_episode in range(episoden):
             # sample a state, next-state pair randomly from replay memory for a training step
-            sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
-                (*random.sample(sample_memory, self.batch_size))]
+            sample = [torch.cat(a) for a in zip(*random.sample(sample_memory, self.batch_size))]
+            if self.use_cuda:
+                sample = [s.cuda() for s in sample]
 
-            image_probs, reward_probs = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
-
-            # reward loss
-            true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
-            reward_loss = reward_criterion(reward_probs, true_reward)
-
-            # image loss
-            reconstruction_loss = criterion(image_probs, sample_next_observation_T)
-
-            loss = reconstruction_loss + 1e-2*reward_loss
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            loss, reward_loss = self.train_episode(sample=sample)
 
             # log and print infos
             if self.loss_printer:
-                # The minimal cross entropy between the distributions p and q is the entropy of p
-                # so if they are equal the loss is equal to the distribution of p
-                true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
-                entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
-
-                self.loss_printer.log_loss_and_reward((entropy_normalized_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
+                self.loss_printer.log_loss_and_reward((loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
                 if self.loss_printer.frames % 10 == 0:
                     self.loss_printer.print_episode(episode=i_episode)
 
@@ -241,66 +288,6 @@ class StateSpaceModelTrainer():
                 sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T,
                                                                    initial_context_size=initial_context_size,
                                                                    policy_frame_stack=policy_frame_stack))
-
-
-
-
-    def train_sSSM(self, episoden = 1000, T=10, initial_context_size = 3, policy_frame_stack=4):
-        from collections import deque
-        print("create training data")
-        create_n_samples = min(self.batch_size * 2, self.sample_memory_size)
-        sample_memory = deque(maxlen=self.sample_memory_size)
-        sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T, initial_context_size=initial_context_size, policy_frame_stack=policy_frame_stack))
-        frame_criterion = torch.nn.BCELoss()
-        reward_criterion = torch.nn.BCEWithLogitsLoss()
-
-        for i_episode in range(episoden):
-            # sample a state, next-state pair randomly from replay memory for a training step
-            sample_observation_initial_context, sample_action_T, sample_next_observation_T, sample_reward_T = [torch.cat(a) for a in zip
-                (*random.sample(sample_memory, self.batch_size))]
-
-            #sample_next_observation_T = torch.clamp(sample_next_observation_T, 0.001, 1)
-
-            image_probs, reward_probs, \
-            (total_z_mu_prior, total_z_sigma_prior, total_z_mu_posterior, total_z_sigma_posterior) \
-                    = self.model.forward_multiple(sample_observation_initial_context, sample_action_T)
-
-            true_reward = self.numerical_reward_to_bit_array(sample_reward_T)
-            reward_loss = reward_criterion(reward_probs, true_reward)
-            #print(reward_loss)
-
-            reconstruction_loss = frame_criterion(image_probs, sample_next_observation_T)
-            #print("Rec loss: ", reconstruction_loss)
-
-            prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)
-            posterior_gaussian = Normal(loc=total_z_mu_posterior, scale=total_z_sigma_posterior)
-            kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
-            frame_loss = reconstruction_loss + kl_div_loss.mean() #loss is elbo
-
-            loss = frame_loss + 1e-2*reward_loss
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            # log and print infos
-            if self.loss_printer:
-                self.loss_printer.log_loss_and_reward((frame_loss, reward_loss), torch.zeros(1), torch.zeros(1), i_episode)
-                if self.loss_printer.frames % 10 == 0:
-                    self.loss_printer.print_episode(episode=i_episode)
-
-            if i_episode % self.args.save_interval == 0:
-                print("Save model", self.save_model_path)
-                state_to_save = self.model.state_dict()
-                torch.save(state_to_save, self.save_model_path)
-
-            if i_episode != 0 and i_episode % create_n_samples == 0:
-                print("create more training data ", len(sample_memory))
-                sample_memory.extend(self.create_x_samples_T_steps(create_n_samples, T,
-                                                                   initial_context_size=initial_context_size,
-                                                                   policy_frame_stack=policy_frame_stack))
-
-
 
 
 
@@ -351,7 +338,7 @@ class StateSpaceModelTrainer():
         while len(sample_memory) < number_of_samples:
             state = self.env.reset()
             state = torch.from_numpy(state).unsqueeze(0).float()
-            if self.use_cuda:
+            if self.sample_memory_on_gpu:
                 state = state.cuda()
             done = False
             while not done:
@@ -393,12 +380,13 @@ class StateSpaceModelTrainer():
 
             frame_stack = state.repeat(1,policy_frame_stack,1,1)
 
-            if self.use_cuda:
+            if self.sample_memory_on_gpu:
                 frame_stack = frame_stack.cuda()
 
             from random import randint
             for i in range(randint(1, 100)):
-                value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                stack = frame_stack.cuda()
+                value, action, _, _ = self.policy.act(inputs=stack, states=None, masks=None)  # no state and mask
                 state, reward, done, _ = self.do_env_step(action=action)
                 frame_stack = torch.cat((frame_stack[:, 3:], state), dim=1)
 
@@ -409,7 +397,7 @@ class StateSpaceModelTrainer():
                 target_state_stack = None
 
                 for i in range(initial_context_size):
-                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack.cuda(), states=None, masks=None)  # no state and mask
                     state, reward, done, _ = self.do_env_step(action=action)
                     if initial_context_stack is not None:
                         initial_context_stack = torch.cat((initial_context_stack, state))
@@ -420,7 +408,7 @@ class StateSpaceModelTrainer():
 
                 for i in range(T):
                     # let policy decide on next action and perform it
-                    value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  #no state and mask
+                    value, action, _, _ = self.policy.act(inputs=frame_stack.cuda(), states=None, masks=None)  #no state and mask
                     state, reward, done, _ = self.do_env_step(action=action)
                     if target_state_stack is not None:
                         target_state_stack = torch.cat((target_state_stack,state))
@@ -459,7 +447,7 @@ class StateSpaceModelTrainer():
         next_state, reward, done, info = self.env.step(action.item())
         next_state = torch.from_numpy(next_state).unsqueeze(0).float()
         reward = torch.FloatTensor([reward])
-        if self.use_cuda:
+        if self.sample_memory_on_gpu:
             next_state = next_state.cuda()
             reward = reward.cuda()
         return  next_state, reward, done, info

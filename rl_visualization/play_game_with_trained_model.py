@@ -42,7 +42,7 @@ def make_test_env(env_id, grey_scale, frame_stack):
         env = FrameStack(env, frame_stack)
     elif 'MsPacman' in env_id:
         from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
-        env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=frame_stack)()
+        env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=frame_stack, skip_frames=4)()
     else:
         env = gym.make(env_id)
         env = wrap_deepmind(env)

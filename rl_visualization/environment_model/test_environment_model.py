@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cv2
 from random import randint
+import os
 
 
 from multiprocessing import Process
@@ -78,9 +79,13 @@ class RenderImaginationCore():
 
         return frame_data
 
-    def render_observation(self, observation, predicted_observation, reward, predicted_reward, rollout_step):
+    def render_observation(self, observation, predicted_observation, reward, predicted_reward, rollout_step, save_path):
         frame_data1 = self.render_preprocessing(observation, 'true reward: {0:.3f} '.format(reward), 'rollout step: '+str(rollout_step))
         frame_data2 = self.render_preprocessing(predicted_observation, 'predicted reward: {0:.3f} '.format(predicted_reward), 'rollout step: '+str(rollout_step))
+
+        if save_path is not None:
+            cv2.imwrite(save_path+'obs_'+str(rollout_step)+'.png', frame_data1)
+            cv2.imwrite(save_path+'pred_'+str(rollout_step)+'.png', frame_data2)
 
         both = np.hstack((frame_data1, frame_data2))
 
@@ -94,7 +99,14 @@ def numpy_to_variable(numpy_value, use_cuda):
         value = value.cuda()
     return value
 
-def play_with_imagination_core(imagination_core, env, args):
+def play_with_imagination_core(imagination_core, env, args, game_nr):
+    save_base_path = args.env_model_images_save_path
+    save_path = None
+    if save_base_path is not None:
+        save_path = save_base_path+'Game'+str(game_nr)+'/'
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
     render = True
     renderer = RenderImaginationCore(args.grey_scale)
 
@@ -103,7 +115,7 @@ def play_with_imagination_core(imagination_core, env, args):
     state_stack = torch.cat((state, state, state), 0)
 
     # do 20 random actions to get different start observations
-    for i in range(randint(50, 100)):
+    for i in range(randint(100, 200)):
         observation, reward, done, _ = env.step(env.action_space.sample())
         state = numpy_to_variable(observation, args.cuda)
         state_stack = torch.cat((state_stack, state), 0)
@@ -115,7 +127,7 @@ def play_with_imagination_core(imagination_core, env, args):
         latent_state = imagination_core.encode(state_stack.unsqueeze(0))
         predicted_state, predicted_reward = imagination_core.decode(latent_state, None)
 
-    renderer.render_observation(state[0], predicted_state[0], reward, reward, 0)
+    renderer.render_observation(state[0], predicted_state[0], reward, reward, 0, save_path)
     latent_state = None
 
     for t in range(5):
@@ -139,7 +151,7 @@ def play_with_imagination_core(imagination_core, env, args):
         state_stack = state_stack[1:]
 
         if render:
-            renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward.item(), t+1)
+            renderer.render_observation(state[0], predicted_state[0], reward, predicted_reward.item(), t+1, save_path)
 
 
 
@@ -171,7 +183,7 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
                                                frame_stack = 1)
 
         print("started game", i)
-        play_with_imagination_core(imagination_core, env=env, args=args)
+        play_with_imagination_core(imagination_core, env=env, args=args, game_nr=i)
         i += 1
         time.sleep(2)
 

@@ -41,7 +41,7 @@ class RenderMiniPacmanImaginationCore():
 
         return frame_data
 
-    def render_observation(self, observation, predicted_observation, reward, predicted_reward, rollout_step):
+    def render_observation(self, observation, predicted_observation, reward, predicted_reward, rollout_step, save_path=None):
         frame_data1 = self.render_preprocessing(observation, 'true reward: {0:.3f} '.format(reward), 'rollout step: '+str(rollout_step))
         frame_data2 = self.render_preprocessing(predicted_observation, 'predicted reward: {0:.3f} '.format(predicted_reward), 'rollout step: '+str(rollout_step))
 
@@ -63,7 +63,6 @@ class RenderImaginationCore():
 
 
     def render_preprocessing(self, observation, reward_text, step_text):
-        #drawable_state = observation.contiguous().view(observation.shape[1], observation.shape[2], -1)
         drawable_state = observation.detach().cpu().numpy()
         drawable_state = np.transpose(drawable_state, (1, 2, 0))
 
@@ -99,7 +98,7 @@ def numpy_to_variable(numpy_value, use_cuda):
         value = value.cuda()
     return value
 
-def play_with_imagination_core(imagination_core, env, args, game_nr):
+def play_with_imagination_core(imagination_core, renderer, env, args, game_nr):
     save_base_path = args.env_model_images_save_path
     save_path = None
     if save_base_path is not None:
@@ -108,7 +107,6 @@ def play_with_imagination_core(imagination_core, env, args, game_nr):
             os.makedirs(save_path)
 
     render = True
-    renderer = RenderImaginationCore(args.grey_scale)
 
     observation = env.reset()
     state = numpy_to_variable(observation, args.cuda)
@@ -175,18 +173,32 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
                                                           rollout_policy=rollout_policy,
                                                           grey_scale=False,
                                                           frame_stack=4)
+            renderer = RenderImaginationCore(args.grey_scale)
         else:
             from i2a.imagination_core import ImaginationCore
             imagination_core = ImaginationCore(env_model=environment_model,
                                                rollout_policy=rollout_policy,
                                                grey_scale = False,
                                                frame_stack = 1)
+            renderer = RenderMiniPacmanImaginationCore(args.grey_scale)
 
         print("started game", i)
-        play_with_imagination_core(imagination_core, env=env, args=args, game_nr=i)
+        play_with_imagination_core(imagination_core=imagination_core, renderer=renderer, env=env, args=args, game_nr=i)
         i += 1
         time.sleep(2)
 
+
+
+
+class TestEnvironmentModelMiniPacman():
+    def __init__(self, env, environment_model, load_path, rollout_policy, args):
+        args.use_latent_space = False
+        self.p = Process(target = test_environment_model,
+                         args=(env, environment_model, load_path, rollout_policy, args))
+        self.p.start()
+
+    def stop(self):
+        self.p.terminate()
 
 class TestEnvironmentModel():
     def __init__(self, env, environment_model, load_path, rollout_policy, args):

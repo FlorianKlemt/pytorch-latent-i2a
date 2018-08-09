@@ -2,42 +2,78 @@
 %% Folie             %%
 %%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{Goals Guided Research}
+    \frametitle{Deep Reinforcement Learning}
 
 \begin{PraesentationAufzaehlung}
-    \item Implementation of I2A
-    \item 
-\end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Goals Guided Research}
-
-\begin{PraesentationAufzaehlung}
-    \item Implementation of I2A
-    \item 
+    \item Learns to solve tasks by maximize the reward signal it gets
+    \item But there are some task that seems to be very hard to learn from scratch, where one wrong decision has catastrophic results in the end
 \end{PraesentationAufzaehlung}
 
 \end{frame}
 \clearpage
 
 
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{What we want}
+
+\begin{multicols}{2}
+	An Agent who know how to
+	\begin{PraesentationAufzaehlung}
+		\item Prevent dangerous situations
+		\item Get bonus points
+		\item Get them as fast as possible
+	\end{PraesentationAufzaehlung}
+	We want an agent who is acting with foresight
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[height=.6\textheight]{./Images/screenshot_ghost.png}%
+	\end{center}
+\end{multicols}
+
+
+\end{frame}
+\clearpage
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{frame}
+%    \frametitle{Goals}
+
+%\begin{PraesentationAufzaehlung}
+%    \item Working Implementation of I2A in pytorch
+%\end{PraesentationAufzaehlung}
+
+%\end{frame}
+%\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+ % FOLIENSTIL: Weisse Schrift auf blauem Grund 
+\PraesentationMasterWeissBlau 
+\begin{frame} 
+    \PraesentationUeberschriftZweizeilig{Imagination-Augmented Agent (I2A)}{Weber et al. (2017)}
+
+\end{frame} 
+
+\PraesentationMasterStandard
+
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %% Folie             %%
 %%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \PraesentationUeberschriftZweizeilig{Imagination-Augmented Agent (I2A)}{Weber et al.(2017)}
+    \frametitle{Imagination-Augmented Agent (I2A)}
 
 \begin{PraesentationAufzaehlung}
-    \item Architecture for deep reinforcement learning
-    \item Imaginate the future and do better action based on this
+	\item Weber et al.(2017)
+    \item Imaginate the future and learn to do better action based on the imaginatied future
     \item Combine model-free and model-based aspects
+    \item Architecture for deep reinforcement learning
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -51,10 +87,59 @@
 
 
 \includegraphics[width=\columnwidth]{./Images/i2a_architecture.png}%
-
+\begin{PraesentationAufzaehlung}
+	\item Input observation $o_t$
+	\item Output policy $\pi$ and value function $V$
+\end{PraesentationAufzaehlung}
     
 \end{frame}
 \clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Training I2A}
+
+\begin{multicols}{2}
+	\begin{PraesentationAufzaehlung}
+	    \item Learn policy $\pi$ and value function $V$
+		\item Train with Advantage-Actor-Critic (A2C)
+	\end{PraesentationAufzaehlung}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[width=\columnwidth]{./Images/i2a_a2c.png}%
+	\end{center}
+\end{multicols}
+    
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+\begin{PraesentationAufzaehlung}
+    \item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
+	Controls how the agent acts\\
+	Policy update:
+	\begin{equation}
+	\mathnormal{\nabla \theta = \alpha \nabla_\theta (log \pi_\theta (s, a)) q_w (s, a)}
+	\end{equation}	
+	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
+	Messures how good a choosen actions is\\
+	Value update:
+	\begin{equation}
+	\mathnormal{
+	\nabla w = \beta (R(s, a) + \gamma q_w(s_{t+1}, a_{t+1}) - q_w(s_t, a_t)) \nabla_w q_w(s_t, a_t)}
+	\end{equation}
+\end{PraesentationAufzaehlung}
+
+\end{frame}
+\clearpage
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder                      %%
@@ -66,7 +151,7 @@
 \includegraphics[width=\columnwidth]{./Images/i2a_all_model_free_path.png}%
 
 \begin{PraesentationAufzaehlung}
-	\item Advantage-Actor-Critic (A2C)
+	\item CNN Layers followed by Fully Connected Layers as usually used for Reinforcement Learning
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -75,21 +160,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{I2A Architecture - Model Free Path}
+%\begin{frame}
+%    \frametitle{I2A Architecture - Model Free Path}
 
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-		\item Advantage-Actor-Critic (A2C)
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=.5\textheight]{./Images/i2a_model_free_path.png}%
-	\end{center}
-\end{multicols}
-    
-\end{frame}
-\clearpage
+%\begin{multicols}{2}
+%	\begin{PraesentationAufzaehlung}
+%		\item 
+%	\end{PraesentationAufzaehlung}
+%    \vfill\columnbreak
+%	\begin{center}
+%    \includegraphics[height=.5\textheight]{./Images/i2a_model_free_path.png}%
+%	\end{center}
+%\end{multicols}
+%    
+%\end{frame}
+%\clearpage
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,7 +187,7 @@
 \includegraphics[width=\columnwidth]{./Images/i2a_all_model_based_path.png}%
 
 \begin{PraesentationAufzaehlung}
-	\item Imaginate the Future and use this information for desission making
+	\item Imaginate the Future based on an model of the environment and use this information for decision making
 \end{PraesentationAufzaehlung}
     
 \end{frame}
@@ -117,9 +202,10 @@
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 	    \item Rollout encoder:\\
-		Imaginate the Future and learn relevent information that can happen
+		For each action the agent can take 
+		imaginate the future% and learn relevent information that can happen
 		\item Aggregator: \\
-		Concatitate the rollouts
+		Concatinate all action rollouts
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -129,6 +215,7 @@
     
 \end{frame}
 \clearpage
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -156,10 +243,10 @@
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item Imagine Future:\\
-		Rollout the future for an input observation
-	    \item Imagination Core:\\
-		Imaginate the next observation $o_{t+i}$ and the next reward $r_{t+i}$
+		\item Input:\\
+		observation $o_t$ and start action $a$
+		\item Output:\\
+		n imagined trajectories ($o_{t+i}, r_{t+i}$ for $i = 0, ..., n$)
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -178,9 +265,8 @@
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item Encoder:\\
-		CNN Network followed by an LSTM Network\\
-		Learns usefull information from the rollouts
+		\item CNN Network followed by an LSTM Network
+		\item Learns usefull information from the rollout trajectories
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -200,7 +286,7 @@
 
 \includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_core.png}%
 
-    
+Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observation $o_t$
 \end{frame}
 \clearpage
 
@@ -208,32 +294,32 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{I2A Architecture - Imagination Core}
+%\begin{frame}
+%    \frametitle{I2A Architecture - Imagination Core}
 
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-	    \item Imaginate the next observation $o_{t+i}$ and the next reward $r_{t+i}$
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=0.5\textheight]{./Images/i2a_imagination_core.png}%
-	\end{center}
-\end{multicols}
+%\begin{multicols}{2}
+%	\begin{PraesentationAufzaehlung}
+%		\item Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observation $o_t$
+%	\end{PraesentationAufzaehlung}
+%    \vfill\columnbreak
+%	\begin{center}
+%    \includegraphics[height=0.5\textheight]{./Images/i2a_imagination_core.png}%
+%	\end{center}
+%\end{multicols}
     
-\end{frame}
-\clearpage
+%\end{frame}
+%\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Policy Network}
+    \frametitle{I2A Architecture - Imagination Core Policy Network}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-	    \item policy network $\pi$
-		desides the next action $a_t$
+	    \item Policy network $\hat{\pi}$ desides the next action $a_t$
+		\item Add distill loss to a2c training to make $\hat{\pi}$ (rollout policy) and $\pi$ (i2a policy) similar
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -244,15 +330,27 @@
 \end{frame}
 \clearpage
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+ % FOLIENSTIL: Weisse Schrift auf blauem Grund 
+\PraesentationMasterWeissBlau 
+\begin{frame} 
+    \frametitle{Environment Model}
+\end{frame}
+
+\PraesentationMasterStandard
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Environment Model}
+    \frametitle{Environment Model EM}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item environment model EM imaginate what will happen if we are in state $o_t$ and do action $a_t$
+		\item Imaginate what will happen if we are in state $o_t$ and do action $a_t$
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -263,18 +361,20 @@
 \end{frame}
 \clearpage
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Environment Model Architecture}
+    \frametitle{Environment Model Architecture}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 		\item kind of Autoencoder
 		\item input:\\
 		stack of last 3 observations\\
-		action as one hot vector
+		action as one hot vector\\
+		trained with rollouts from a pretrained a2c policy
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -286,8 +386,27 @@
 \clearpage
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
- 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Training Environment Model}
+
+\begin{PraesentationAufzaehlung}
+	\item Loss:\\
+	\begin{equation}
+	\mathnormal{
+	log p(x, y) }
+	\end{equation}
+\end{PraesentationAufzaehlung}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
  % FOLIENSTIL: Weisse Schrift auf blauem Grund 
 \PraesentationMasterWeissBlau 
 \begin{frame} 

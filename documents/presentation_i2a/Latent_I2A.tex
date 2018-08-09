@@ -30,7 +30,7 @@
 Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing et al.(2018)}
 
 \begin{PraesentationAufzaehlung}
-    \item 
+    \item state space models
     \item 
     \item 
 \end{PraesentationAufzaehlung}
@@ -39,23 +39,6 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 \clearpage
 
 
-
-%Introduction of Latent Environment Model types
-\begin{frame}
-	\frametitle{Environment Model Architectures}
-	\begin{multicols}{3}
-	dSSM-DET\\
-	\includegraphics[width=\columnwidth]{./latent_i2a_images/dSSM_DET_architecture.png}
-	\columnbreak
-	dSSM-VAE\\
-	\includegraphics[width=\columnwidth]{./latent_i2a_images/dSSM_VAE_architecture.png}
-	\columnbreak
-	sSSM \\
-	%\begin{figure}[H]
-		\includegraphics[width=\columnwidth]{./latent_i2a_images/sSSM_architecture.png}
-	%\end{figure}
-	\end{multicols}
-\end{frame}
 
 %dSSM-DET
 \begin{frame}
@@ -73,7 +56,7 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 
 %dSSM-VAE
 \begin{frame}
-	\frametitle{dSSM-DET}
+	\frametitle{dSSM-VAE}
 	\begin{multicols}{2}
 		\begin{figure}[h]
 			\includegraphics[width=0.4\textwidth]{./latent_i2a_images/dSSM_VAE_architecture.png}	
@@ -93,9 +76,24 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 			\includegraphics[width=0.4\textwidth]{./latent_i2a_images/sSSM2.png}	
 		\end{figure}
 		\columnbreak
+		\begin{PraesentationAufzaehlung}
+			\item now the \textbf{transition} depends on the sampled latent variable
+			\item explicitly models uncertainty of state $s_{t+1}$
+		\end{PraesentationAufzaehlung}
 	\end{multicols}
 \end{frame}
 
+
+\begin{frame}
+	\frametitle{Environment Model Encoder}
+	\begin{figure}[h]
+		\includegraphics[width=0.8\textheight]{./latent_i2a_images/Encoder.png}	
+	\end{figure}
+	\begin{PraesentationAufzaehlung}
+		\item encoding via space-to-depth operation and conv-stacks
+		\item $s_0$ is based on the 3 previous encodings
+	\end{PraesentationAufzaehlung}
+\end{frame}
 
 \begin{frame}
 	\frametitle{Environment Model Decoder}
@@ -120,19 +118,32 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 \end{frame}
 
 
-\begin{frame}{Training the Environment Model}
-    dSSM-DET
+\begin{frame}{Training the dSSM-DET Model}
     Maximum Likelihood Estimation:
     \begin{equation}
             L(\theta) = \log p_{\theta}(o_{1:T}|a_{0:T-1}, \hat{o}_0)
-        \end{equation}
+    \end{equation}
         $\hat{o}_0$: initial context\\
         the encodings of the last 3 observations are used to generate $s_0$ in a learnable way
     
 \end{frame}
 
-\begin{frame}{Training the Environment Model}
-    sSSM
+\begin{frame}{Training the sSSM Model}
+		\begin{PraesentationAufzaehlung}
+			\item we cannot directly evaluate $L(\theta)$ when using latent variables as it depends on the posterior $p(z|\hat{o}_0)$
+			\item approximate true posterior $p(z_t|s_{t-1},a_{t-1})$ with approximated posterior $q(z_t|s_{t-1},a_{t-1})$
+			\item use Kullback-Leibler divergence
+			\begin{equation}
+			\begin{aligned}
+				KL(q(z_t|s_{t-1},a_{t-1})|p(z_t|s_{t-1},a_{t-1})) \\= \int q(z_t|s_{t-1},a_{t-1}) \log \frac{q(z_t|s_{t-1},a_{t-1})}{p(z_t|s_{t-1},a_{t-1})}dz
+			\end{aligned}			
+			\end{equation}
+			\item reformulate as Evidence Lower Bound (ELBO)
+		\end{PraesentationAufzaehlung}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Training the sSSM Model}
         Evidence Lower Bound:
         \begin{equation}
         \begin{aligned}
@@ -141,17 +152,28 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
         \end{equation}
         
         ELBO = reconstruction loss + KL-Div between true and approximated posterior\\
-        $p(o_t|s_t)$: Bernoulli Distribution
-        --> Reconstruction loss: equal to binary cross entropy
-        TODO: warum bernoulli - image channels interpreted as probability distribution
-        TODO: image
-        
-        TODO: how does the reward loss work
-        TODO: maximizing ELBO is minimizing KL-Div is maximizing likelihood
+        $p(o_t|s_t)$: Bernoulli Distribution \\
+        $\rightarrow$ Reconstruction loss can be computed with binary cross entropy
 \end{frame}
 
 \begin{frame}
+        How can the image output be Bernoulli distributed?
+        \begin{PraesentationAufzaehlung}
+        	\item interpret channels of decoder output as TODO
+        \end{PraesentationAufzaehlung}
+        TODO: image
+\end{frame}
 
+\begin{frame}
+	\frametitle{Reward prediction}
+	\begin{PraesentationAufzaehlung}
+		\item binary representation of the reward
+		\begin{equation}
+			\sum_{n=0}^{N-1}b_{t,n}2^n = \lfloor r_t \rfloor
+		\end{equation}
+		\item bits are modeled as independent Bernoulli variables
+		\item 2 additional bits: sign and zero indicator
+	\end{PraesentationAufzaehlung}
 \end{frame}
 
 
@@ -198,6 +220,10 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 
 \begin{frame}
 TODO: changes to I2A architecture when using latent space
+
+MsPacman instead of Minipacman
+200x160 pixels vs 19x16
+-> larger models needed
 \end{frame}
 
 \begin{frame}{dSSM-DET MsPacman - TODO: placeholder?}
@@ -231,7 +257,7 @@ TODO: changes to I2A architecture when using latent space
 	\item try impact of smaller latent space, the latent space in the paper is still pretty large
 	
 	\item continue to train environment model together with the policy network\\
-	For comlplex problems other state-of-the-art methods may not be good enough to get a representative training set for the environment model training.
+	For complex problems other state-of-the-art methods may not be good enough to get a representative training set for the environment model training.
 	\item select promising actions to focus rollouts on
 	\end{PraesentationAufzaehlung}
 \end{frame}

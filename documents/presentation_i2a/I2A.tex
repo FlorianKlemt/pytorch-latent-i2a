@@ -5,8 +5,8 @@
     \frametitle{Deep Reinforcement Learning}
 
 \begin{PraesentationAufzaehlung}
-    \item Learns to solve tasks by maximize the reward signal it gets
-    \item But there are some task that seems to be very hard to learn from scratch, where one wrong decision has catastrophic results in the end
+    \item Learns to solve tasks by maximizing the reward signal it gets
+    \item But there are some tasks that seem to be very hard to learn from scratch, where one wrong decision has catastrophic results in the end
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -20,11 +20,11 @@
     \frametitle{What we want}
 
 \begin{multicols}{2}
-	An Agent who know how to
+	An Agent who knows how to
 	\begin{PraesentationAufzaehlung}
 		\item Prevent dangerous situations
-		\item Get bonus points
-		\item Get them as fast as possible
+		\item Get maximal reward
+		\item Get it as fast as possible
 	\end{PraesentationAufzaehlung}
 	We want an agent who is acting with foresight
     \vfill\columnbreak
@@ -71,9 +71,8 @@
 
 \begin{PraesentationAufzaehlung}
 	\item Weber et al.(2017)
-    \item Imaginate the future and learn to do better action based on the imaginatied future
-    \item Combine model-free and model-based aspects
-    \item Architecture for deep reinforcement learning
+    \item Imagine the future and learn to do better actions based on the imagined future
+    \item Combines model-free and model-based aspects
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -88,8 +87,7 @@
 
 \includegraphics[width=\columnwidth]{./Images/i2a_architecture.png}%
 \begin{PraesentationAufzaehlung}
-	\item Input observation $o_t$
-	\item Output policy $\pi$ and value function $V$
+\item Network architecture for deep reinforcement learning
 \end{PraesentationAufzaehlung}
     
 \end{frame}
@@ -103,7 +101,10 @@
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-	    \item Learn policy $\pi$ and value function $V$
+		\item Input:\\
+		Observation $o_t$
+		\item Output:\\
+		Learned policy $\pi$ and value function $V$
 		\item Train with Advantage-Actor-Critic (A2C)
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
@@ -187,7 +188,7 @@
 \includegraphics[width=\columnwidth]{./Images/i2a_all_model_based_path.png}%
 
 \begin{PraesentationAufzaehlung}
-	\item Imaginate the Future based on an model of the environment and use this information for decision making
+	\item Imagine the future based on a model of the environment and use this information for decision making
 \end{PraesentationAufzaehlung}
     
 \end{frame}
@@ -202,8 +203,8 @@
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 	    \item Rollout encoder:\\
-		For each action the agent can take 
-		imaginate the future% and learn relevent information that can happen
+		For each action the agent can take, 
+		imagine the future% and learn relevent information that can happen
 		\item Aggregator: \\
 		Concatinate all action rollouts
 	\end{PraesentationAufzaehlung}
@@ -266,7 +267,7 @@
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 		\item CNN Network followed by an LSTM Network
-		\item Learns usefull information from the rollout trajectories
+		\item Learns useful information from the rollout trajectories
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -286,7 +287,9 @@
 
 \includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_core.png}%
 
-Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observation $o_t$
+\begin{PraesentationAufzaehlung}
+	\item Imagine the next observation $\hat{o}_{t+i}$ and next reward $\hat{r}_{t+i}$ given observation $\hat{o}_{t+i-1}$
+\end{PraesentationAufzaehlung}
 \end{frame}
 \clearpage
 
@@ -314,18 +317,27 @@ Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observa
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Imagination Core Policy Network}
+    \frametitle{Imagination Core - Policy Network}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-	    \item Policy network $\hat{\pi}$ desides the next action $a_t$
-		\item Add distill loss to a2c training to make $\hat{\pi}$ (rollout policy) and $\pi$ (i2a policy) similar
+	    \item Policy network $\hat{\pi}$ decides the next action $a_t$
+		\item Distillation loss\\
+		Make $\hat{\pi}$ (rollout policy) and $\pi$ (i2a policy) similar\\
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
-    \includegraphics[height=0.5\textheight]{./Images/policy.png}%
+    \includegraphics[height=0.35\textheight]{./Images/policy_net.png}%
 	\end{center}
 \end{multicols}
+\begin{PraesentationAufzaehlung}	    
+	\item Cross Entropy between $\pi$ and $\hat{\pi}$\\
+	\begin{equation}
+		\mathnormal{
+		l_{dist}(\pi, \hat{\pi})(o_t) = \lambda_{dist} \sum_a \pi(a | o_t) log \hat{\pi}(a|o_t)
+		}
+	\end{equation}
+\end{PraesentationAufzaehlung}
     
 \end{frame}
 \clearpage
@@ -350,7 +362,7 @@ Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observa
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item Imaginate what will happen if we are in state $o_t$ and do action $a_t$
+		\item Imagine what will happen if we are in state $o_t$ and do action $a_t$
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -370,11 +382,10 @@ Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observa
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item kind of Autoencoder
-		\item input:\\
-		stack of last 3 observations\\
-		action as one hot vector\\
-		trained with rollouts from a pretrained a2c policy
+		\item Input:\\
+		-- Stack of last 3 observations\\
+		-- Action as one hot vector\\
+		\item Trained with trajectories generated from a pretrained a2c policy
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -395,10 +406,18 @@ Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observa
     \frametitle{Training Environment Model}
 
 \begin{PraesentationAufzaehlung}
+	\item Train similar to Autoencoder
+	\item Maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$
 	\item Loss:\\
 	\begin{equation}
 	\mathnormal{
-	log p(x, y) }
+	env_{loss} = log p(o_t | a_{t-1}, o_{t-1})}
+	\end{equation}	
+	\item Image can be seen as Bernoulli distribution $p(o_t | a_{t-1}, o_{t-1})$
+	\begin{equation}
+	\mathnormal{
+	env_{loss} = Binary Cross Entropy(predicted\_image, true\_images)
+	}
 	\end{equation}
 \end{PraesentationAufzaehlung}
     
@@ -423,13 +442,99 @@ Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observa
     \frametitle{MiniPacman}
 
 \begin{PraesentationAufzaehlung}
-	\item 15 * 19 Grid World
-	\item different modes
+	\item I2A Model Based Path expensive to train
+	\item Uses 15 x 19 Grid World version of Pacman
+	\item Makes vision problem easier but preserves the reinforcement learning problem
+	\item MiniPacman can be played in different modes
 \end{PraesentationAufzaehlung}
     
 \end{frame}
 \clearpage
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{MiniPacman -- Hunt}
+
+Rewards:
+
+	\hspace{-4mm}
+	\begin{tabular}{ p{7cm}  r }
+ 	At each step & 0 \\
+  	Eating food & 0 \\
+	Eating power pill & 1\\
+	Eating ghost & 10\\
+	Killed by ghost & -20\\
+	\end{tabular}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{EnvironmentModel Hunt Demo}
+    
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Implementation I2A}
+
+\begin{PraesentationAufzaehlung}
+	\item Based on A2C implementation of Kostrikov \url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr} 
+	\item Pytorch as Deep Learning Library
+	\item Environment Model and I2A implementation will be published on github
+\end{PraesentationAufzaehlung}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{I2A MiniPacman Hunt Results}
+
+\begin{multicols}{2}
+	\begin{center}
+    \includegraphics[width=\columnwidth]{./Images/a2c_hunt_reward.png}\\
+	A2C Hunt Reward Training Curve (100 mio frames)
+	\end{center}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[width=\columnwidth]{./Images/i2a_hunt_reward_mean_and_median.png}\\
+	I2A Hunt Reward Training Curve (200 mio frames)
+	\end{center}
+\end{multicols}
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{I2A Hunt Demo}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Questions?}
+    
+\end{frame}
+\clearpage
 
 
 

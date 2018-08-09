@@ -2,67 +2,95 @@
 \section{Problems of classical I2A}
 \begin{frame}{Problems of classical I2A}
     \begin{PraesentationAufzaehlung}
-        \item not scalable to large states - rollouts are slow
-        \item not scalable to large action spaces - one rollout per action
-        \item environment model has problems predicting far into the future
+        \item Not scalable to large observations -- rollouts are slow
+        \item Not scalable to large action spaces -- one rollout per action
+        \item Environment model has problems predicting far into the future
     \end{PraesentationAufzaehlung}
 \end{frame}
 
 \begin{frame}
 	\frametitle{Classical I2A rollout}
+	\vspace{-10mm}
+	\begin{multicols}{2}
 	\begin{figure}[h]
 		\centering
-		\includegraphics[height=0.7\textheight]{./latent_i2a_images/SingleImaginationRollout_marked.png}
+		\includegraphics[height=0.65\textheight]{./latent_i2a_images/SingleImaginationRollout_marked.png}
 	\end{figure}
+	\columnbreak
+	\centering
+	$o_t \rightarrow s_t \rightarrow \hat{o}_{t+1}$\\
+	$\hat{o}_{t+1} \rightarrow s_{t+1} \rightarrow \hat{o}_{t+2}$\\
+	...
+	\end{multicols}
 \end{frame}
 
-\begin{frame}{Solution to large states}
+\begin{frame}{Solution to large observations}
 	\begin{PraesentationAufzaehlung}
-	    \item compress state into a latent representation
-	    \item compute rollout in latent space
+	    \item Compress observation into a latent representation
+	    \item Compute rollout based on compressed state not on images\\
+	    $o_t \rightarrow s_t$\\
+	    $s_t \rightarrow s_{t+1}$\\
 	\end{PraesentationAufzaehlung}
 \end{frame}
 
 
 %reference to 2nd paper
 \begin{frame}
-    \PraesentationUeberschriftZweizeilig{
-Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing et al.(2018)}
-
+	\frametitle{Relevant Papers}
 \begin{PraesentationAufzaehlung}
-    \item state space models
-    \item 
-    \item 
+    \item Learning and Querying Fast Generative Models for Reinforcement Learning, Buesing et al.(2018)
+    \bigskip
+    \bigskip
+    \item Imagination-Augmented Agents for Deep Reinforcement Learning, Weber et al.(2017)
 \end{PraesentationAufzaehlung}
 
 \end{frame}
 \clearpage
 
 
+%reminder of classical rollout structure
+\begin{frame}
+	\frametitle{Classical I2A rollout}
+	\begin{figure}[h]
+		\centering
+		\includegraphics[height=0.5\textheight]{./latent_i2a_images/Classic_I2A_Rollout.png}
+	\end{figure}
+\end{frame}
 
 %dSSM-DET
 \begin{frame}
 	\frametitle{dSSM-DET}
+	\vspace{-10mm}
+	deterministic State Space Model - Deterministic
 	\begin{multicols}{2}
 		\begin{figure}[h]
 			\includegraphics[width=0.4\textwidth]{./latent_i2a_images/dSSM_DET_architecture.png}	
 		\end{figure}
 		\columnbreak
-		$s_t$: compact latent representation of state at time t\\
+		$s_t$: compact latent representation of observation at time t\\
 		$a_t$: action at time t\\
 		$o_t$: predicted output
 	\end{multicols}
+%	\vfill
+%	
+%	\footnotesize
+%   Images for this and the next 2 slides taken from Learning and Querying Fast Generative Models for Reinforcement Learning, Buesing et al.(2018)
+%\normalsize 
 \end{frame}
 
 %dSSM-VAE
 \begin{frame}
 	\frametitle{dSSM-VAE}
+	\vspace{-10mm}
+	deterministic State Space Model - Variational Autoencoder
 	\begin{multicols}{2}
 		\begin{figure}[h]
 			\includegraphics[width=0.4\textwidth]{./latent_i2a_images/dSSM_VAE_architecture.png}	
 		\end{figure}
 		\columnbreak
-		$z_t$: latent variable sampled from gaussian distribution given by learnable mean and standard deviation
+		$z_t$: latent variable\\
+		 sampled from gaussian distribution given by learnable mean and standard deviation
+		\textbf{Decoder} depends on $z_t$
 	\end{multicols}
 \end{frame}
 
@@ -70,6 +98,8 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 %closer examination of sSSM - dSSM types can be seen as subtypes of sSSM
 \begin{frame}
 	\frametitle{sSSM}
+	\vspace{-10mm}
+	stochastic State Space Model\\
 	dSSM variants can be seen as simplifications of sSSM \\
 	\begin{multicols}{2}
 		\begin{figure}[h]
@@ -77,8 +107,8 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 		\end{figure}
 		\columnbreak
 		\begin{PraesentationAufzaehlung}
-			\item now the \textbf{transition} depends on the sampled latent variable
-			\item explicitly models uncertainty of state $s_{t+1}$
+			\item Now the \textbf{transition and the decoder} depend on the sampled latent variable
+			\item Explicitly models uncertainty of state $s_{t+1}$
 		\end{PraesentationAufzaehlung}
 	\end{multicols}
 \end{frame}
@@ -130,20 +160,21 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 
 \begin{frame}{Training the sSSM Model}
 		\begin{PraesentationAufzaehlung}
-			\item we cannot directly evaluate $L(\theta)$ when using latent variables as it depends on the posterior $p(z|\hat{o}_0)$
-			\item approximate true posterior $p(z_t|s_{t-1},a_{t-1})$ with approximated posterior $q(z_t|s_{t-1},a_{t-1})$
-			\item use Kullback-Leibler divergence
+			\item We cannot directly evaluate $L(\theta)$ when using latent variables as it depends on the posterior $p(z_t|s_{t-1},a_{t-1})$
+			\item Approximate true posterior $p(z_t|s_{t-1},a_{t-1})$ with approximated posterior $q(z_t|s_{t-1},a_{t-1},o_{t:T})$
+			\item Use Kullback-Leibler divergence
 			\begin{equation}
 			\begin{aligned}
-				KL(q(z_t|s_{t-1},a_{t-1})|p(z_t|s_{t-1},a_{t-1})) \\= \int q(z_t|s_{t-1},a_{t-1}) \log \frac{q(z_t|s_{t-1},a_{t-1})}{p(z_t|s_{t-1},a_{t-1})}dz
+				KL(q(z_t|s_{t-1},a_{t-1},o_{t:T})|p(z_t|s_{t-1},a_{t-1})) \\= \int q(z_t|s_{t-1},a_{t-1}) \log \frac{q(z_t|s_{t-1},a_{t-1},o_{t:T})}{p(z_t|s_{t-1},a_{t-1})}dz
 			\end{aligned}			
 			\end{equation}
-			\item reformulate as Evidence Lower Bound (ELBO)
+			\item Reformulate as Evidence Lower Bound (ELBO)
 		\end{PraesentationAufzaehlung}
 \end{frame}
 
 \begin{frame}
 	\frametitle{Training the sSSM Model}
+		\vspace{-10mm}
         Evidence Lower Bound:
         \begin{equation}
         \begin{aligned}
@@ -152,26 +183,31 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
         \end{equation}
         
         ELBO = reconstruction loss + KL-Div between true and approximated posterior\\
-        $p(o_t|s_t)$: Bernoulli Distribution \\
-        $\rightarrow$ Reconstruction loss can be computed with binary cross entropy
+        \vspace{10mm}
+        \href{https://jaan.io/what-is-variational-autoencoder-vae-tutorial/}{https://jaan.io/what-is-variational-autoencoder-vae-tutorial/}
 \end{frame}
 
 \begin{frame}
-        How can the image output be Bernoulli distributed?
+	\frametitle{Reconstruction loss}
+	$p(o_t|s_t)$: Bernoulli Distribution \\
+        $\rightarrow$ Compute reconstruction loss with binary cross entropy\\
+        \vspace{10mm}
+	How can the image output be Bernoulli distributed?
         \begin{PraesentationAufzaehlung}
-        	\item interpret channels of decoder output as TODO
+        	\item Interpret channels of decoder output scaled between 0 and 1 as probabilities of a Bernoulli distribution
+        	
         \end{PraesentationAufzaehlung}
-        TODO: image
+        TODO: image to explain
 \end{frame}
 
 \begin{frame}
 	\frametitle{Reward prediction}
 	\begin{PraesentationAufzaehlung}
-		\item binary representation of the reward
+		\item Binary representation of the reward
 		\begin{equation}
 			\sum_{n=0}^{N-1}b_{t,n}2^n = \lfloor r_t \rfloor
 		\end{equation}
-		\item bits are modeled as independent Bernoulli variables
+		\item Bits are modeled as independent Bernoulli variables
 		\item 2 additional bits: sign and zero indicator
 	\end{PraesentationAufzaehlung}
 \end{frame}
@@ -180,7 +216,7 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 \begin{frame}
 	\frametitle{Comparison of Environment Model architectures}
 	\begin{PraesentationAufzaehlung}
-		\item stochastic architectures perform better at predicting the future\\
+		\item Stochastic architectures perform better at predicting the future\\
 		\item I2A seems to have difficulties learning from the output of sSSM
 		\item dSSM-DET performs best when combining it with I2A
 	\end{PraesentationAufzaehlung}
@@ -194,42 +230,114 @@ Learning and Querying Fast Generative Models for Reinforcement Learning}{Buesing
 \end{frame}
 
 %TODO video
+\begin{frame}
+TODO: embed video showing live prediction
+\includemedia[
+    activate=onclick,
+    width=0.75\textwidth
+]{\includegraphics{./latent_i2a_images/LatentSpaceDecoder.png}}{./latent_i2a_images/sSSM_obs_vid_negative_example.mov}
+\end{frame}
 
 
 \begin{frame}
 	\frametitle{Why is MsPacman a hard prediction problem?}
 	\begin{PraesentationAufzaehlung}
-		\item state size: 160x200x3
-		\item sprites of pacman and ghosts are not static
-		\item blinking objects, essential objects are not seen in all frames
-		\item ghosts follow certain rules - the environment model has to learn them to predict ghost behaviour
-		\item some reward-types are very sparse
+		\item Observation size: 160x200x3
+		\item Sprites of pacman and ghosts are not static
+		\item Blinking objects, essential objects are not seen in all frames
+		\item Ghosts follow certain rules -- the environment model has to learn them to predict ghost behaviour
+		\item Some reward-types are very sparse
 	\end{PraesentationAufzaehlung}
 \end{frame}
 
     
 \begin{frame}{Environment Model training loss}
-   \begin{figure}
+	\vspace{-10mm}
+   	\begin{figure}
        \centering
-        \includegraphics[width=\textwidth]{./latent_i2a_images/EnvironmentModel_dSSM-DET_training.png}
+        \includegraphics[width=0.9\textwidth]{./latent_i2a_images/EnvironmentModel_dSSM-DET_training.png}
     \end{figure}
 \end{frame}
 
 
 
 
-\begin{frame}
-TODO: changes to I2A architecture when using latent space
 
-MsPacman instead of Minipacman
-200x160 pixels vs 19x16
--> larger models needed
+\begin{frame}
+	\frametitle{Original I2A architecture}
+	\begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{./latent_i2a_images/i2a_architecture.png}
+    \end{figure}
 \end{frame}
 
-\begin{frame}{dSSM-DET MsPacman - TODO: placeholder?}
+\begin{frame}
+	\frametitle{Modified I2A architecture}
+	\begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{./latent_i2a_images/latent_i2a_architecture_finished3.png}
+    \end{figure}
+\end{frame}
+
+
+%results on MsPacman
+\begin{frame}
+	\frametitle{Why is MsPacman a hard reinforcement learning problem?}
+	\begin{PraesentationAufzaehlung}
+		\item The agent can maneuver in unwinnable positions that seem positive $\rightarrow$ I2A
+		\item The input is a raw image -- the agent initially knows nothing about objects $\rightarrow$ Conv-Layers, Latent Space I2A
+		\item Large observations $\rightarrow$ Latent Space I2A
+		\item Dense rewards (eat), that do not help much in learning the way to get large (sparse) rewards fast (power pills, kill ghosts)
+	\end{PraesentationAufzaehlung}
+\end{frame}
+
+\begin{frame}
+	\frametitle{MsPacman}
+	\begin{PraesentationAufzaehlung}
+		\item Environment MsPacmanNoFrameskip-v0 from OpenAI Gym
+		\item Original input size: (210, 160, 3) cropped to (200, 160, 3)
+	
+		\item Reward:\\
+		\vspace{5mm}
+		\hspace{-4mm}
+		\begin{tabular}{ p{7cm}  r }
+	  	Eating food & 10 \\
+		Eating power pill & 50\\
+		Eating ghost & 200,400,800,1600\\
+		Killed by ghost & -100\\
+		Eating Fruits & 100-5000\\
+		\end{tabular}
+		\vspace{5mm}
+		\item Fruits are extremely sparse and higher value fruits only appear in later levels.
+	\end{PraesentationAufzaehlung}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Specifics of I2A run of MsPacman}
+	\begin{PraesentationAufzaehlung}
+		\item Environment Model: dSSM\_DET
+		\item Optimizer: RMSProp, learning rate=7e-4
+		\item Framestack: 4
+		\item Frameskip: 4
+		\item Distill coefficient: 10
+		\item Entropy coefficient: 0.02
+		\item Rollout length: 2, 5
+	\end{PraesentationAufzaehlung}
+\end{frame}
+
+\begin{frame}{dSSM-DET MsPacman rollout length 2}
+	\vspace{-10mm}
     \begin{figure}
         \centering
-        \includegraphics[width=\textwidth]{./latent_i2a_images/dSSM_DET_MsPacman.png}
+        \includegraphics[width=0.9\textwidth]{./latent_i2a_images/dSSM_DET_MsPacman_100mio.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{dSSM-DET MsPacman rollout length 5}
+	\vspace{-10mm}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.9\textwidth]{./latent_i2a_images/MsPacman_dSSM_DET_5rollout.png}
     \end{figure}
 \end{frame}
 
@@ -237,9 +345,9 @@ MsPacman instead of Minipacman
 \begin{frame}
 	\frametitle{Results}
 	\begin{PraesentationAufzaehlung}
-		\item pytorch framework for I2A
-		\item implementation of latent environment model generation
-		\item implementation of I2A using the latent space approach
+		\item Pytorch framework for I2A
+		\item Implementation of latent environment model generation
+		\item Implementation of I2A using the latent space approach
 	\end{PraesentationAufzaehlung}
 	
 	\bigskip
@@ -252,13 +360,29 @@ MsPacman instead of Minipacman
 \begin{frame}
 	\frametitle{Potential future work}
 	\begin{PraesentationAufzaehlung}
-		\item use the compact latent representation for both paths
-	\item use GANs for the environment model
-	\item try impact of smaller latent space, the latent space in the paper is still pretty large
+		\item Use the compact latent representation for both paths
+	\item Use GANs for the environment model
+	\item Try impact of smaller latent space, the latent space in the paper is still pretty large
 	
-	\item continue to train environment model together with the policy network\\
-	For complex problems other state-of-the-art methods may not be good enough to get a representative training set for the environment model training.
-	\item select promising actions to focus rollouts on
+	\item Train environment model together with the policy network.\\
+	For complex problems, other state-of-the-art methods may not be good enough to get a representative training set for the environment model training.
+	\item Select promising actions to focus rollouts on
 	\end{PraesentationAufzaehlung}
 \end{frame}
 
+
+\begin{frame}
+	\vspace*{\fill}
+	\huge
+	\begingroup
+	\centering
+	Thank you for your attention!
+	\endgroup
+	\bigskip
+	\begingroup
+	\centering
+	Questions?
+	\endgroup
+	\normalsize
+	\vspace*{\fill}
+\end{frame}

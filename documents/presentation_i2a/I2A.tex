@@ -42,6 +42,94 @@ Learns to solve tasks by maximizing the reward signal it gets
 %% Folie             %%
 %%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+Model-free RL\\
+A2C makes decisions based on two parts
+\begin{PraesentationAufzaehlung}
+	\item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
+	Controls how the agent acts\\	
+	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
+	Messures how good a choosen actions is\\	
+\end{PraesentationAufzaehlung}
+
+
+
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+%A2C Network get as input observation $o_t$ and returns as output polic
+
+\begin{PraesentationAufzaehlung}
+    \item Input:\\
+	Observation $o_t$
+	\item Output:\\
+	Policy function $\mathnormal{\pi(s, a, \theta)}$\\
+	State value function $\mathnormal{V(s, a, w)}$	
+\end{PraesentationAufzaehlung}
+
+\end{frame}
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+\begin{PraesentationAufzaehlung}
+	\item Advantage function
+	Push up the probability of an action from a state $s_t$ if this action was better than the expected value
+	\begin{equation}
+	\mathnormal{
+	A^{\pi_\theta} = Q^{\pi_\theta}(s_t, a_t) - V^{\pi_\theta}(s_t)
+	}
+	\end{equation}	\\
+	Value function expected cumulative reward from following the policy $\pi$ from state s
+	Q-value function expected cumulative reward from taking action a in stae s and following the policy
+
+	\item actor critic update:
+	\begin{equation}
+		\mathnormal{
+		\nabla \theta = A_t \nabla_\theta log \pi_\theta (a_t | s_t)}
+	\end{equation}
+\end{PraesentationAufzaehlung}
+
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+\begin{PraesentationAufzaehlung}
+    \item Policy update:
+	\begin{equation}
+		\mathnormal{\nabla \theta = \alpha \nabla_\theta (log \pi_\theta (s, a)) q_w (s, a)}
+	\end{equation}	
+	\item Value update:
+	\begin{equation}
+		\mathnormal{
+		\nabla w = \beta (R(s, a) + \gamma q_w(s_{t+1}, a_{t+1}) - q_w(s_t, a_t)) \nabla_w q_w(s_t, a_t)}
+	\end{equation}
+\end{PraesentationAufzaehlung}
+
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
     \frametitle{Drawbacks of Model Based RL}
 
 
@@ -55,6 +143,8 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 \hspace{8mm} which is robost against model imperfections.
 \end{frame}
 \clearpage
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %% Folie             %%

@@ -28,17 +28,19 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \input{./_Einstellungen.tex}                    % !!! DATEI ANPASSEN !!!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+\newcommand\tab[1][0.5cm]{\hspace*{#1}}
+\DeclareMathOperator{\EX}{\mathbb{E}}% expected value
+\usepackage{media9}
 
 \renewcommand{\PersonTitel}{}
 \newcommand{\Datum}{\today}
 
-\renewcommand{\PraesentationFusszeileZusatz}{| kn}
+\renewcommand{\PraesentationFusszeileZusatz}{}
 
-\title{Imagination Augmented Agent for Deep RL}
+\title{Latent Space I2A for Deep RL}
 \author{\PersonTitel{} \PersonVorname{} \PersonNachname}
 \institute[]{\UniversitaetName}
-\date[\Datum]{München, 27. März 2015}
+\date[\Datum]{München, 13. August 2018}
 \subject{I2A}
 
 
@@ -54,11 +56,9 @@
 
 \PraesentationTitelseite % Fügt die Startseite ein
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Beispielfolien                                  %%
-\input{./I2A.tex}
+\input{./Latent_I2A.tex}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \end{document} % !!! NICHT ENTFERNEN !!!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

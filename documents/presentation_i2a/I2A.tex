@@ -2,40 +2,78 @@
 %% Folie             %%
 %%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{Deep Reinforcement Learning}
+    \frametitle{Reinforcement Learning (RL)}
 
-\begin{PraesentationAufzaehlung}
-    \item Learns to solve tasks by maximizing the reward signal it gets
-    \item But there are some tasks that seem to be very hard to learn from scratch, where one wrong decision has catastrophic results in the end
-\end{PraesentationAufzaehlung}
+Learns to solve tasks by maximizing the reward signal it gets
+\vspace{10mm}
+
+\begin{multicols}{2}
+	\includegraphics[width=0.9\columnwidth]{./Images/rl_agent.png}%
+    \vfill\columnbreak	
+	$a_i$: action\\
+	$o_i$: observation\\
+	$r_i$: reward
+\end{multicols}
 
 \end{frame}
 \clearpage
-
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %% Folie             %%
 %%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{What we want}
+    \frametitle{Reinforcement Learning (RL)}
 
-\begin{multicols}{2}
-	An Agent who knows how to
-	\begin{PraesentationAufzaehlung}
-		\item Prevent dangerous situations
-		\item Get maximal reward
-		\item Get it as fast as possible
-	\end{PraesentationAufzaehlung}
-	We want an agent who is acting with foresight
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=.6\textheight]{./Images/screenshot_ghost.png}%
-	\end{center}
-\end{multicols}
-
+\begin{PraesentationAufzaehlung}
+	\item Model-free RL\\
+	Observations of the environment map directly to values or actions
+	\item Model-based RL\\
+	-- Uses an internal model to reason about the future\\
+	-- Agent can avoid adverse consequences of trial-and error in\\
+	\hspace{5mm} real environments\\
+	-- Better generalization across states%\\
+	%-- Scale performance by increasing amount of internal simulations
+\end{PraesentationAufzaehlung}
 
 \end{frame}
 \clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Drawbacks of Model Based RL}
+
+
+\begin{PraesentationAufzaehlung}
+    \item The performance of model-based agents suffer if the model is inperfect\\
+    \item It is not always possible to get an exact transition model
+exact transition model is available
+\end{PraesentationAufzaehlung}
+
+$\rightarrow$ Combine model free and model based RL to get an agent\\
+\hspace{8mm} which is robost against model imperfections.
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{frame}
+%    \frametitle{What we want}
+
+%\begin{multicols}{2}
+
+%	Combine model free and model based RL to get an agent which is robost against model imperfections
+%    \vfill\columnbreak
+%	\begin{center}
+%    \includegraphics[height=.6\textheight]{./Images/screenshot_ghost.png}%
+%	\end{center}
+%\end{multicols}
+
+	%We want an agent who learn to interpret predictions from a learned environment model to construct plans in arbitrary ways, by using the predictions as additional context in the deep policy network\\
+%\end{frame}
+%\clearpage
 
 
 
@@ -87,7 +125,7 @@
 
 \includegraphics[width=\columnwidth]{./Images/i2a_architecture.png}%
 \begin{PraesentationAufzaehlung}
-\item Network architecture for deep reinforcement learning
+\item Network architecture for deep reinforcement learning which combines model free and model based RL
 \end{PraesentationAufzaehlung}
     
 \end{frame}
@@ -349,7 +387,7 @@
  % FOLIENSTIL: Weisse Schrift auf blauem Grund 
 \PraesentationMasterWeissBlau 
 \begin{frame} 
-    \frametitle{Environment Model}
+    \frametitle{Environment Model (EM)}
 \end{frame}
 
 \PraesentationMasterStandard
@@ -358,7 +396,7 @@
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{Environment Model EM}
+    \frametitle{Environment Model (EM)}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}

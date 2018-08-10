@@ -89,7 +89,7 @@
 		\end{figure}
 		\columnbreak
 		$z_t$: latent variable\\
-		 sampled from gaussian distribution given by learnable mean and standard deviation
+		 sampled from gaussian distribution given by learnable mean and standard deviation (based from $s_{t-1}$ and $a_{t-1}$
 		\textbf{Decoder} depends on $z_t$
 	\end{multicols}
 \end{frame}
@@ -343,7 +343,7 @@ TODO: embed video showing live prediction
 
 
 \begin{frame}
-	\frametitle{Results}
+	\frametitle{Conclusion}
 	\begin{PraesentationAufzaehlung}
 		\item Pytorch framework for I2A
 		\item Implementation of latent environment model generation

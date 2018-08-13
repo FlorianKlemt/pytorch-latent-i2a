@@ -93,10 +93,11 @@ Reinforcement Learning Algorithm
 		Push up the probability of an action from a state $s$ if this action was better than the expected value
 		\begin{equation}
 		\mathnormal{
-		A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)
+		A = Q(s, a) - V(s)
+%A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)
 		}
 		\end{equation}
-	\item Q-value function $Q^{\pi_\theta}(s, a)$:\\ 
+	\item Q-value function $Q(s, a)$:\\ %$Q^{\pi_\theta}(s, a)$:\\ 
 		Expected cumulative reward from taking action $a$ in state $s$ and following the policy $\pi$
 	\item Actor Critic policy update:
 	\begin{equation}

@@ -321,7 +321,7 @@ Cross Entropy between $\pi$ and $\hat{\pi}$\\
 		\item Input:\\
 		-- Stack of last 3 observations\\
 		-- Action as one hot vector\\
-		\item Trained with trajectories generated from a pretrained a2c policy
+		\item Trained with paris of $(o_t, a_t) \rightarrow (o_{t+1}, r_{t+1})$ generated from a pretrained model-free advantage-actor-critic policy
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -342,17 +342,17 @@ Cross Entropy between $\pi$ and $\hat{\pi}$\\
     \frametitle{Environment Model Training}
 
 \begin{PraesentationAufzaehlung}
-	\item Train similar to Autoencoder
-	\item Maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$
-	\item Loss:\\
+	\item Maximize the log likelihood of the probability $\mathnormal{p(o_t | a_{t-1}, o_{t-1})}$
+	\item Image can be seen as Bernoulli distribution
+	\begin{equation}
+	\mathnormal{ p(o_t | a_{t-1}, o_{t-1}) = x^y (1-x)^{1-y}
+	}
+	\end{equation}
+	\item  $\mathnormal{log p(o_t | a_{t-1}, o_{t-1})}$ equals to Binary Cross Entropy loss
 	\begin{equation}
 	\mathnormal{
-	env_{loss} = log p(o_t | a_{t-1}, o_{t-1})}
-	\end{equation}	
-	\item Image can be seen as Bernoulli distribution $p(o_t | a_{t-1}, o_{t-1})$
-	\begin{equation}
-	\mathnormal{
-	env_{loss} = Binary Cross Entropy(predicted\_image, true\_images)
+	env_{loss}(x, y) = \frac{1}{N} \sum y_n log x_n + (1-y_n) log(1- x_n)
+	%env_{loss} = Binary Cross Entropy(predicted\_image, true\_images)
 	}
 	\end{equation}
 \end{PraesentationAufzaehlung}
@@ -387,9 +387,12 @@ The rollout encoder encode these trajectories
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 		\item Input:\\
-		observation $o_t$ and start action $a$
+		observation $o_t$ \\
+		(1 MiniPacman frame)\\
+		start action $a$
 		\item Output:\\
-		n imagined trajectories ($o_{t+i}, r_{t+i}$ for $i = 0, ..., n$)
+		n imagined trajectories ($\hat{o}_{t+i}, \hat{r}_{t+i}$ for $i = 0, ..., n$)
+		\item $\hat{} \hspace{2mm} \rightarrow$ internal state
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -409,7 +412,11 @@ The rollout encoder encode these trajectories
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 		\item CNN Network followed by an LSTM Network
-		\item Learns useful information from the rollout trajectories
+		\item CNN Network:\\
+		Encode observation and reward $\hat{o}_{t+i}, \hat{r}_{t+i}$
+		\item LSTM Network:\\
+		Learns long-term dependencies
+		%\item Learns useful information from the rollout trajectories
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
@@ -450,9 +457,8 @@ The rollout encoder encode these trajectories
 
 \includegraphics[width=\columnwidth]{./Images/i2a_all_model_based_path.png}%
 
-\begin{PraesentationAufzaehlung}
-	\item Imagine the future based on a model of the environment and use this information for decision making
-\end{PraesentationAufzaehlung}
+%For each action $a$ the agent can take do a imagination rollout 
+% the future based on a model of the environment and use this information for decision making
     
 \end{frame}
 \clearpage
@@ -465,9 +471,9 @@ The rollout encoder encode these trajectories
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-	    \item Rollout encoder:\\
-		For each action the agent can take, 
-		imagine the future% and learn relevent information that can happen
+	    \item For each action $a$ the agent can take, do a imagination rollout 
+		%For each action the agent can take, 
+		%imagine the future% and learn relevent information that can happen
 		\item Aggregator: \\
 		Concatinate all action rollouts
 	\end{PraesentationAufzaehlung}
@@ -585,20 +591,7 @@ Rewards:
 \end{frame}
 \clearpage
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Implementation I2A}
 
-\begin{PraesentationAufzaehlung}
-	\item Based on A2C implementation of Kostrikov \url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr} 
-	\item Pytorch as Deep Learning Library
-	\item Environment Model and I2A implementation will be published on github
-\end{PraesentationAufzaehlung}
-    
-\end{frame}
-\clearpage
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -630,12 +623,28 @@ Rewards:
 \end{frame}
 \clearpage
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Final Conclution}
+
+\begin{PraesentationAufzaehlung}
+	\item Working Environment Model and I2A implementation
+	\item Based on A2C implementation of Kostrikov \url{https://github.com/ikostrikov/pytorch-a2c-ppo-acktr} 
+	\item Will be published on github
+\end{PraesentationAufzaehlung}
+    
+\end{frame}
+\clearpage
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{Questions?}
+    \frametitle{Thank you for your attention! \vspace{15mm}
+	 \\Questions?}
     
 \end{frame}
 \clearpage

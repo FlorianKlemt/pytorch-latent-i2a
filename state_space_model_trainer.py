@@ -64,6 +64,7 @@ def main():
                              help='weight decay (default: 0)')
     args_parser.add_argument('--reward-prediction-bits', type=int, default=8,
                              help='bits used for reward prediction in reward head of decoder (default: 8)')
+    args_parser.add_argument('--env-model-images-save-path', default=None, help='path to save images of rendering')
     args = args_parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

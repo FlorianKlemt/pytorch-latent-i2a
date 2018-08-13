@@ -26,7 +26,7 @@ def main():
     from visdom import Visdom
     viz = Visdom(port=args.port)
     visdom_plotter = VisdomPlotterA2C(viz, plot_distill_loss = algo_i2a,
-                 entropy_plot_cnf = [n, n], reward_plot_cnf=[n, n], loss_plot_cnf = [n, n])
+                 entropy_plot_cnf = [n, 0], reward_plot_cnf=[n, 0], loss_plot_cnf = [n, 0])
 
     i = 0
     for log_line in log[1:]:
@@ -41,7 +41,8 @@ def main():
         action_loss = float(values['policy loss'])
         distill_loss = float(values['distill_loss']) if algo_i2a else None
         visdom_plotter.append(dist_entropy, reward, value_loss, action_loss, distill_loss)
-        visdom_plotter.plot(frames)
+        if (i % 50) == 0:
+            visdom_plotter.plot(frames)
         i += 1
     print("plot finished")
 

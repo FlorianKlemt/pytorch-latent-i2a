@@ -7,7 +7,7 @@ from custom_envs import make_custom_env
 import random
 import gym
 import gym_minipacman
-from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
+from rl_visualization.environment_model.test_environment_model import TestEnvironmentModelMiniPacman
 
 from a2c_models.i2a_mini_model import I2A_MiniModel
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
@@ -57,6 +57,8 @@ def main():
                              help='weight decay (default: 0)')
     args_parser.add_argument('--reward-loss-coef', type=float, default=0.01,
                              help='reward loss coef (default: 0.01)')
+    args_parser.add_argument('--env-model-images-save-path', default=None, help='path to save images of rendering')
+
     args = args_parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
@@ -101,11 +103,11 @@ def main():
         optimizer = EnvironmentModelOptimizer(model=environment_model, args=args)
 
     if args.render:
-        test_process = TestEnvironmentModel(env = env,
-                                            environment_model=copy.deepcopy(environment_model),
-                                            load_path=save_model_path,
-                                            rollout_policy=policy,
-                                            args=args)
+        test_process = TestEnvironmentModelMiniPacman(env = env,
+                                                      environment_model=copy.deepcopy(environment_model),
+                                                      load_path=save_model_path,
+                                                      rollout_policy=policy,
+                                                      args=args)
 
     if args.no_training:
         time.sleep(100000)

@@ -18,8 +18,8 @@
 	\end{figure}
 	\columnbreak
 	\centering
-	$o_t \rightarrow s_t \rightarrow \hat{o}_{t+1}$\\
-	$\hat{o}_{t+1} \rightarrow s_{t+1} \rightarrow \hat{o}_{t+2}$\\
+	$\mathnormal{o_t \rightarrow s_t \rightarrow \hat{o}_{t+1}}$\\
+	$\mathnormal{\hat{o}_{t+1} \rightarrow s_{t+1} \rightarrow \hat{o}_{t+2}}$\\
 	...
 	\end{multicols}
 \end{frame}
@@ -28,8 +28,8 @@
 	\begin{PraesentationAufzaehlung}
 	    \item Compress observation into a latent representation
 	    \item Compute rollout based on compressed state not on images\\
-	    $o_t \rightarrow s_t$\\
-	    $s_t \rightarrow s_{t+1}$\\
+	    $\mathnormal{o_t \rightarrow s_t}$\\
+	    $\mathnormal{s_t \rightarrow s_{t+1}}$\\
 	\end{PraesentationAufzaehlung}
 \end{frame}
 
@@ -38,10 +38,9 @@
 \begin{frame}
 	\frametitle{Relevant Papers}
 \begin{PraesentationAufzaehlung}
-    \item Learning and Querying Fast Generative Models for Reinforcement Learning, Buesing et al.(2018)
-    \bigskip
-    \bigskip
     \item Imagination-Augmented Agents for Deep Reinforcement Learning, Weber et al.(2017)
+	\vspace{20mm}
+    \item Learning and Querying Fast Generative Models for Reinforcement Learning, Buesing et al.(2018)
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -89,7 +88,7 @@
 		\end{figure}
 		\columnbreak
 		$z_t$: latent variable\\
-		 sampled from gaussian distribution given by learnable mean and standard deviation (based from $s_{t-1}$ and $a_{t-1}$
+		 sampled from gaussian distribution given by learnable mean and standard deviation (based on $s_{t-1}$ and $a_{t-1}$)
 		\textbf{Decoder} depends on $z_t$
 	\end{multicols}
 \end{frame}
@@ -151,7 +150,8 @@
 \begin{frame}{Training the dSSM-DET Model}
     Maximum Likelihood Estimation:
     \begin{equation}
-            L(\theta) = \log p_{\theta}(o_{1:T}|a_{0:T-1}, \hat{o}_0)
+    \mathnormal{
+            L(\theta) = \log p_{\theta}(o_{1:T}|a_{0:T-1}, \hat{o}_0)}
     \end{equation}
         $\hat{o}_0$: initial context\\
         the encodings of the last 3 observations are used to generate $s_0$ in a learnable way
@@ -160,13 +160,15 @@
 
 \begin{frame}{Training the sSSM Model}
 		\begin{PraesentationAufzaehlung}
-			\item We cannot directly evaluate $L(\theta)$ when using latent variables as it depends on the posterior $p(z_t|s_{t-1},a_{t-1})$
-			\item Approximate true posterior $p(z_t|s_{t-1},a_{t-1})$ with approximated posterior $q(z_t|s_{t-1},a_{t-1},o_{t:T})$
+			\item We cannot directly evaluate $\mathnormal{L(\theta)}$ when using latent variables as it depends on the posterior $\mathnormal{p(z_t|s_{t-1},a_{t-1})}$
+			\item Approximate true posterior $\mathnormal{p(z_t|s_{t-1},a_{t-1})}$ with approximated posterior $\mathnormal{q(z_t|s_{t-1},a_{t-1},o_{t:T})}$
 			\item Use Kullback-Leibler divergence
 			\begin{equation}
+			\mathnormal{
 			\begin{aligned}
-				KL(q(z_t|s_{t-1},a_{t-1},o_{t:T})|p(z_t|s_{t-1},a_{t-1})) \\= \int q(z_t|s_{t-1},a_{t-1}) \log \frac{q(z_t|s_{t-1},a_{t-1},o_{t:T})}{p(z_t|s_{t-1},a_{t-1})}dz
-			\end{aligned}			
+			KL(q(z_t|s_{t-1},a_{t-1},o_{t:T})|p(z_t|s_{t-1},a_{t-1})) \\= \int q(z_t|s_{t-1},a_{t-1}) \log \frac{q(z_t|s_{t-1},a_{t-1},o_{t:T})}{p(z_t|s_{t-1},a_{t-1})}dz
+			\end{aligned}	
+			}		
 			\end{equation}
 			\item Reformulate as Evidence Lower Bound (ELBO)
 		\end{PraesentationAufzaehlung}
@@ -177,9 +179,11 @@
 		\vspace{-10mm}
         Evidence Lower Bound:
         \begin{equation}
+		\mathnormal{
         \begin{aligned}
             ELBO_q(\theta) = \sum_{t=1}^T \EX_q[\log p(o_t|s_t) + \log p(z_t|s_{t-1}, a_{t-1})\\ - \log q(z_t|s{t-1}, a_{t-1}, o_t)]
         \end{aligned}
+		}
         \end{equation}
         
         ELBO = reconstruction loss + KL-Div between true and approximated posterior\\
@@ -189,7 +193,7 @@
 
 \begin{frame}
 	\frametitle{Reconstruction loss}
-	$p(o_t|s_t)$: Bernoulli Distribution \\
+	$\mathnormal{p(o_t|s_t)}$: Bernoulli Distribution \\
         $\rightarrow$ Compute reconstruction loss with binary cross entropy\\
         \vspace{10mm}
 	How can the image output be Bernoulli distributed?
@@ -205,7 +209,9 @@
 	\begin{PraesentationAufzaehlung}
 		\item Binary representation of the reward
 		\begin{equation}
+			\mathnormal{
 			\sum_{n=0}^{N-1}b_{t,n}2^n = \lfloor r_t \rfloor
+			}
 		\end{equation}
 		\item Bits are modeled as independent Bernoulli variables
 		\item 2 additional bits: sign and zero indicator
@@ -231,11 +237,7 @@
 
 %TODO video
 \begin{frame}
-TODO: embed video showing live prediction
-\includemedia[
-    activate=onclick,
-    width=0.75\textwidth
-]{\includegraphics{./latent_i2a_images/LatentSpaceDecoder.png}}{./latent_i2a_images/sSSM_obs_vid_negative_example.mov}
+	\frametitle{sSSM rollout prediction demo}
 \end{frame}
 
 
@@ -284,7 +286,7 @@ TODO: embed video showing live prediction
 \begin{frame}
 	\frametitle{Why is MsPacman a hard reinforcement learning problem?}
 	\begin{PraesentationAufzaehlung}
-		\item The agent can maneuver in unwinnable positions that seem positive $\rightarrow$ I2A
+		\item The Agent needs to plan into the future $\rightarrow$ I2A
 		\item The input is a raw image -- the agent initially knows nothing about objects $\rightarrow$ Conv-Layers, Latent Space I2A
 		\item Large observations $\rightarrow$ Latent Space I2A
 		\item Dense rewards (eat), that do not help much in learning the way to get large (sparse) rewards fast (power pills, kill ghosts)
@@ -308,7 +310,7 @@ TODO: embed video showing live prediction
 		Eating Fruits & 100-5000\\
 		\end{tabular}
 		\vspace{5mm}
-		\item Fruits are extremely sparse and higher value fruits only appear in later levels.
+		\item Fruit rewards are extremely sparse and higher value fruits only appear in later levels.
 	\end{PraesentationAufzaehlung}
 \end{frame}
 
@@ -343,6 +345,11 @@ TODO: embed video showing live prediction
 
 
 \begin{frame}
+	\frametitle{I2A with dSSM-DET environment model MsPacman demo}
+\end{frame}
+
+
+\begin{frame}
 	\frametitle{Conclusion}
 	\begin{PraesentationAufzaehlung}
 		\item Pytorch framework for I2A
@@ -360,9 +367,9 @@ TODO: embed video showing live prediction
 \begin{frame}
 	\frametitle{Potential future work}
 	\begin{PraesentationAufzaehlung}
-		\item Use the compact latent representation for both paths
+		\item Compact latent representation for both paths
 	\item Use GANs for the environment model
-	\item Try impact of smaller latent space, the latent space in the paper is still pretty large
+	\item Smaller latent space, the latent space in the paper is still pretty large
 	
 	\item Train environment model together with the policy network.\\
 	For complex problems, other state-of-the-art methods may not be good enough to get a representative training set for the environment model training.

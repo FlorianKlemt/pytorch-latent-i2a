@@ -24,102 +24,17 @@ Learns to solve tasks by maximizing the reward signal it gets
 \begin{frame}
     \frametitle{Reinforcement Learning (RL)}
 
+Model-free RL
 \begin{PraesentationAufzaehlung}
-	\item Model-free RL\\
-	Observations of the environment map directly to values or actions
-	\item Model-based RL\\
-	-- Uses an internal model to reason about the future\\
-	-- Agent can avoid adverse consequences of trial-and error in\\
-	\hspace{5mm} real environments\\
-	-- Better generalization across states%\\
-	%-- Scale performance by increasing amount of internal simulations
+	\item Observations of the environment map directly to values or actions	
 \end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Advantage-Actor-Critic (A2C)}
-
-Model-free RL\\
-A2C makes decisions based on two parts
+\vspace{-10mm}
+Model-based RL
 \begin{PraesentationAufzaehlung}
-	\item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
-	Controls how the agent acts\\	
-	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
-	Messures how good a choosen actions is\\	
-\end{PraesentationAufzaehlung}
-
-
-
-\end{frame}
-\clearpage
-
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Advantage-Actor-Critic (A2C)}
-
-%A2C Network get as input observation $o_t$ and returns as output polic
-
-\begin{PraesentationAufzaehlung}
-    \item Input:\\
-	Observation $o_t$
-	\item Output:\\
-	Policy function $\mathnormal{\pi(s, a, \theta)}$\\
-	State value function $\mathnormal{V(s, a, w)}$	
-\end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Advantage-Actor-Critic (A2C)}
-
-\begin{PraesentationAufzaehlung}
-	\item Advantage function
-	Push up the probability of an action from a state $s_t$ if this action was better than the expected value
-	\begin{equation}
-	\mathnormal{
-	A^{\pi_\theta} = Q^{\pi_\theta}(s_t, a_t) - V^{\pi_\theta}(s_t)
-	}
-	\end{equation}	\\
-	Value function expected cumulative reward from following the policy $\pi$ from state s
-	Q-value function expected cumulative reward from taking action a in stae s and following the policy
-
-	\item actor critic update:
-	\begin{equation}
-		\mathnormal{
-		\nabla \theta = A_t \nabla_\theta log \pi_\theta (a_t | s_t)}
-	\end{equation}
-\end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Advantage-Actor-Critic (A2C)}
-
-\begin{PraesentationAufzaehlung}
-    \item Policy update:
-	\begin{equation}
-		\mathnormal{\nabla \theta = \alpha \nabla_\theta (log \pi_\theta (s, a)) q_w (s, a)}
-	\end{equation}	
-	\item Value update:
-	\begin{equation}
-		\mathnormal{
-		\nabla w = \beta (R(s, a) + \gamma q_w(s_{t+1}, a_{t+1}) - q_w(s_t, a_t)) \nabla_w q_w(s_t, a_t)}
-	\end{equation}
+	\item Uses an internal model of the world to reason about the future
+	\item Avoid adverse consequences of trial-and-error
+	\item Increase performance by increasing amount of internal simulations
+	%-- Better generalization across states%\\
 \end{PraesentationAufzaehlung}
 
 \end{frame}
@@ -143,6 +58,80 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 \hspace{8mm} which is robost against model imperfections.
 \end{frame}
 \clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+Reinforcement Learning Algorithm
+\begin{PraesentationAufzaehlung}
+	\item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
+	Controls how the agent acts\\	
+	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
+	Messures how good a choosen actions is\\
+ 	Expected cumulative reward from following the policy $\pi$ from state $s$	
+\end{PraesentationAufzaehlung}
+
+
+
+\end{frame}
+\clearpage
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Advantage-Actor-Critic (A2C)}
+
+\begin{PraesentationAufzaehlung}
+	\item Advantage function\\
+		Push up the probability of an action from a state $s$ if this action was better than the expected value
+		\begin{equation}
+		\mathnormal{
+		A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)
+		}
+		\end{equation}
+	\item Q-value function $Q^{\pi_\theta}(s, a)$:\\ 
+		Expected cumulative reward from taking action $a$ in state $s$ and following the policy $\pi$
+	\item Actor Critic policy update:
+	\begin{equation}
+		\mathnormal{
+		\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)}
+	\end{equation}
+\end{PraesentationAufzaehlung}
+
+\end{frame}
+\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie             %%
+%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{frame}
+%    \frametitle{Advantage-Actor-Critic (A2C)}
+
+%\begin{PraesentationAufzaehlung}
+%    \item Policy update:
+%	\begin{equation}
+%		\mathnormal{\nabla \theta = \alpha \nabla_\theta (log \pi_\theta (s, a)) q_w (s, a)}
+%	\end{equation}	
+%	\item Value update:
+%	\begin{equation}
+%		\mathnormal{
+%		\nabla w = \beta (R(s, a) + \gamma q_w(s_{t+1}, a_{t+1}) - q_w(s_t, a_t)) \nabla_w q_w(s_t, a_t)}
+%	\end{equation}
+%\end{PraesentationAufzaehlung}
+
+%\end{frame}
+%\clearpage
+
+
+
+
 
 
 
@@ -214,9 +203,199 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 
 
 \includegraphics[width=\columnwidth]{./Images/i2a_architecture.png}%
+
+\vspace{-10mm}
+Network architecture for deep reinforcement learning which combines model free and model based RL
+
+    
+\end{frame}
+\clearpage
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder                      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Imagination Core}
+
+\includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_core.png}%
+
+\vspace{-10mm}
+Imagine the next observation $\hat{o}_{t+i+1}$ and next reward $\hat{r}_{t+i+1}$ given observation $\hat{o}_{t+i}$ for n rollouts where $i = 0, ..., n$
+%$\hat{}$
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{frame}
+%    \frametitle{I2A Architecture - Imagination Core}
+
+%\begin{multicols}{2}
+%	\begin{PraesentationAufzaehlung}
+%		\item Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observation $o_t$
+%	\end{PraesentationAufzaehlung}
+%    \vfill\columnbreak
+%	\begin{center}
+%    \includegraphics[height=0.5\textheight]{./Images/i2a_imagination_core.png}%
+%	\end{center}
+%\end{multicols}
+    
+%\end{frame}
+%\clearpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Rollout Policy Network $\hat{\pi}$}
+
+\begin{multicols}{2}
+	\begin{PraesentationAufzaehlung}
+	    \item Rollout policy network $\hat{\pi}$ decides the next action $\hat{a}_t$
+		\item Distillation loss\\
+		Make $\hat{\pi}$ (rollout policy) and $\pi$ (i2a policy) similar\\
+	\end{PraesentationAufzaehlung}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[height=0.35\textheight]{./Images/policy_net.png}%
+	\end{center}
+\end{multicols}
+\vspace{-22mm}
+\hspace{4mm}
+Cross Entropy between $\pi$ and $\hat{\pi}$\\
+	\begin{equation}
+		\mathnormal{
+		l_{dist}(\pi, \hat{\pi})(o_t) = \lambda_{dist} \sum_a \pi(a | o_t) log \hat{\pi}(a|o_t)
+		}
+	\end{equation}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+ % FOLIENSTIL: Weisse Schrift auf blauem Grund 
+%\PraesentationMasterWeissBlau 
+%\begin{frame} 
+%    \frametitle{Environment Model (EM)}
+%\end{frame}
+
+%\PraesentationMasterStandard
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Environment Model (EM)}
+
+\begin{multicols}{2}
+	\begin{PraesentationAufzaehlung}
+	\item $o_t$: initial observation
+	\item $\hat{o}_t$: predicted observation
+	\item $\hat{r}_t$: predicted reward
+		\item Given observation $o_t$ or $\hat{o}_t$ and action $\hat{a}_t$ predict (imagine) the next observation $\hat{o}_{t+1}$ and next reward $\hat{r}_{t+1}$ 
+	\end{PraesentationAufzaehlung}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[height=0.5\textheight]{./Images/environment_model.png}%
+	\end{center}
+\end{multicols}
+    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Environment Model Architecture}
+
+\begin{multicols}{2}
+	\begin{PraesentationAufzaehlung}
+		\item Input:\\
+		-- Stack of last 3 observations\\
+		-- Action as one hot vector\\
+		\item Trained with trajectories generated from a pretrained a2c policy
+	\end{PraesentationAufzaehlung}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[width=\columnwidth]{./Images/environment_model_architecture.png}%
+	\end{center}
+\end{multicols}
+    
+\end{frame}
+\clearpage
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{Environment Model Training}
+
 \begin{PraesentationAufzaehlung}
-\item Network architecture for deep reinforcement learning which combines model free and model based RL
+	\item Train similar to Autoencoder
+	\item Maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$
+	\item Loss:\\
+	\begin{equation}
+	\mathnormal{
+	env_{loss} = log p(o_t | a_{t-1}, o_{t-1})}
+	\end{equation}	
+	\item Image can be seen as Bernoulli distribution $p(o_t | a_{t-1}, o_{t-1})$
+	\begin{equation}
+	\mathnormal{
+	env_{loss} = Binary Cross Entropy(predicted\_image, true\_images)
+	}
+	\end{equation}
 \end{PraesentationAufzaehlung}
+    
+\end{frame}
+\clearpage
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder                      %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{I2A Architecture - Imagination Rollout}
+
+
+\includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_rollout.png}%
+
+\vspace{-10mm}
+The imagination core imagines trajectories of features $f = (\hat{o}, \hat{r})$\\
+The rollout encoder encode these trajectories    
+\end{frame}
+\clearpage
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Folie: Bilder - Zweispaltige Seite %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+    \frametitle{I2A Architecture - Imagination Future}
+
+\begin{multicols}{2}
+	\begin{PraesentationAufzaehlung}
+		\item Input:\\
+		observation $o_t$ and start action $a$
+		\item Output:\\
+		n imagined trajectories ($o_{t+i}, r_{t+i}$ for $i = 0, ..., n$)
+	\end{PraesentationAufzaehlung}
+    \vfill\columnbreak
+	\begin{center}
+    \includegraphics[height=.5\textheight]{./Images/imagine_future.png}%
+	\end{center}
+\end{multicols}
     
 \end{frame}
 \clearpage
@@ -225,66 +404,22 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{Training I2A}
+    \frametitle{I2A Architecture - Encoder}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
-		\item Input:\\
-		Observation $o_t$
-		\item Output:\\
-		Learned policy $\pi$ and value function $V$
-		\item Train with Advantage-Actor-Critic (A2C)
+		\item CNN Network followed by an LSTM Network
+		\item Learns useful information from the rollout trajectories
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
-    \includegraphics[width=\columnwidth]{./Images/i2a_a2c.png}%
+    \includegraphics[height=.5\textheight]{./Images/encoder.png}%
 	\end{center}
 \end{multicols}
     
 \end{frame}
 \clearpage
 
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie             %%
-%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Advantage-Actor-Critic (A2C)}
-
-\begin{PraesentationAufzaehlung}
-    \item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
-	Controls how the agent acts\\
-	Policy update:
-	\begin{equation}
-	\mathnormal{\nabla \theta = \alpha \nabla_\theta (log \pi_\theta (s, a)) q_w (s, a)}
-	\end{equation}	
-	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
-	Messures how good a choosen actions is\\
-	Value update:
-	\begin{equation}
-	\mathnormal{
-	\nabla w = \beta (R(s, a) + \gamma q_w(s_{t+1}, a_{t+1}) - q_w(s_t, a_t)) \nabla_w q_w(s_t, a_t)}
-	\end{equation}
-\end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder                      %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{I2A Architecture - Model Free Path}
-
-
-\includegraphics[width=\columnwidth]{./Images/i2a_all_model_free_path.png}%
-
-\begin{PraesentationAufzaehlung}
-	\item CNN Layers followed by Fully Connected Layers as usually used for Reinforcement Learning
-\end{PraesentationAufzaehlung}
-
-\end{frame}
-\clearpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
@@ -347,177 +482,42 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 
 
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder                      %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Imagination Rollout}
+    \frametitle{I2A Architecture - Model Free Path}
 
 
-\includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_rollout.png}%
+\includegraphics[width=\columnwidth]{./Images/i2a_all_model_free_path.png}%
 
 \begin{PraesentationAufzaehlung}
-	\item Predict what will happen in the future
+	\item CNN Layers followed by Fully Connected Layers
 \end{PraesentationAufzaehlung}
-    
+
 \end{frame}
 \clearpage
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Folie: Bilder - Zweispaltige Seite %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{frame}
-    \frametitle{I2A Architecture - Imagination Future}
+    \frametitle{I2A Training}
 
 \begin{multicols}{2}
 	\begin{PraesentationAufzaehlung}
 		\item Input:\\
-		observation $o_t$ and start action $a$
+		Observation $o_t$
 		\item Output:\\
-		n imagined trajectories ($o_{t+i}, r_{t+i}$ for $i = 0, ..., n$)
+		Policy $\pi$ and value function $V$
+		\item Train with Advantage-Actor-Critic (A2C)
 	\end{PraesentationAufzaehlung}
     \vfill\columnbreak
 	\begin{center}
-    \includegraphics[height=.5\textheight]{./Images/imagine_future.png}%
-	\end{center}
-\end{multicols}
-    
-\end{frame}
-\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{I2A Architecture - Encoder}
-
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-		\item CNN Network followed by an LSTM Network
-		\item Learns useful information from the rollout trajectories
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=.5\textheight]{./Images/encoder.png}%
-	\end{center}
-\end{multicols}
-    
-\end{frame}
-\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder                      %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{I2A Architecture - Imagination Core}
-
-
-\includegraphics[width=\columnwidth]{./Images/i2a_all_imagination_core.png}%
-
-\begin{PraesentationAufzaehlung}
-	\item Imagine the next observation $\hat{o}_{t+i}$ and next reward $\hat{r}_{t+i}$ given observation $\hat{o}_{t+i-1}$
-\end{PraesentationAufzaehlung}
-\end{frame}
-\clearpage
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\begin{frame}
-%    \frametitle{I2A Architecture - Imagination Core}
-
-%\begin{multicols}{2}
-%	\begin{PraesentationAufzaehlung}
-%		\item Imaginate the next observation $o_{t+i}$ and next reward $r_{t+i}$ given observation $o_t$
-%	\end{PraesentationAufzaehlung}
-%    \vfill\columnbreak
-%	\begin{center}
-%    \includegraphics[height=0.5\textheight]{./Images/i2a_imagination_core.png}%
-%	\end{center}
-%\end{multicols}
-    
-%\end{frame}
-%\clearpage
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Imagination Core - Policy Network}
-
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-	    \item Policy network $\hat{\pi}$ decides the next action $a_t$
-		\item Distillation loss\\
-		Make $\hat{\pi}$ (rollout policy) and $\pi$ (i2a policy) similar\\
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=0.35\textheight]{./Images/policy_net.png}%
-	\end{center}
-\end{multicols}
-\begin{PraesentationAufzaehlung}	    
-	\item Cross Entropy between $\pi$ and $\hat{\pi}$\\
-	\begin{equation}
-		\mathnormal{
-		l_{dist}(\pi, \hat{\pi})(o_t) = \lambda_{dist} \sum_a \pi(a | o_t) log \hat{\pi}(a|o_t)
-		}
-	\end{equation}
-\end{PraesentationAufzaehlung}
-    
-\end{frame}
-\clearpage
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
- % FOLIENSTIL: Weisse Schrift auf blauem Grund 
-\PraesentationMasterWeissBlau 
-\begin{frame} 
-    \frametitle{Environment Model (EM)}
-\end{frame}
-
-\PraesentationMasterStandard
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Environment Model (EM)}
-
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-		\item Imagine what will happen if we are in state $o_t$ and do action $a_t$
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[height=0.5\textheight]{./Images/environment_model.png}%
-	\end{center}
-\end{multicols}
-    
-\end{frame}
-\clearpage
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Environment Model Architecture}
-
-\begin{multicols}{2}
-	\begin{PraesentationAufzaehlung}
-		\item Input:\\
-		-- Stack of last 3 observations\\
-		-- Action as one hot vector\\
-		\item Trained with trajectories generated from a pretrained a2c policy
-	\end{PraesentationAufzaehlung}
-    \vfill\columnbreak
-	\begin{center}
-    \includegraphics[width=\columnwidth]{./Images/environment_model_architecture.png}%
+    \includegraphics[width=\columnwidth]{./Images/i2a_a2c.png}%
 	\end{center}
 \end{multicols}
     
@@ -527,30 +527,6 @@ $\rightarrow$ Combine model free and model based RL to get an agent\\
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Folie: Bilder - Zweispaltige Seite %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{frame}
-    \frametitle{Training Environment Model}
-
-\begin{PraesentationAufzaehlung}
-	\item Train similar to Autoencoder
-	\item Maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$
-	\item Loss:\\
-	\begin{equation}
-	\mathnormal{
-	env_{loss} = log p(o_t | a_{t-1}, o_{t-1})}
-	\end{equation}	
-	\item Image can be seen as Bernoulli distribution $p(o_t | a_{t-1}, o_{t-1})$
-	\begin{equation}
-	\mathnormal{
-	env_{loss} = Binary Cross Entropy(predicted\_image, true\_images)
-	}
-	\end{equation}
-\end{PraesentationAufzaehlung}
-    
-\end{frame}
-\clearpage
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  

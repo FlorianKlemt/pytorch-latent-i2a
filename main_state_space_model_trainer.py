@@ -6,7 +6,7 @@ import argparse
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 from a2c_models.atari_model import AtariModel
 
-from environment_model.LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+from gym_envs.env_ms_pacman import make_env_ms_pacman
 from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
 import copy
 import multiprocessing as mp

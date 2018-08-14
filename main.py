@@ -68,7 +68,7 @@ def main():
         envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
     elif args.algo == 'i2a' or args.train_on_200x160_pixel:
-        from environment_model.LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        from gym_envs.env_ms_pacman import make_env_ms_pacman
         envs = [make_env_ms_pacman(env_id = args.env_name,
                                    seed = args.seed,
                                    rank = i,

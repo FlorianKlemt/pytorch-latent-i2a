@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from environment_model.LatentSpaceEncoder.models_from_paper.depth2space import DepthToSpace, SpaceToDepth
+from environment_model.latent_space.models_from_paper.depth2space import DepthToSpace, SpaceToDepth
 import math
 
 

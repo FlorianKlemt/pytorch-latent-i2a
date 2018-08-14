@@ -31,6 +31,8 @@ class EnvironmentModelTrainer():
         # sample a state, next-state pair randomly from replay memory for a training step
         batch_sample = [torch.cat(a) for a in
                         zip(*random.sample(sample_memory, batch_size))]
+        if self.use_cuda:
+            batch_sample = [s.cuda() for s in batch_sample]
 
         loss, prediction = self.optimizer.optimizer_step(sample=batch_sample)
         # log and print infos

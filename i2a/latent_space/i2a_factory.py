@@ -5,7 +5,7 @@ from i2a.latent_space.imagination_core.latent_space_imagination_core import Late
 
 
 def load_latent_space_environment_model(load_environment_model_path, latent_space_model, action_space, use_cuda):
-    from environment_model.LatentSpaceEncoder.models_from_paper.state_space_model import SSM
+    from environment_model.latent_space.models_from_paper.state_space_model import SSM
     environment_model = SSM(model_type=latent_space_model, observation_input_channels=3, state_input_channels=64,
                                  num_actions=action_space, use_cuda=use_cuda)
 

@@ -1,6 +1,6 @@
 import torch
 import gym
-from environment_model.LatentSpaceEncoder.models_from_paper.state_space_model import SSM
+from environment_model.latent_space.models_from_paper.state_space_model import SSM
 
 import argparse
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
@@ -118,7 +118,7 @@ def main():
                                             args=args)
 
     if not args.no_training:
-        from environment_model.LatentSpaceEncoder.state_space_model_trainer import StateSpaceModelTrainer
+        from environment_model.latent_space.state_space_model_trainer import StateSpaceModelTrainer
         trainer = StateSpaceModelTrainer(args=args, env=env, model=model, policy=policy,
                                          optimizer=optimizer,
                                          save_model_path = save_model_path)

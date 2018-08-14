@@ -1,5 +1,5 @@
 import torch.nn as nn
-from environment_model.LatentSpaceEncoder.models_from_paper.model_building_blocks import PosteriorModule, PriorModule, StateTransition, EncoderModule, DecoderModule, InitialStateModule
+from environment_model.latent_space.models_from_paper.model_building_blocks import PosteriorModule, PriorModule, StateTransition, EncoderModule, DecoderModule, InitialStateModule
 import torch
 from torch.distributions.normal import Normal
 from torch.distributions.bernoulli import Bernoulli

@@ -153,7 +153,10 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_fc',    nn.Linear(64*W*H, 5)),
           ('softmax',      nn.Softmax())
         ]))
-        self.img_head = nn.Conv2d(64, input_channels, kernel_size=1)        #input size is n3 of basic-block2, output is input_channels (1 or 3)
+        self.img_head = nn.Sequential(OrderedDict([
+            ('conv1',      nn.Conv2d(64, input_channels, kernel_size=1)),        #input size is n3 of basic-block2, output is input_channels (1 or 3)
+            ('sigmoid',    nn.Sigmoid())
+        ]))
 
         self.apply(xavier_weights_init)
 

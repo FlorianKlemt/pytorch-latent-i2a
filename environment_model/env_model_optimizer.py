@@ -11,7 +11,8 @@ class EnvironmentModelOptimizer():
 
         self.reward_loss_coef = args.reward_loss_coef
 
-        self.loss_function_frame = nn.MSELoss()
+        #self.loss_function_frame = nn.MSELoss()
+        self.loss_function_frame = torch.nn.BCELoss()
         self.loss_function_reward = nn.MSELoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
@@ -30,7 +31,6 @@ class EnvironmentModelOptimizer():
 
         # preform training step with both losses
         loss = next_reward_loss * self.reward_loss_coef + next_frame_loss
-        #loss.backward(retain_graph=True)
         loss.backward()
 
         self.optimizer.step()

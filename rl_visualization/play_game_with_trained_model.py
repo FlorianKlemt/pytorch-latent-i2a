@@ -3,7 +3,6 @@ import torch
 import time
 import os
 import torch.nn.functional as F
-from custom_envs import make_custom_env, MiniFrameStack
 
 from multiprocessing import Process
 
@@ -38,10 +37,11 @@ class FrameStack(gym.Wrapper):
 
 def make_test_env(env_id, grey_scale, frame_stack):
     if 'MiniPacman' in env_id:
+        from gym_envs.envs_mini_pacman import make_custom_env
         env = make_custom_env(env_id, 42, 1, None, grey_scale=grey_scale)()
         env = FrameStack(env, frame_stack)
     elif 'MsPacman' in env_id:
-        from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        from gym_envs.envs_ms_pacman import make_env_ms_pacman
         env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=frame_stack, skip_frames=4)()
     else:
         env = gym.make(env_id)

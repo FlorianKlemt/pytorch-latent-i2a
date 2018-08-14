@@ -66,7 +66,7 @@ def main():
     save_model_path = get_save_model_path(args)
 
 
-    from custom_envs import make_custom_env
+    from gym_envs.envs_mini_pacman import make_custom_env
     env = make_custom_env(args.env_name, seed=1, rank=1, log_dir=None, grey_scale=args.grey_scale)() #wtf
 
 

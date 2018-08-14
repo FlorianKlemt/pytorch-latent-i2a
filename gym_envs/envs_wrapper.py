@@ -1,7 +1,5 @@
 import gym
 
-from custom_envs import make_custom_env, RewardScaling, NegativeRewardForDying
-
 import collections
 from gym import spaces
 class EncoderFrameStack(gym.Wrapper):
@@ -53,6 +51,7 @@ class WarpFrameGrayScale(gym.ObservationWrapper):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
         return frame.reshape((frame.shape[0], frame.shape[1]))
 
+
 class ReshapeRGBChannels(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
@@ -61,6 +60,7 @@ class ReshapeRGBChannels(gym.ObservationWrapper):
 
     def _observation(self, obs):
         return obs.transpose(2,0,1)
+
 
 class SkipFramesEnv(gym.Wrapper):
     def __init__(self, env, skip=4):
@@ -87,44 +87,3 @@ class SkipFramesEnv(gym.Wrapper):
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
 
-
-def custom_make_atari(env_id, skip_frames = 1):
-    from baselines.common.atari_wrappers import NoopResetEnv
-    env = gym.make(env_id)
-    assert 'NoFrameskip' in env.spec.id
-    env = NoopResetEnv(env, noop_max=30)
-    env = SkipFramesEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
-    return env
-
-
-def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_frames, skip_frames):
-    from baselines import bench
-    import os
-    env = gym.make(env_id)
-    is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-    if is_atari:
-        env = custom_make_atari(env_id, skip_frames=skip_frames)
-    env.seed(seed + rank)
-    if log_dir is not None:
-        env = bench.Monitor(env, os.path.join(log_dir, str(rank)))
-    env = FrameUIntToFloat(env)
-    if grey_scale:
-        env = WarpFrameGrayScale(env)
-    else:
-        env = ReshapeRGBChannels(env)
-    if stack_frames > 1:
-        env = EncoderFrameStack(env, stack_frames)
-    return env
-
-def make_env_ms_pacman(env_id, seed, rank, log_dir, grey_scale, stack_frames, skip_frames):
-    from custom_envs import ClipAtariFrameSizeTo200x160
-    def _thunk():
-        env = create_atari_environment(env_id=env_id, seed= seed, rank=rank,
-                                       log_dir=log_dir, grey_scale=grey_scale,
-                                       stack_frames=stack_frames, skip_frames=skip_frames)
-        env = ClipAtariFrameSizeTo200x160(env=env)
-        env = NegativeRewardForDying(env, -100)
-        env = RewardScaling(env, 0.1)
-        return env
-
-    return _thunk

@@ -8,6 +8,8 @@ from baselines import bench
 from baselines.common.atari_wrappers import EpisodicLifeEnv,NoopResetEnv,MaxAndSkipEnv,FireResetEnv,ClipRewardEnv
 import os
 
+
+
 class MiniFrameStack(gym.Wrapper):
     def __init__(self, env, num_frames, low = 0., high = 1.):
         """Buffer observations and stack across channels (last axis)."""
@@ -57,6 +59,7 @@ class WarpMiniPacmanFrameRGB(gym.ObservationWrapper):
     def observation(self, obs):
         return obs.reshape(self.observation_space.shape)#obs.transpose(2,0,1)
 
+'''
 class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
     def __init__(self, env, image_resize_size = 19):
         gym.ObservationWrapper.__init__(self, env)
@@ -73,6 +76,7 @@ class WarpMiniPacmanFrameSquared(gym.ObservationWrapper):
         #frame = frame.reshape((19, 19, 1)) #???
         frame = frame.reshape((1, 19, 19))
         return frame
+'''
 
 
 
@@ -104,6 +108,7 @@ def make_custom_env(env_id, seed, rank, log_dir, grey_scale):
     return _thunk
 
 
+'''
 def make_custom_env_squared(env_id, seed, rank, log_dir):
     def _thunk():
         episodic_life = True
@@ -135,48 +140,4 @@ def make_custom_env_squared(env_id, seed, rank, log_dir):
 
     return _thunk
 
-
-#for State Space Encoder
-class ClipAtariFrameSizeTo200x160(gym.ObservationWrapper):
-    def __init__(self, env):
-        gym.ObservationWrapper.__init__(self, env)
-        self.height = 200
-        self.width = 160
-        self.channels = self.observation_space.shape[0]
-        self.observation_space = spaces.Box(low=0., high=1.,
-            shape=(self.channels, self.height, self.width), dtype=np.float)
-
-    def observation(self, frame):
-        return frame[:, :self.height, :self.width]
-
-class RewardScaling(gym.Wrapper):
-    def __init__(self, env, scaling_factor=0.1):    #0.1 is good for MsPacman
-        gym.Wrapper.__init__(self, env)
-        self.scaling_factor = scaling_factor
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-
-        reward *= self.scaling_factor
-        return obs, reward, done, info
-
-class NegativeRewardForDying(gym.Wrapper):
-    def __init__(self, env, reward_for_dying = -100):
-        gym.Wrapper.__init__(self, env)
-        self.lives = self.env.unwrapped.ale.lives()
-        self.reward_for_dying = reward_for_dying
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        lives = self.env.unwrapped.ale.lives()
-        if lives < self.lives:
-            reward += self.reward_for_dying
-
-        self.lives = self.unwrapped.ale.lives()
-        return obs, reward, done, info
-
-    def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs)
-        obs, _, _, _ = self.env.step(0)
-        self.lives = self.env.unwrapped.ale.lives()
-        return obs
+'''

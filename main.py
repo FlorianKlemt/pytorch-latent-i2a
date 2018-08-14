@@ -23,9 +23,6 @@ import multiprocessing as mp
 import algo
 from algo.i2a_algo import I2A_ALGO
 
-import gym
-import gym_minipacman
-
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr', 'i2a']
@@ -64,11 +61,11 @@ def main():
         visdom_plotter = VisdomPlotterA2C(viz, args.algo == 'i2a')
 
     if 'MiniPacman' in args.env_name:
-        from custom_envs import make_custom_env
+        from gym_envs.envs_mini_pacman import make_custom_env
         envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
     elif args.algo == 'i2a' or args.train_on_200x160_pixel:
-        from gym_envs.env_ms_pacman import make_env_ms_pacman
+        from gym_envs.envs_ms_pacman import make_env_ms_pacman
         envs = [make_env_ms_pacman(env_id = args.env_name,
                                    seed = args.seed,
                                    rank = i,

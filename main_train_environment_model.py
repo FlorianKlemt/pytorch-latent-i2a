@@ -1,7 +1,6 @@
 import gym
 import gym_minipacman
 
-
 def get_args():
     import argparse
     args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
@@ -159,12 +158,12 @@ def build_environment_model(env,
                             args,
                             load_environment_model_path=None):
     if args.use_class_labels:
-        from environment_model.minipacman_env_model import MiniPacmanEnvModelClassLabels
+        from environment_model.mini_pacman.env_model_label import MiniPacmanEnvModelClassLabels
         EMModel = MiniPacmanEnvModelClassLabels
         labels = 7
         em_obs_shape = (labels, env.observation_space.shape[1], env.observation_space.shape[2])
     else:
-        from environment_model.minipacman_env_model import MiniPacmanEnvModel
+        from environment_model.mini_pacman.env_model import MiniPacmanEnvModel
         EMModel = MiniPacmanEnvModel
         em_obs_shape = env.observation_space.shape
 
@@ -190,10 +189,10 @@ def build_environment_model(env,
 
 def build_optimizer(environment_model, args):
     if args.use_class_labels:
-        from environment_model.env_mini_pacman_optimizer import EnvMiniPacmanLabelsOptimizer
+        from environment_model.mini_pacman.env_optimizer_label import EnvMiniPacmanLabelsOptimizer
         optimizer_type = EnvMiniPacmanLabelsOptimizer
     else:
-        from environment_model.env_mini_pacman_optimizer import EnvMiniPacmanOptimizer
+        from environment_model.mini_pacman.env_optimizer import EnvMiniPacmanOptimizer
         optimizer_type = EnvMiniPacmanOptimizer
 
     optimizer = optimizer_type(model=environment_model,

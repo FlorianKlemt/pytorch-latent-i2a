@@ -3,7 +3,7 @@ from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper, I2A_ActorCritic
 from a2c_models.i2a_mini_model import I2A_MiniModel
 from i2a.i2a_agent import I2A, I2ALatentSpace
 import torch
-from environment_model.minipacman_env_model import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
+from environment_model.mini_pacman.env_model import MiniPacmanEnvModel, CopyEnvModel, MiniPacmanEnvModelClassLabels
 from i2a.load_utils import load_em_model
 from i2a.imagination_core import ImaginationCore
 from i2a.i2a_models.latent_space_imagination_core import LatentSpaceImaginationCore

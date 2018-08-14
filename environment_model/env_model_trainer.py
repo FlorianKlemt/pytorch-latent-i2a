@@ -5,17 +5,14 @@ import random
 class EnvironmentModelTrainer():
     """ Train Environment model
         Args:
-            env                  : Atari environment (e.g. RegularMiniPacmanNoFrameskip-v0)
-            optimizer            : do update step for environment model
-            create_training_data : function which creates training samples (training_data_creator(create_n_samples))
-            model_saver          : save model function
-            loss_printer
-            code (:obj:`int`, optional): Error code.
-
-        Attributes:
-            msg (str): Human readable string describing the exception.
-            code (int): Exception error code.
-
+            optimizer             : do training update step for environment model
+            training_data_creator : function which creates training samples (training_data_creator.create(create_n_samples))
+            model_saver           : save model function
+            loss_printer          : print loss
+                                    loss_printer.log_loss_and_reward(loss=loss,
+                                                                     prediction=prediction,
+                                                                     sample=batch_sample,
+                                                                     episode=i_episode)
         """
     def __init__(self,
                  optimizer,

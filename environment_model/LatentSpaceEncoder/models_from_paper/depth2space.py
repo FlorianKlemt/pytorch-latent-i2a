@@ -4,7 +4,6 @@ import torch.nn as nn
 #The code in this file is taken from https://gist.github.com/jalola/f41278bb27447bed9cd3fb48ec142aec
 #It is supposed to emulate the tensorflow functions tf.depth_to_space and tf.space_to_depth
 #These functions are used in the building blocks mentioned in the paper "Learning and Querying Generative Models for RL" (https://arxiv.org/pdf/1802.03006.pdf)
-#TODO: check for correctness
 
 class DepthToSpace(nn.Module):
     def __init__(self, block_size):

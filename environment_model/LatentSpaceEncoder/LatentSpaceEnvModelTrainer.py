@@ -2,7 +2,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 import random
-from LatentSpaceEncoder.LossPrinter import LossPrinter
+from environment_model.LatentSpaceEncoder.LossPrinter import LossPrinter
 
 
 class LatentSpaceEnvModelTrainer():

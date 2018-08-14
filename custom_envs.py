@@ -1,4 +1,5 @@
 import gym
+import gym_minipacman
 import numpy as np
 import collections
 from PIL import Image

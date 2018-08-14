@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from LatentSpaceEncoder.models_from_paper.depth2space import DepthToSpace, SpaceToDepth
+from environment_model.LatentSpaceEncoder.models_from_paper.depth2space import DepthToSpace, SpaceToDepth
 import math
 
 
@@ -55,7 +55,6 @@ class ResConv(nn.Module):
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
         )
 
-    #TODO: ask Tim and/or Weber, sizes as given in the paper do not match
     def forward(self, state, input):
         intermediate_result = self.res_conv(input)
         output = state + intermediate_result

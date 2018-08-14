@@ -1,7 +1,7 @@
 import torch
-from LatentSpaceEncoder.EnvEncoderModel import EnvEncoderModel
-from LatentSpaceEncoder.AutoEncoderModel import LinearAutoEncoderModel, CNNAutoEncoderModel
-from LatentSpaceEncoder.LatentSpaceEnvModelTrainer import LatentSpaceEnvModelTrainer
+from environment_model.LatentSpaceEncoder.EnvEncoderModel import EnvEncoderModel
+from environment_model.LatentSpaceEncoder.AutoEncoderModel import LinearAutoEncoderModel, CNNAutoEncoderModel
+from environment_model.LatentSpaceEncoder.LatentSpaceEnvModelTrainer import LatentSpaceEnvModelTrainer
 from custom_envs import make_custom_env, RewardScaling, NegativeRewardForDying
 import matplotlib.pyplot as plt
 import gym

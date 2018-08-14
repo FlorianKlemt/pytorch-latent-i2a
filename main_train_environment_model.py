@@ -1,6 +1,3 @@
-import gym
-import gym_minipacman
-
 def get_args():
     import argparse
     args_parser = argparse.ArgumentParser(description='Make Environment Model arguments')
@@ -207,7 +204,7 @@ def build_optimizer(environment_model, args):
 def build_policy(env, args):
     load_policy_model_path = '{0}{1}.pt'.format(args.load_policy_model_dir, args.load_policy_model_name)
 
-    from a2c_models.i2a_mini_model import I2A_MiniModel
+    from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
     from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
     policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=env.observation_space.shape,
                                              action_space=env.action_space.n,

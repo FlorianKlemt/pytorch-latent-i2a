@@ -13,18 +13,18 @@ from model import Policy
 from storage import RolloutStorage, I2A_RolloutStorage
 from visualize import visdom_plot
 from rl_visualization.visdom_plotter import VisdomPlotterA2C
-from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper, I2A_ActorCritic
-from a2c_models.i2a_mini_model import I2A_MiniModel
-from i2a.i2a_agent import I2A
+from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
+from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
 
 from rl_visualization.play_game_with_trained_model import TestPolicy
-import gym_minipacman
 import time
 import sys
 import multiprocessing as mp
 import algo
 from algo.i2a_algo import I2A_ALGO
-from i2a.i2a_factory import build_i2a_model, build_latent_space_i2a_model
+
+import gym
+import gym_minipacman
 
 args = get_args()
 
@@ -100,11 +100,13 @@ def main():
 
     if args.algo == 'i2a' and 'MiniPacman' in args.env_name:
         #build i2a model also wraps it with the A2C_PolicyWrapper
+        from i2a.mini_pacman.i2a_mini_pacman_factory import build_i2a_model
         actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
                                        action_space=envs.action_space.n,
                                        args = args,
                                        em_model_reward_bins=em_model_reward_bins)
     elif args.algo == 'i2a':
+        from i2a.latent_space.i2a_factory import build_latent_space_i2a_model
         actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
                                                     action_space=envs.action_space,
                                                     args=args)

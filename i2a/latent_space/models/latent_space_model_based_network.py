@@ -1,6 +1,6 @@
 import torch
-from i2a.i2a_models.latent_space_rollout_encoder import LatentSpaceEncoderCNNNetwork, LatentSpaceEncoderLSTMNetwork, LatentSpaceRolloutEncoder
-import numpy as np
+from i2a.latent_space.models.latent_space_rollout_encoder import LatentSpaceEncoderCNNNetwork, LatentSpaceEncoderLSTMNetwork, LatentSpaceRolloutEncoder
+
 
 class LatentSpaceModelBasedNetwork(torch.nn.Module):
     def __init__(self,

@@ -1,6 +1,6 @@
 import torch
-from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
-import numpy as np
+from i2a.mini_pacman.models.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
+
 
 class ModelBasedNetwork(torch.nn.Module):
     """

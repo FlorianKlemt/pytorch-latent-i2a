@@ -1,6 +1,5 @@
 import torch
-from a2c_models.mini_model import MiniModel
-from a2c_models.i2a_mini_model import I2A_MiniModel
+from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
 def load_policy(load_policy_model_dir = "trained_models/",

@@ -1,12 +1,10 @@
 import torch
 from LatentSpaceEncoder.EnvEncoderModel import EnvEncoderModel
-from LatentSpaceEncoder.AutoEncoderModel import AutoEncoderModel, LinearAutoEncoderModel, CNNAutoEncoderModel
+from LatentSpaceEncoder.AutoEncoderModel import LinearAutoEncoderModel, CNNAutoEncoderModel
 from LatentSpaceEncoder.LatentSpaceEnvModelTrainer import LatentSpaceEnvModelTrainer
 from custom_envs import make_custom_env, RewardScaling, NegativeRewardForDying
 import matplotlib.pyplot as plt
-import cv2
 import gym
-import gym_minipacman
 import argparse
 
 
@@ -53,7 +51,7 @@ def main():
     plt.ion()
 
     use_cuda = True
-    from a2c_models.i2a_mini_model import I2A_MiniModel
+    from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
     from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
     #create environment to train on
@@ -202,7 +200,6 @@ def make_env(env_id, seed, rank, log_dir, grey_scale, skip_frames = 1, stack_fra
 
 def create_atari_environment(env_id, seed, rank, log_dir, grey_scale, stack_frames, skip_frames):
     from baselines import bench
-    from baselines.common.atari_wrappers import EpisodicLifeEnv, ClipRewardEnv
     import os
     env = gym.make(env_id)
     is_atari = hasattr(gym.envs, 'atari') and isinstance(env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
@@ -250,7 +247,6 @@ def custom_make_atari(env_id, skip_frames = 1):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
-    from baselines.common.atari_wrappers import MaxAndSkipEnv
     env = SkipFramesEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
     return env
 

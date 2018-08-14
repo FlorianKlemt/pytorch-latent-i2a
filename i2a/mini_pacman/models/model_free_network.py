@@ -4,9 +4,9 @@ import torch.nn.functional as F
 from i2a.utils import get_linear_dims_after_conv
 
 # see B.1: model free path uses identical network as the standard model-free baseline agent (withput the fc layers)
-class ModelFreeNetworkMiniPacman(nn.Module):
+class ModelFreeNetwork(nn.Module):
     def __init__(self, obs_shape, num_outputs = 512):
-        super(ModelFreeNetworkMiniPacman, self).__init__()
+        super(ModelFreeNetwork, self).__init__()
         input_channels = obs_shape[0]
         input_dims = obs_shape[1:]
 

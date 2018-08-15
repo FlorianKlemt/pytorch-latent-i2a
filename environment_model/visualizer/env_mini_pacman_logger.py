@@ -18,6 +18,8 @@ class LoggingMiniPacmanEnvTraining():
         self.start_time = time.time()
 
         self.print_interval = 10
+        self.reward_prediction = 0.
+        self.reward = 0.
 
 
     def log_loss_and_reward(self, loss, prediction, sample, episode):
@@ -28,10 +30,11 @@ class LoggingMiniPacmanEnvTraining():
         reward_loss = reward_loss.item()
 
         next_state_prediction, reward_prediction = prediction
-        self.reward_prediction = reward_prediction.detach().cpu().numpy()[0]
+        # TODO fix for bit array
+        self.reward_prediction = reward_prediction.detach().cpu().view(-1).numpy()[0]
 
         (state, action, next_state, reward) = sample
-        self.reward = reward.detach().cpu().numpy()[0]
+        self.reward = reward.detach().cpu().view(-1).numpy()[0]
 
         self.visdom_plotter.append((state_loss, reward_loss),
                                    (self.reward, self.reward_prediction))

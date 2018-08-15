@@ -74,7 +74,7 @@ def get_args():
     parser.add_argument('--use-copy-model', action='store_true', default=False,
                         help='True to use copy model, False for standard I2A')
     parser.add_argument('--train-on-200x160-pixel', action='store_true', default=False,
-                        help='True to use copy model, False for standard I2A')
+                        help='True to use 200x160 image, False for downsampled image')
     parser.add_argument('--i2a-rollout-steps', type=int, default=2,
                         help='number of steps the imagination core rollouts in the I2A training (default: 5)')
     parser.add_argument('--use-class-labels', action='store_true', default=False,

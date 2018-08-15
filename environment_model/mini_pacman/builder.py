@@ -27,12 +27,12 @@ class MiniPacmanEnvironmentBuilder():
 
     def build_environment_model(self, env):
         if self.args.use_class_labels:
-            from environment_model.mini_pacman.env_model_label import MiniPacmanEnvModelClassLabels
+            from environment_model.mini_pacman.model.env_model_label import MiniPacmanEnvModelClassLabels
             EMModel = MiniPacmanEnvModelClassLabels
             labels = 7
             em_obs_shape = (labels, env.observation_space.shape[1], env.observation_space.shape[2])
         else:
-            from environment_model.mini_pacman.env_model import MiniPacmanEnvModel
+            from environment_model.mini_pacman.model.env_model import MiniPacmanEnvModel
             EMModel = MiniPacmanEnvModel
             em_obs_shape = env.observation_space.shape
 
@@ -68,7 +68,7 @@ class MiniPacmanEnvironmentBuilder():
 
         if not self.args.no_policy_model_loading:
             import torch
-            load_policy_model_path = '{0}{1}.pt'.format(self.args.load_policy_model_dir, self.args.load_policy_model_name)
+            load_policy_model_path = '{0}{1}.pt'.format(self.args.load_policy_model_dir, self.args.env_name)
             saved_state = torch.load(load_policy_model_path, map_location=lambda storage, loc: storage)
             print("Load Policy Model", load_policy_model_path)
             policy.load_state_dict(saved_state)

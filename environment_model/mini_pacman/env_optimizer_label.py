@@ -23,7 +23,7 @@ class EnvMiniPacmanLabelsOptimizer():
                                           eps= eps,
                                           weight_decay= weight_decay)
 
-        from environment_model.mini_pacman.env_model_label import MiniPacmanRGBToClassConverter
+        from environment_model.mini_pacman.model.env_model_label import MiniPacmanRGBToClassConverter
         self.rgb_to_class = MiniPacmanRGBToClassConverter(use_cuda=use_cuda)
 
     def optimizer_step(self, sample):

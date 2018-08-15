@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-from environment_model.mini_pacman.basic_blocks import BasicBlock, Flatten, xavier_weights_init
+from environment_model.mini_pacman.model.basic_blocks import BasicBlock, Flatten, xavier_weights_init
 
 
 class MiniPacmanEnvModel(torch.nn.Module):

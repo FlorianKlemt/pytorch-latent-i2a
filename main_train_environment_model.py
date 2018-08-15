@@ -11,17 +11,21 @@ def get_args():
                              help='directory to save agent logs (default: trained_models/a2c)')
     args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
                              help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
-    args_parser.add_argument('--latent-space-model', default='dSSM_DET',
-                             help='latent space model used if env is not MiniPacman'
-                                  '(default: dSSM_DET)'
-                                  'latent-space-models = (None, dSSM_DET, dSSM_VAE, sSSM)')
+    #args_parser.add_argument('--latent-space-model', default='dSSM_DET',
+    #                         help='latent space model used if env is not MiniPacman'
+    #                              '(default: dSSM_DET)'
+    #                              'latent-space-models = (None, dSSM_DET, dSSM_VAE, sSSM)')
+    args_parser.add_argument('--environment-model', default='dSSM_DET',
+                             help='environment model (default: dSSM_DET)'
+                                  'mini pacman models = (MiniModel, MiniModelLabels)'
+                                  'latent space models = (dSSM_DET, dSSM_VAE, sSSM)')
     args_parser.add_argument('--skip-frames', type=int, default=4,
                              help='Only used when train with latent space model'
                                   'skip frames (default: 4)')
-    args_parser.add_argument('--use-class-labels', action='store_true', default=False,
-                             help='Only used when train with mini pacman'
-                                  'true to use pixelwise cross-entropy-loss and make'
-                                  'the color of each pixel a classification task')
+    #args_parser.add_argument('--use-class-labels', action='store_true', default=False,
+    #                         help='Only used when train with mini pacman'
+    #                              'true to use pixelwise cross-entropy-loss and make'
+    #                              'the color of each pixel a classification task')
     args_parser.add_argument('--render', action='store_true', default=False,
                              help='starts an progress that play and render games with the current model')
     args_parser.add_argument('--no-training', action='store_true', default=False,
@@ -90,7 +94,7 @@ def main():
     policy = builder.build_policy(env)
 
     if args.render:
-        test_process = builder.build_tester(env, policy, environment_model)
+        test_process = builder.build_environment_model_tester(env, policy, environment_model)
 
     if args.no_training:
         import time

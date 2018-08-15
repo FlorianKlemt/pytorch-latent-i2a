@@ -5,10 +5,13 @@ class LatentSpaceEnvironmentBuilder():
     def __init__(self, args):
         self.args = args
         self.save_model_path = self.get_save_model_path()
+        self.environment_model_name = args.env_name + "_" + args.environment_model + ".dat"
+        self.load_environment_model_dir = 'trained_models/environment_models/'
+        self.load_environment_model_path = self.load_environment_model_dir + self.environment_model_name
 
     def get_save_name(self):
         return '{0}_{1}'.format(self.args.env_name,
-                                self.args.latent_space_model)
+                                self.args.environment_model)
 
     def get_save_model_path(self):
         return '{0}{1}.dat'.format(self.args.save_environment_model_dir,
@@ -29,17 +32,18 @@ class LatentSpaceEnvironmentBuilder():
 
     def build_environment_model(self, env):
         from environment_model.latent_space.models_from_paper.state_space_model import SSM
-        environment_model = SSM(model_type=self.args.latent_space_model,
+        environment_model = SSM(model_type=self.args.environment_model,
                                 observation_input_channels=3,
                                 state_input_channels=64,
                                 num_actions=env.action_space.n,
-                                use_cuda=self.args.cuda,
-                                reward_prediction_bits=self.args.reward_prediction_bits)
+                                use_cuda=self.args.cuda)#,
+                                #reward_prediction_bits=self.args.reward_prediction_bits)
 
         if self.args.load_environment_model:
             import torch
             print("Load environment model", self.save_model_path)
-            saved_state = torch.load(self.args.load_environment_model_path, map_location=lambda storage, loc: storage)
+            saved_state = torch.load(self.load_environment_model_path,
+                                     map_location=lambda storage, loc: storage)
             environment_model.load_state_dict(saved_state)
         else:
             print("Save environment model under", self.save_model_path)
@@ -91,7 +95,7 @@ class LatentSpaceEnvironmentBuilder():
         return loss_printer
 
     def build_optimizer(self, environment_model):
-        if self.args.latent_space_model == "dSSM_DET":
+        if self.args.environment_model == "dSSM_DET":
             from environment_model.latent_space.dSSM_DET_optimizer import dSSM_DET_Optimizer
             optimizer_type = dSSM_DET_Optimizer
         else:
@@ -135,7 +139,7 @@ class LatentSpaceEnvironmentBuilder():
                                           use_cuda=self.args.cuda)
         return trainer
 
-    def build_tester(self, env, policy, environment_model):
+    def build_environment_model_tester(self, env, policy, environment_model):
         from rl_visualization.environment_model.test_environment_model import TestEnvironmentModel
         import copy
         self.args.use_latent_space = True
@@ -145,3 +149,54 @@ class LatentSpaceEnvironmentBuilder():
                                             rollout_policy=policy,
                                             args=self.args)
         return test_process
+
+
+    def build_rollout_policy(self, action_space, use_cuda):
+        from i2a.rollout_policy import RolloutPolicy
+        rollout_policy = RolloutPolicy(obs_shape=(64, 25, 20), action_space=action_space)
+
+        if use_cuda:
+            rollout_policy.cuda()
+        return rollout_policy
+
+    def build_a2c_model(self, env):
+        from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
+        from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
+        return A2C_PolicyWrapper(
+            I2A_MiniModel(obs_shape=env.observation_space.shape,
+                          action_space=env.action_space.n,
+                          use_cuda=self.args.cuda))
+
+    def build_i2a_model(self,
+                        env,
+                        args):
+        action_space = env.action_space.n
+        obs_shape = (env.observation_space.shape[0] * args.num_stack, *env.observation_space.shape[1:])
+
+        environment_model = self.build_environment_model(env)
+        for param in environment_model.parameters():
+            param.requires_grad = False
+        environment_model.eval()
+
+        rollout_policy = self.build_rollout_policy(action_space, args.cuda)
+        for param in rollout_policy.parameters():
+            param.requires_grad = True
+        rollout_policy.train()
+
+        from i2a.latent_space.imagination_core.latent_space_imagination_core import LatentSpaceImaginationCore
+        imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
+                                                      rollout_policy=rollout_policy,
+                                                      grey_scale=args.grey_scale, frame_stack=args.num_stack)
+
+        from i2a.latent_space.models.i2a_agent import I2ALatentSpace
+        from i2a.latent_space.i2a_latent_space_actor_critic import I2ALatentSpaceActorCritic
+
+        i2a_model = I2ALatentSpaceActorCritic(policy=I2ALatentSpace(obs_shape=obs_shape,
+                                                                    action_space=action_space,
+                                                                    imagination_core=imagination_core,
+                                                                    rollout_steps=args.i2a_rollout_steps,
+                                                                    use_cuda=args.cuda),
+                                              imagination_core=imagination_core,
+                                              frame_stack=args.num_stack)
+
+        return i2a_model

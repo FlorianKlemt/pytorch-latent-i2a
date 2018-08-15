@@ -1,20 +1,45 @@
-def get_save_model_path(args):
+from os import environ
+
+
+def get_save_environment_model_path(args):
     from environment_model.model_saver import save_environment_model_path
     return save_environment_model_path(args.save_environment_model_dir,
                                        args.env_name,
-                                       args.use_class_labels,
+                                       args.environment_model == "MiniModelLabels",
                                        args.grey_scale)
 def get_log_path(args):
     from environment_model.model_saver import save_environment_model_log_path
     return save_environment_model_log_path(args.save_environment_model_dir,
                                            args.env_name,
-                                           args.use_class_labels,
+                                           args.environment_model == "MiniModelLabels",
                                            args.grey_scale)
 
 class MiniPacmanEnvironmentBuilder():
     def __init__(self, args):
-        self.save_model_path = get_save_model_path(args)
+        self.save_environment_model_path = get_save_environment_model_path(args)
         self.args = args
+        self.env = self.build_env()
+        self.reward_bins = self.env.unwrapped.reward_bins
+
+    def _build_mini_pacman_copy_environment_model(self):
+        from environment_model.mini_pacman.model.env_copy_model import CopyEnvModel
+        return CopyEnvModel()
+
+    def _build_mini_pacman_class_labels_environment_model(self, env):
+        from environment_model.mini_pacman.model.env_model_label import MiniPacmanEnvModelClassLabels
+        labels = 7
+        em_obs_shape = (labels, env.observation_space.shape[1], env.observation_space.shape[2])
+        return MiniPacmanEnvModelClassLabels(obs_shape=em_obs_shape,
+                                             num_actions=env.action_space.n,
+                                             reward_bins=self.reward_bins,
+                                             use_cuda=self.args.cuda)
+
+    def _build_mini_pacman_environment_model(self, env):
+        from environment_model.mini_pacman.model.env_model import MiniPacmanEnvModel
+        return MiniPacmanEnvModel(obs_shape=env.observation_space.shape,
+                                  num_actions=env.action_space.n,
+                                  reward_bins=self.reward_bins,
+                                  use_cuda=self.args.cuda)
 
     def build_env(self):
         from gym_envs.envs_mini_pacman import make_custom_env
@@ -25,32 +50,26 @@ class MiniPacmanEnvironmentBuilder():
                               grey_scale=self.args.grey_scale)()
         return env
 
+
+
     def build_environment_model(self, env):
-        if self.args.use_class_labels:
-            from environment_model.mini_pacman.model.env_model_label import MiniPacmanEnvModelClassLabels
-            EMModel = MiniPacmanEnvModelClassLabels
-            labels = 7
-            em_obs_shape = (labels, env.observation_space.shape[1], env.observation_space.shape[2])
+
+        if self.args.environment_model == "CopyModel":
+            environment_model = self._build_mini_pacman_copy_environment_model()
         else:
-            from environment_model.mini_pacman.model.env_model import MiniPacmanEnvModel
-            EMModel = MiniPacmanEnvModel
-            em_obs_shape = env.observation_space.shape
+            if self.args.environment_model == "MiniModelLabels":
+                environment_model = self._build_mini_pacman_class_labels_environment_model(env)
+            else:
+                environment_model = self._build_mini_pacman_environment_model(env)
 
-        reward_bins = env.unwrapped.reward_bins  # [0., 1., 2., 5., 0.] for regular
-
-        environment_model = EMModel(obs_shape=em_obs_shape,  # env.observation_space.shape,  # 4
-                                    num_actions=env.action_space.n,
-                                    reward_bins=reward_bins,
-                                    use_cuda=self.args.cuda)
-
-        if self.args.load_environment_model:
-            import torch
-            print("Load environment model", self.save_model_path)
-            saved_state = torch.load(self.save_model_path,
-                                     map_location=lambda storage, loc: storage)
-            environment_model.load_state_dict(saved_state)
-        else:
-            print("Save environment model under", self.save_model_path)
+            if self.args.load_environment_model:
+                import torch
+                print("Load environment model", self.save_environment_model_path)
+                saved_state = torch.load(self.save_environment_model_path,
+                                         map_location=lambda storage, loc: storage)
+                environment_model.load_state_dict(saved_state)
+            else:
+                print("Save environment model under", self.save_environment_model_path)
 
         if self.args.cuda:
             environment_model.cuda()
@@ -91,7 +110,7 @@ class MiniPacmanEnvironmentBuilder():
         return loss_printer
 
     def build_optimizer(self, environment_model):
-        if self.args.use_class_labels:
+        if self.args.environment_model == "MiniModelLabels":
             from environment_model.mini_pacman.env_optimizer_label import EnvMiniPacmanLabelsOptimizer
             optimizer_type = EnvMiniPacmanLabelsOptimizer
         else:
@@ -114,7 +133,7 @@ class MiniPacmanEnvironmentBuilder():
                                            use_cuda=self.args.cuda)
         # Model Saver
         from environment_model.model_saver import ModelSaver
-        model_saver = ModelSaver(save_model_path=self.save_model_path,
+        model_saver = ModelSaver(save_model_path=self.save_environment_model_path,
                                  save_interval=self.args.save_interval)
 
         # Loss Printer
@@ -130,12 +149,62 @@ class MiniPacmanEnvironmentBuilder():
                                           use_cuda=self.args.cuda)
         return trainer
 
-    def build_tester(self, env, policy, environment_model):
+    def build_environment_model_tester(self, env, policy, environment_model):
         from rl_visualization.environment_model.test_environment_model import TestEnvironmentModelMiniPacman
         import copy
         test_process = TestEnvironmentModelMiniPacman(env=env,
                                                       environment_model=copy.deepcopy(environment_model),
-                                                      load_path=self.save_model_path,
+                                                      load_path=self.save_environment_model_path,
                                                       rollout_policy=policy,
                                                       args=self.args)
         return test_process
+
+
+    def build_rollout_policy(self, obs_shape, action_space, use_cuda):
+        from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
+        from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
+        rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(
+            obs_shape=obs_shape, action_space=action_space, use_cuda=use_cuda))
+        if use_cuda:
+            rollout_policy.cuda()
+        return rollout_policy
+
+    def build_a2c_model(self, env):
+        from i2a.mini_pacman.i2a_mini_model import I2A_MiniModel
+        from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
+        return A2C_PolicyWrapper(
+            I2A_MiniModel(obs_shape=env.observation_space.shape,
+                          action_space=env.action_space.n,
+                          use_cuda=self.args.cuda))
+
+    def build_i2a_model(self,
+                        env,
+                        args):
+        obs_shape = (env.observation_space.shape[0] * args.num_stack, *env.observation_space.shape[1:])
+        action_space = env.action_space.n
+
+        env_model = self.build_environment_model(env)
+        for param in env_model.parameters():
+            param.requires_grad = False
+        env_model.eval()
+
+        rollout_policy = self.build_rollout_policy(obs_shape, action_space, args.cuda)
+        for param in rollout_policy.parameters():
+            param.requires_grad = True
+        rollout_policy.train()
+
+        from i2a.imagination_core import ImaginationCore
+        imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
+                                           grey_scale=args.grey_scale, frame_stack=args.num_stack)
+
+        from i2a.mini_pacman.i2a_actor_critic import I2A_ActorCritic
+        from i2a.mini_pacman.models.i2a_classical_agent import I2A
+        i2a_model = I2A_ActorCritic(policy=I2A(obs_shape=obs_shape,
+                                               action_space=action_space,
+                                               imagination_core=imagination_core,
+                                               rollout_steps=args.i2a_rollout_steps,
+                                               use_cuda=args.cuda),
+                                    rollout_policy=rollout_policy)
+
+        return i2a_model
+

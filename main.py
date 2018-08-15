@@ -54,6 +54,13 @@ def main():
 
     torch.set_num_threads(1)
 
+    if 'MiniPacman' in args.env_name:
+        from environment_model.mini_pacman.builder import MiniPacmanEnvironmentBuilder
+        builder = MiniPacmanEnvironmentBuilder(args)
+    else:
+        from environment_model.latent_space.builder import LatentSpaceEnvironmentBuilder
+        builder = LatentSpaceEnvironmentBuilder(args)
+
     if args.vis:
         from visdom import Visdom
         viz = Visdom(port=args.port)
@@ -79,11 +86,6 @@ def main():
         envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
                 for i in range(args.num_processes)]
 
-    #@future self: it might be tempting to move this below after the initialization of envs is finished - dont do it.
-    #              SubprovVecEnv hides the unwrapping. At least this incredibly ugly line makes the code 'dynamic' - it's something
-    if 'MiniPacman' in args.env_name:
-        em_model_reward_bins = envs[0]().unwrapped.reward_bins
-
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
     else:
@@ -97,19 +99,21 @@ def main():
 
     if args.algo == 'i2a' and 'MiniPacman' in args.env_name:
         #build i2a model also wraps it with the A2C_PolicyWrapper
-        from i2a.mini_pacman.i2a_mini_pacman_factory import build_i2a_model
-        actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
-                                       action_space=envs.action_space.n,
-                                       args = args,
-                                       em_model_reward_bins=em_model_reward_bins)
+        #from i2a.mini_pacman.i2a_mini_pacman_factory import build_i2a_model
+        #actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
+        #                               action_space=envs.action_space.n,
+        #                               args = args,
+        #                               em_model_reward_bins=em_model_reward_bins)
+        actor_critic = builder.build_i2a_model(envs, args)
     elif args.algo == 'i2a':
-        from i2a.latent_space.i2a_factory import build_latent_space_i2a_model
-        actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
-                                                    action_space=envs.action_space,
-                                                    args=args)
+        actor_critic = builder.build_i2a_model(envs, args)
+        #from i2a.latent_space.i2a_factory import build_latent_space_i2a_model
+        #actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
+        #                                            action_space=envs.action_space,
+        #                                            args=args)
     elif 'MiniPacman' in args.env_name:
-        #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
-        actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
+        actor_critic = builder.build_a2c_model(envs)
+        #actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
     elif args.train_on_200x160_pixel:
         from a2c_models.atari_model import AtariModel
         actor_critic = A2C_PolicyWrapper(AtariModel(obs_shape=obs_shape,

@@ -35,7 +35,7 @@ class RolloutPolicy(nn.Module):
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 
         self.critic_linear = init_(nn.Linear(256, 1))
-        self.actor_linear = init_(nn.Linear(256, action_space.n))
+        self.actor_linear = init_(nn.Linear(256, action_space))
 
         self.train()
 

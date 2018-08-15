@@ -16,24 +16,21 @@ def build_i2a_model(obs_shape,
     i2a_rollout_steps=args.i2a_rollout_steps
     use_cuda=args.cuda
     environment_model_name=args.env_name + color_prefix + "_" + label_prefix + ".dat"
-    use_copy_model=args.use_copy_model
-    use_class_labels=args.use_class_labels
-
 
     input_channels = obs_shape[0]
     obs_shape_frame_stack = (obs_shape[0] * frame_stack, *obs_shape[1:])
-    if use_copy_model:
-        from environment_model.mini_pacman.env_copy_model import CopyEnvModel
+    if args.environment_model == "CopyModel":
+        from environment_model.mini_pacman.model.env_copy_model import CopyEnvModel
         env_model = CopyEnvModel()
     else:
         # the env_model does NOT require grads (require_grad=False) for now, to train jointly set to true
         load_environment_model_dir = 'trained_models/environment_models/'
-        if use_class_labels:
+        if args.environment_model == "ClassLabels":
             obs_shape = (7, *obs_shape[1:])
-            from environment_model.mini_pacman.env_model_label import MiniPacmanEnvModelClassLabels
+            from environment_model.mini_pacman.model.env_model_label import MiniPacmanEnvModelClassLabels
             EMModel = MiniPacmanEnvModelClassLabels
         else:
-            from environment_model.mini_pacman.env_model import MiniPacmanEnvModel
+            from environment_model.mini_pacman.model.env_model import MiniPacmanEnvModel
             EMModel = MiniPacmanEnvModel
 
         env_model = load_em_model(EMModel=EMModel,

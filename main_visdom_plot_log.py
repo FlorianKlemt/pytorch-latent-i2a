@@ -36,7 +36,7 @@ def main():
         frames = int(values['num timesteps'])
         dist_entropy = float(values['entropy'])
         reward = (values['mean/median reward'].split('/'))
-        reward = [float(i) for i in reward]
+        reward = [float(i)*10 for i in reward]
         value_loss = float(values['value loss'])
         action_loss = float(values['policy loss'])
         distill_loss = float(values['distill_loss']) if algo_i2a else None

@@ -49,12 +49,14 @@ class VisdomPlotGraph():
 
     def plot_values(self, frames, values):
         if self.viz is not None and len(self.history) >= self.plot_after_history_size:
-            frames_in_mio = frames / 1000000
-            self.plot_win = plot_line(self.viz,
-                                      self.plot_win,
-                                      self.plot_legend,
-                                      values,
-                                      frames_in_mio)
+            frames -= (len(self.history) / 2.)
+            if frames > 0:
+                frames_in_mio = frames / 1000000
+                self.plot_win = plot_line(self.viz,
+                                          self.plot_win,
+                                          self.plot_legend,
+                                          values,
+                                          frames_in_mio)
 
     def plot(self, frames):
         values = np.mean(np.array(self.history), axis=0)

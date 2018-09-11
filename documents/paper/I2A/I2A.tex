@@ -1,0 +1,143 @@
+\documentclass[a4paper, 11pt]{report}
+%\usepackage[a4paper, lmargin={3cm}, rmargin={3cm}, tmargin={2.5cm}, bmargin={2.5cm} ]{geometry}
+
+%+++ Packages +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+%%%%% Math %%%%%
+\usepackage{amsmath} 
+\usepackage{amssymb}
+
+\setlength{\parindent}{0pt} 
+%%%%% Umlaute %%%%%
+\usepackage[utf8]{inputenc}
+%%%%% Hilft Latex bei Deutschen Wörtern (Linebreak, etc) %%%%%
+\usepackage[german, english]{babel} 
+%%%%% Grafiken %%%%%
+\usepackage[pdftex]{graphicx}
+\usepackage{epstopdf}
+%%%%% Platziere Figure an einem bestimmten ort mit '[H]' %%%%%
+\usepackage{float}
+%%%%% Querformat für bilder %%%%%
+\usepackage{rotating}
+%%%%% url %%%%%
+\usepackage{url}
+%%%%% Klickbare Links im Inhaltsverzeichnis %%%%%
+\usepackage{hyperref}
+\hypersetup{pdfborder = {0 0 0}}
+%%%%% Kommentare sind moeglich mit \begin{comment} %%%%%
+\usepackage{comment}
+%\pagestyle{plain}
+\usepackage{a4}
+
+%%%%% Source Code darstellen %%%%%
+\usepackage{listings}
+\lstset{basicstyle=\small\ttfamily, tabsize=4, numbers=left, numberstyle=\tiny, language=C++}
+\lstset{literate=%
+{Ö}{{\"O}}1 %
+{Ä}{{\"A}}1 %
+{Ü}{{\"U}}1
+{ß}{{\ss}}2 %
+{ü}{{\"u}}1 %
+{ä}{{\"a}}1 %
+{ö}{{\"o}}1 %
+}
+%\renewcommand\lstlistingname{Code}
+%%%%% Grafiken mit Latex zeichnen %%%%%
+\usepackage{tikz}
+\usetikzlibrary{arrows}
+
+%%%%% Bilder zentriert Ausrichten %%%%%
+\usepackage[center]{caption}
+
+%%%%% Tabellen %%%%%
+\usepackage{setspace,booktabs}
+\usepackage{tabu}
+
+%+++ Dokument Styling +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+\usepackage{geometry}
+\geometry{a4paper, top=25mm, left=27mm, right=28mm, bottom=28mm, headsep=7mm, footskip=7mm}
+
+\setlength{\headheight}{14pt}
+%\renewcommand{\familydefault}{\rmfamily}
+
+%\addtokomafont{caption}{\raggedright}
+
+%+++ Kopf- und Fusszeilen +++++++++++++++++++++++++++++++++++++++++++++++++++++
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+%\cfoot{\thepage $ $ / \pageref{LastPage}} 
+\cfoot{\small  \thepage} 
+
+\renewcommand{\headrulewidth}{0.4pt} 
+
+%+++ Leere Seiten -> keine Seitenzahlen +++++++++++++++++++++++++++++++++++++++
+% redefinition of the plain style for Chapter:
+\fancypagestyle{plain}{%
+	\fancyhf{} % clear all header and footer fields
+	\renewcommand{\headrulewidth}{0pt}
+	\cfoot{\small  \thepage} 
+}
+
+
+%+++ thebibliography umbenennen +++++++++++++++++++++++++++++++++++++++++++++++
+%\renewcommand{\refname}{Quellenangabe}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+    
+%\let\oldbibitem=\bibitem
+%\renewcommand{\bibitem}[2][]{\oldbibitem[#1]{#2}\newline}
+
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%+++ Dokument Begin +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+\begin{document}
+%+++ Römische Seitenzahlen ++++++++++++++++++++++++++++++++++++++++++++++++++++
+\pagenumbering{Roman} 
+
+\include{Title}
+
+
+%+++ Abstract +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+\input{abstract}
+
+
+%+++ Inhaltsangabe umbenennen +++++++++++++++++++++++++++++++++++++++++++++++++
+\renewcommand\contentsname{Inhaltsverzeichnis}
+\tableofcontents
+\renewcommand\partname{Kapitel}
+
+%+++ figurename umbenennen ++++++++++++++++++++++++++++++++++++++++++++++++++++
+%\renewcommand{\figurename}{Abbildung}
+
+\chapter{I2A}
+\input{reinforcement_learning}
+
+\input{imagination_augmented_agent}
+
+\input{environment_model}
+
+\input{mini_pacman}
+
+\input{results}
+
+\input{future_work}
+
+
+%+++ Literaturverzeichnis +++++++++++++++++++++++++++++++++++++++++++++++++++++
+\renewcommand{\bibname}{Literaturverzeichnis}
+\bibliography{verzeichnis1}{}
+\bibliographystyle{plain}
+%\bibliographystyle{alpha}
+
+%+++ Bilderverzeichnis ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+%\renewcommand\listfigurename{Bilderverzeichnis}
+%\listoffigures
+
+
+\end{document}

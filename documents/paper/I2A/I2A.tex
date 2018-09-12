@@ -1,4 +1,4 @@
-\documentclass[a4paper, 11pt]{report}
+\documentclass{article}
 %\usepackage[a4paper, lmargin={3cm}, rmargin={3cm}, tmargin={2.5cm}, bmargin={2.5cm} ]{geometry}
 
 %+++ Packages +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -104,18 +104,18 @@
 
 
 %+++ Abstract +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+\newpage
 \input{abstract}
 
 
 %+++ Inhaltsangabe umbenennen +++++++++++++++++++++++++++++++++++++++++++++++++
-\renewcommand\contentsname{Inhaltsverzeichnis}
+\newpage
+%\renewcommand\contentsname{Inhaltsverzeichnis}
 \tableofcontents
-\renewcommand\partname{Kapitel}
+%\renewcommand\partname{Kapitel}
 
 %+++ figurename umbenennen ++++++++++++++++++++++++++++++++++++++++++++++++++++
-%\renewcommand{\figurename}{Abbildung}
-
-\chapter{I2A}
+\newpage
 \input{reinforcement_learning}
 
 \input{imagination_augmented_agent}

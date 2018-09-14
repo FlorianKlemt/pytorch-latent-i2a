@@ -27,6 +27,10 @@ There exists different reinforcement learning algorithm which all follow the abo
 
 \subsection{Q-Learning}
 
+To receive our goal to maximize the expected reward, we want to find a function which calculates the maximum expected future reward, for each action at each state. So when we in a certain state we can simple ask this function about the expected reward for each possible action we can take and choose the best one.
+
+Value based methods: where we learn a value function that will map each state action pair to a value. The action with the biggest value is the best action to take for each state.
+
 The base idear behind reinforcement learning is the Bellman Equation. By iteratively update the Q-value function the Q-value function will converge to the optimal Q-value function and will learn to choose the optimal actions. 
 
 Q-Learning is an off-policy, model-free RL algorithm based on the Bellman Equation:
@@ -49,6 +53,12 @@ Q^* (s, a) = \mathbb{E}_{s'} [r + \lambda \max_{a'} Q^*(s', a') | s, a]
 
 The goal is to maximize the Q-value.
 
+\subsection{Value based vs Policy based reinforcement learning methods}
+
+Value based methods (Q-learning, Deep Q-learning): where we learn a value function that will map each state action pair to a value. Thanks to these methods, we find the best action to take for each state-the action with the biggest value. This works well when you have a finite set of actions.\\
+
+Policy based methods (REINFORCE with Policy Gradients): where we directly optimize the policy without using a value function. This is useful when the action space is continuous or stochastic. The main problem is finding a good score function to compute how good a policy is. We use total rewards of the episode.
+
 \subsection{Model-free versus Model-based Reinforcement Learning}
 
 Model-free reinforcement learning maps observation of the environment directly to values or actions.
@@ -57,52 +67,52 @@ Model-free reinforcement learning maps observation of the environment directly t
 In contrast to this model-based reinforcement learning algorithm are using a model of the environment to simulate the dynamics of the environment. The model knows the transition probability $T(s_{t+1} | s_t, a_t))$ to the next state $s_{t+1}$ given the current state $s_t$ and the current action $a_t$. By taking this model into account adverse consequences of trial-and error can be avoid, also the performance of the agent can be increased by increasing the amount of internal simulations.
 But there are some drawbacks. If the model is imperfect the performance of model-based agents suffers. Also it is not always possible to get an exact transition model or to get an transition model at all. In real world application it is often impossible to get a good enough transition model.\\
 
-%The model stands for the simulation of the dynamics of the environment. That is, the model learns the transition probability T(s1|(s0, a)) from the pair of current state s0 and action a to the next state s1. If the transition probability is successfully learned, the agent will know how likely to enter a specific state given current state and action. However, model-based algorithms become impractical as the state space and action space grows (S * S * A, for a tabular setup).
 
-%\begin{itemize}
-%	\item Uses an internal model of the world to reason about the future
-%	\item Avoid adverse consequences of trial-and-error
-%	\item Increase performance by increasing amount of internal simulations
-	%-- Better generalization across states%\\
-
-%\end{itemize}
-
-
-%Drawbacks of Model Based RL
-%The performance of model-based agents suffer if the model is inperfect
-%It is not always possible to get an exact transition model
-%exact transition model is available
-
-
-$\rightarrow$ Combine model free and model based RL to get an agent which is robost against model imperfections.
+%$\rightarrow$ Combine model free and model based RL to get an agent which is robost against model imperfections.
 
 For more information about reinforcement learning see TODO
 
 
+\subsection{Deep Q Network}
+
+\begin{equation}
+r_j + \gamma \max_{a'} Q(s{t+1}, a'; \theta^-)
+\end{equation}
+$\theta$ parameters in the neural network
+
+TODO link DQN
+
+%https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf
+
+remember that value function calculates what is the maximum expected future reward given a state and an action
 \subsection{Advantage-Actor-Critic (A2C)}
 
-Advantage-Actor-Critic is a deep reinforcement learning algorithm. Which means that it uses a neuronal network to approximate the a learnable function. A2C consits of 2 parts. 
+Advantage-Actor-Critic is a deep reinforcement learning algorithm. Deep reinforcement learning means that the algorithm is using a neuronal network to learn the decission making function. A2C combines value based and policy based reinforcement learning and consits of two parts. A critic that measures how good the action taken is (value-based) and an actor that controls how our agent behaves (policy-based).\\
+% an \textbf{actor} and a \textbf{critic} function, both are heads of a neuronal network.\\
 
-Reinforcement Learning Algorithm
-\begin{itemize}
+The \textbf{actor} learns policy function $\mathnormal{\pi(s, a, \theta)}$, which decide the best action for a specific state (controls how the agent acts).\\
 
-	\item Actor	learns policy function $\mathnormal{\pi(s, a, \theta)}$:\\
-	Controls how the agent acts	
-	\item Critic learns value function $\mathnormal{V(s, a, w)}$:\\
-	Messures how good a choosen actions is\\
- 	Expected cumulative reward from following the policy $\pi$ from state $s$	
-\end{itemize}
+The \textbf{critic} learns the value function $\mathnormal{V(s, a, w)}$, which is used for evaluatiog the policy function estimated by the actor according to the temporal difference error.
+\begin{equation}
+r_{t+1} + \gamma V^\pi(s_{t+1}) - V^\pi(s_t)
+\end{equation}
+
+%messures how good a choosen actions is. 
+And which is used to calculate the expected cumulative reward from following the policy $\pi$ from state $s$.\\
 
 
+%A critic is used for evaluating the policy function estimated by the actor according to the temporal difference (TD) error.
 
 Advantage function\\
+
+This function will tell us the improvement compared to the average the action taken at that state is. In other words, this function calculates the extra reward I get if I take this action. The extra reward is that beyond the expected value of that state.\\
 		Push up the probability of an action from a state $s$ if this action was better than the expected value
 		\begin{equation}
-		\mathnormal{
-		A = Q(s, a) - V(s)
-%A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)
-		}
+		A(s, a) = Q(s, a) - V(s)		
+		A(s, a) = r + \gamma V(s') - V(s) 
 		\end{equation}
+%A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)		
+		
 
 Q-value function $Q(s, a)$:\\ %$Q^{\pi_\theta}(s, a)$:\\ 
 		Expected cumulative reward from taking action $a$ in state $s$ and following the policy $\pi$

@@ -239,14 +239,13 @@ class PosteriorModule(nn.Module):
         super(PosteriorModule, self).__init__()
         self.use_cuda = use_cuda
         self.num_actions = num_actions
-        #state channels + action broadcast channels + encoded obs always should have 64 channels + 1 channel broadcasted mu + 1 channel broadcasted sigma
+        #Explanation: input channels = state channels + action broadcast channels
+        #                               + 64 channels encoded observation + 64 channel broadcasted mu + 64 channel broadcasted sigma
         input_channels = state_input_channels + num_actions + 64 + 64 + 64
         self.conv_stack = ConvStack(input_channels=input_channels, kernel_sizes=(1,3,3), output_channels=(32,32,64))
 
     def forward(self, prev_state, action, encoded_obs, mu, sigma):
         broadcasted_action = broadcast_action(action=action, num_actions=self.num_actions, broadcast_to_shape=prev_state.shape[2:], use_cuda=self.use_cuda)
-        #broadcasted_mu = mu.repeat(1, 1, prev_state.shape[2], prev_state[3])
-        #broadcasted_sigma = sigma.repeat(1, 1, prev_state.shape[2], prev_state[3])
         concatenated = torch.cat((prev_state, broadcasted_action, encoded_obs, mu, sigma), 1)
 
         mu_posterior = self.conv_stack(concatenated)
@@ -260,7 +259,8 @@ class PosteriorModule(nn.Module):
 class InitialStateModule(nn.Module):
     def __init__(self):
         super(InitialStateModule, self).__init__()
-        input_channels = 64 + 64 + 64   #encoded states of o_0, o_-1, o_-2 each 64 channels
+        # encoded states of o_0, o_-1, o_-2 each 64 channels
+        input_channels = 64 + 64 + 64
         self.conv_stack = ConvStack(input_channels=input_channels, kernel_sizes=(1,3,3), output_channels=(64,64,64))
 
     def forward(self, encoded_now, encoded_prev, encoded_2prev):

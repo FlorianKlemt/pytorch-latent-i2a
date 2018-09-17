@@ -8,18 +8,18 @@ import math
 class SSM(nn.Module):
     def __init__(self,
                  model_type,
-                 observation_input_channels,
+                 obs_shape,
                  state_input_channels,
                  num_actions,
                  use_cuda,
                  reward_prediction_bits = 8):
         super(SSM, self).__init__()
         self.use_cuda = use_cuda
-        self.encoder = EncoderModule(input_channels=observation_input_channels)
+        self.encoder = EncoderModule(input_shape=obs_shape)
         self.initial_state_module = InitialStateModule()
-        self.state_transition = StateTransition(state_input_channels=state_input_channels,
+        self.state_transition = StateTransition(input_shape=self.encoder.output_size(),
                                                 num_actions=num_actions, use_stochastic=False, use_cuda=use_cuda)
-        self.decoder = DecoderModule(state_input_channels=state_input_channels,
+        self.decoder = DecoderModule(input_shape=self.state_transition.output_size(),
                                      use_vae=False,
                                      reward_prediction_bits=reward_prediction_bits)
         self.prior_z = PriorModule(state_input_channels=state_input_channels,

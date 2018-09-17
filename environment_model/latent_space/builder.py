@@ -33,7 +33,7 @@ class LatentSpaceEnvironmentBuilder():
     def build_environment_model(self, env):
         from environment_model.latent_space.models_from_paper.state_space_model import SSM
         environment_model = SSM(model_type=self.args.environment_model,
-                                observation_input_channels=3,
+                                obs_shape=env.observation_space.shape,
                                 state_input_channels=64,
                                 num_actions=env.action_space.n,
                                 use_cuda=self.args.cuda)#,

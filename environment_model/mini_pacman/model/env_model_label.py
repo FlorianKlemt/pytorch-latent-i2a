@@ -11,7 +11,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        self.reward_bins = torch.FloatTensor(reward_bins).type(self.FloatTensor)
+        self.reward_bins = self.FloatTensor(reward_bins)
 
         input_channels = obs_shape[0]
         W=obs_shape[1]
@@ -30,8 +30,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([
-            ('conv', nn.Conv2d(64, input_channels, kernel_size=1))#,
-            #('softmax', nn.Softmax())
+            ('conv', nn.Conv2d(64, input_channels, kernel_size=1))
         ]))
 
         self.apply(xavier_weights_init)
@@ -53,7 +52,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
         one_hot = torch.zeros(input_action.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
         one_hot.scatter_(1, input_action, 1)
-        # breoadcast action
+        # broadcast action
         one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
         broadcasted_action = one_hot.repeat(1, 1, input_frame.shape[2], input_frame.shape[3])
 
@@ -69,10 +68,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
 
         #output reward head
         reward_probability = self.reward_head(x)
-        # TODO why not just use the value of the max probability
-        # TODO is this correct??
         reward_out = torch.sum(reward_probability * self.reward_bins, 1)
-        #x.view(x.size())
 
         return image_out,reward_out
 
@@ -127,25 +123,6 @@ class MiniPacmanRGBToClassConverter():
         if self.use_cuda:
             class_state = class_state.cuda()
 
-        '''
-        class_state = Variable(torch.zeros(state.data.shape[0], state.data.shape[1], state.data.shape[2], 6)).float()
-        for b in range(state.data.shape[0]):
-            for x in range(state.data.shape[1]):
-                for y in range(state.data.shape[2]):
-                    rgb = state[b, x, y]
-                    if torch.equal(rgb.data, self.color_walls):
-                        class_state[b, x, y, 0] = 1.
-                    elif torch.equal(rgb.data, self.color_food):
-                        class_state[b, x, y, 1] = 1.
-                    elif torch.equal(rgb.data, self.color_pillman):
-                        class_state[b, x, y, 2] = 1.
-                    elif torch.equal(rgb.data, self.color_ground):
-                        class_state[b, x, y, 3] = 1.
-                    elif torch.equal(rgb.data, self.color_pill):
-                        class_state[b, x, y, 5] = 1.
-                    else:
-                        class_state[b, x, y, 4] = 1.
-        '''
         return class_state
 
     def minipacman_class_to_rgb(self, state):

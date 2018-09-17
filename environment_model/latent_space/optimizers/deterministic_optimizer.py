@@ -4,7 +4,7 @@ from torch.distributions.bernoulli import Bernoulli
 
 from environment_model.latent_space.reward_to_bit import numerical_reward_to_bit_array
 
-class dSSM_DET_Optimizer():
+class DeterministicOptimizer():
 
     def __init__(self,
                  model,
@@ -14,13 +14,13 @@ class dSSM_DET_Optimizer():
                  use_cuda):
         self.model = model
         self.use_cuda = use_cuda
-        if use_cuda == True:
+        if use_cuda:
             self.model.cuda()
 
         self.reward_prediction_bits = reward_prediction_bits
         self.reward_loss_coef = reward_loss_coef
-        self.frame_criterion = torch.nn.BCELoss()
-        self.reward_criterion = torch.nn.BCEWithLogitsLoss()
+        self.frame_criterion = nn.BCELoss()
+        self.reward_criterion = nn.BCEWithLogitsLoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr = lr,
@@ -42,7 +42,7 @@ class dSSM_DET_Optimizer():
         # image loss
         reconstruction_loss = self.frame_criterion(image_probs, sample_next_observation_T)
 
-        loss = reconstruction_loss + 1e-2 * reward_loss
+        loss = reconstruction_loss + self.reward_loss_coef * reward_loss
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -53,6 +53,5 @@ class dSSM_DET_Optimizer():
         true_entropy = Bernoulli(probs=sample_next_observation_T).entropy()
         normalized_frame_loss = reconstruction_loss - true_entropy.mean()
         return (normalized_frame_loss, reward_loss), (image_probs, reward_probs)
-        #return (reconstruction_loss, reward_loss), (image_probs, reward_probs)
 
 

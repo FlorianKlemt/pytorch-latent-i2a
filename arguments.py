@@ -91,6 +91,9 @@ def get_args():
                         help='environment model (default: dSSM_DET)'
                              'mini pacman models = (MiniModel, MiniModelLabels, CopyModel)'
                              'latent space models = (dSSM_DET, dSSM_VAE, sSSM)')
+    parser.add_argument('--reward-prediction-bits', type=int, default=8,
+                             help='Only used when train with latent space model'
+                                  'bits used for reward prediction in reward head of decoder (default: 8)')
 
     args = parser.parse_args()
 

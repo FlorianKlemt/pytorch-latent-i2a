@@ -1,9 +1,16 @@
-import torch.nn as nn
-from environment_model.latent_space.models_from_paper.model_building_blocks import PosteriorModule, PriorModule, StateTransition, EncoderModule, DecoderModule, InitialStateModule
 import torch
+import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.bernoulli import Bernoulli
 import math
+
+from environment_model.latent_space.models_from_paper.decoder_module import DecoderModule
+from environment_model.latent_space.models_from_paper.encoder_module import EncoderModule
+from environment_model.latent_space.models_from_paper.initial_state_module import InitialStateModule
+from environment_model.latent_space.models_from_paper.posterior_module import PosteriorModule
+from environment_model.latent_space.models_from_paper.prior_module import PriorModule
+from environment_model.latent_space.models_from_paper.state_transition_module import StateTransition
+
 
 class SSM(nn.Module):
     def __init__(self,

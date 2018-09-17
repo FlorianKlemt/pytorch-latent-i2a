@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from i2a.utils import get_linear_dims_after_conv, get_conv_output_dims
+from i2a.utils import get_conv_output_dims
 from functools import reduce
 
 class EncoderCNNNetwork(nn.Module):
@@ -35,20 +35,13 @@ class EncoderLSTMNetwork(nn.Module):
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
         self.use_cuda = use_cuda
 
-        # reward broadcasted = 6x6
         self.number_lstm_cells = number_lstm_cells
 
         # input_dim = (output size cnn + broadcasted reward)
         self.lstm = nn.LSTMCell(input_dim, self.number_lstm_cells, True)
-        self.lstm.bias_ih.data.fill_(0)
-        self.lstm.bias_hh.data.fill_(0)
 
     def forward(self,x):
         x = x.view(x.size(0), -1)
-
-        # safety
-        #if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
-        #print("Abort mission!")
 
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h
@@ -56,8 +49,6 @@ class EncoderLSTMNetwork(nn.Module):
         return x
 
     def repackage_lstm_hidden_variables(self, batch_size):
-        #self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
-        #self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
         self.lstm_h = torch.zeros(batch_size, self.number_lstm_cells).float()
         self.lstm_c = torch.zeros(batch_size, self.number_lstm_cells).float()
         if self.use_cuda:

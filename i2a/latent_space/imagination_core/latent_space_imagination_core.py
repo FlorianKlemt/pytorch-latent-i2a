@@ -1,9 +1,8 @@
-import torch
 from torch import nn
 
 
 class LatentSpaceImaginationCore(nn.Module):
-    def __init__(self, env_model=None, rollout_policy=None, grey_scale=False, frame_stack=4):
+    def __init__(self, env_model=None, rollout_policy=None):
         super(LatentSpaceImaginationCore, self).__init__()
         self.env_model = env_model
         self.rollout_policy = rollout_policy

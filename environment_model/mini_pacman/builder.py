@@ -1,6 +1,3 @@
-from os import environ
-
-
 def get_save_environment_model_path(args):
     from environment_model.model_saver import save_environment_model_path
     return save_environment_model_path(args.save_environment_model_dir,
@@ -111,10 +108,10 @@ class MiniPacmanEnvironmentBuilder():
 
     def build_optimizer(self, environment_model):
         if self.args.environment_model == "MiniModelLabels":
-            from environment_model.mini_pacman.env_optimizer_label import EnvMiniPacmanLabelsOptimizer
+            from environment_model.mini_pacman.optimizers.env_optimizer_label import EnvMiniPacmanLabelsOptimizer
             optimizer_type = EnvMiniPacmanLabelsOptimizer
         else:
-            from environment_model.mini_pacman.env_optimizer import EnvMiniPacmanOptimizer
+            from environment_model.mini_pacman.optimizers.env_optimizer import EnvMiniPacmanOptimizer
             optimizer_type = EnvMiniPacmanOptimizer
 
         optimizer = optimizer_type(model=environment_model,

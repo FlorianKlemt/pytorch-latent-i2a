@@ -5,7 +5,7 @@ from i2a.mini_pacman.models.output_policy_network import OutputPolicyNetwork
 
 
 class I2ALatentSpace(torch.nn.Module):
-    def __init__(self, obs_shape, action_space, imagination_core, rollout_steps, use_cuda):
+    def __init__(self, obs_shape, encoding_shape, action_space, imagination_core, rollout_steps, frame_stack, use_cuda):
         super(I2ALatentSpace, self).__init__()
 
         self.action_space = action_space
@@ -21,14 +21,15 @@ class I2ALatentSpace(torch.nn.Module):
 
         # model-free path
         self.model_free_network = LatentSpaceModelFreeNetwork(obs_shape=obs_shape,
-                                                             num_outputs=self.model_free_output_size)
+                                                              num_outputs=self.model_free_output_size)
 
         # model-based path
         self.model_based_network = LatentSpaceModelBasedNetwork(number_actions=self.action_space,
-                                                                obs_shape=obs_shape,
+                                                                encoding_shape=encoding_shape,
                                                                 imagination_core=imagination_core,
                                                                 number_lstm_cells=self.number_lstm_cells,
                                                                 rollout_steps=self.rollout_steps,
+                                                                frame_stack=frame_stack,
                                                                 use_cuda=self.use_cuda)
         self.train()
 

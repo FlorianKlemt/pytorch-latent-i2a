@@ -56,10 +56,7 @@ class TestEnvironment():
         self.FloatTensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
         self.env = env
         self.model = model
-        #self.model.cpu()
         saved_state = torch.load(load_path, map_location=lambda storage,loc: storage)
-        #for key, val in saved_state.items():
-        #    saved_state[key] = val.cpu()
 
         self.model.load_state_dict(saved_state)
         self.use_cuda = args.cuda
@@ -80,11 +77,9 @@ class TestEnvironment():
             value, actor = self.model(input)
             probs = F.softmax(actor, dim=1)
             action = probs.multinomial(num_samples=1)
+            action = action.item()
 
-            #_, actions, _, _, _, _ = self.model.act(input, None, None)
-            cpu_action = action.item()
-
-            self.state, reward, done, info = self.env.step(cpu_action)
+            self.state, reward, done, info = self.env.step(action)
             self.reward += reward
 
         return done

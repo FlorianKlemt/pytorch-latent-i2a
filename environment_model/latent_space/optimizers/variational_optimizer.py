@@ -15,13 +15,13 @@ class EnvLatentSpaceOptimizer():
                  use_cuda):
         self.model = model
         self.use_cuda = use_cuda
-        if use_cuda == True:
+        if use_cuda:
             self.model.cuda()
 
         self.reward_prediction_bits = reward_prediction_bits
         self.reward_loss_coef = reward_loss_coef
-        self.frame_criterion = torch.nn.BCELoss()
-        self.reward_criterion = torch.nn.BCEWithLogitsLoss()
+        self.frame_criterion = nn.BCELoss()
+        self.reward_criterion = nn.BCEWithLogitsLoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr = lr,
@@ -47,9 +47,10 @@ class EnvLatentSpaceOptimizer():
         prior_gaussian = Normal(loc=total_z_mu_prior, scale=total_z_sigma_prior)
         posterior_gaussian = Normal(loc=total_z_mu_posterior, scale=total_z_sigma_posterior)
         kl_div_loss = torch.distributions.kl.kl_divergence(prior_gaussian, posterior_gaussian)
-        frame_loss = reconstruction_loss + kl_div_loss.mean()  # loss is elbo
+        # loss is Evidence Lower Bound (ELBO) L = log p(X) − KL [q(Z)kp(Z|X)]
+        frame_loss = reconstruction_loss + kl_div_loss.mean()
 
-        loss = frame_loss + 1e-2 * reward_loss
+        loss = frame_loss + self.reward_loss_coef * reward_loss
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -61,6 +62,5 @@ class EnvLatentSpaceOptimizer():
         entropy_normalized_loss = reconstruction_loss - true_entropy.mean()
         normalized_frame_loss = entropy_normalized_loss + kl_div_loss.mean()
         return (normalized_frame_loss, reward_loss), (image_probs, reward_probs)
-        #return (frame_loss, reward_loss), (image_probs, reward_probs)
 
 

@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 import random
-import numpy as np
 
 class TrainingDataCreator:
     def __init__(self, env, policy, use_cuda):
@@ -36,7 +35,7 @@ class TrainingDataCreator:
         else:
             action_space = self.env.action_space.n
             action_int = random.randint(0, action_space - 1)
-            action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
+            action = torch.LongTensor([action_int]).unsqueeze(0)
             if self.use_cuda:
                 action = action.cuda()
         return action

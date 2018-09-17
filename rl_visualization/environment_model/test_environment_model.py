@@ -170,9 +170,7 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
         if args.use_latent_space:
             from i2a.latent_space.imagination_core.latent_space_imagination_core import LatentSpaceImaginationCore
             imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
-                                                          rollout_policy=rollout_policy,
-                                                          grey_scale=False,
-                                                          frame_stack=4)
+                                                          rollout_policy=rollout_policy)
             renderer = RenderImaginationCore(args.grey_scale)
         else:
             from i2a.imagination_core import ImaginationCore

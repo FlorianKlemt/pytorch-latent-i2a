@@ -1,7 +1,6 @@
 import torch
-import torch.nn.functional as F
 import random
-import numpy as np
+import torch.nn.functional as F
 
 class TrainingDataCreator:
     def __init__(self,
@@ -36,9 +35,9 @@ class TrainingDataCreator:
         # 3 channels for rgb -> remove oldes frame (3 channels) and add state
         self.frame_stack = torch.cat((self.frame_stack[:, 3:], state), dim=1)
 
-    def _initial_steps(self, min, max):
+    def _initial_steps(self, min=1, max=100):
         from random import randint
-        for i in range(randint(1, 100)):
+        for i in range(randint(min, max)):
             stack = self.frame_stack
             action = self._sample_action(frame_stack=stack)
             state, reward, done, _ = self._do_env_step(action=action)
@@ -58,11 +57,13 @@ class TrainingDataCreator:
             # let policy decide on next action and perform it
             if self.use_cuda:
                 frame_stack = frame_stack.cuda()
-            value, action, _, _ = self.policy.act(inputs=frame_stack, states=None, masks=None)  # no state and mask
+            critic, actor = self.policy(frame_stack)
+            prob = F.softmax(actor, dim=1)
+            action = prob.multinomial(num_samples=1)
         else:
             action_space = self.env.action_space.n
             action_int = random.randint(0, action_space - 1)
-            action = torch.from_numpy(np.array([action_int])).unsqueeze(0)
+            action = torch.LongTensor([action_int]).unsqueeze(0)
             if self.sample_memory_on_gpu:
                 action = action.cuda()
         return action

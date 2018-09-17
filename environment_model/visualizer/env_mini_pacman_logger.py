@@ -1,4 +1,3 @@
-import os
 from rl_visualization.visdom_plotter import VisdomPlotterEM
 from rl_visualization.logger import LogFile
 import time

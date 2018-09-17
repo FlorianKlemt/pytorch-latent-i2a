@@ -5,10 +5,10 @@ from i2a.utils import get_linear_dims_after_conv, get_conv_output_dims
 from functools import reduce
 
 class LatentSpaceEncoderCNNNetwork(nn.Module):
-    def __init__(self, obs_shape):
+    def __init__(self, encoding_shape):
         super(LatentSpaceEncoderCNNNetwork, self).__init__()
-        input_channels = obs_shape[0]
-        input_dims = obs_shape[1:]
+        input_channels = encoding_shape[0]
+        input_dims = encoding_shape[1:]
 
         self.conv1 = nn.Conv2d(input_channels, 16, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(16, 16, kernel_size=3, stride=2, padding=1)
@@ -30,20 +30,13 @@ class LatentSpaceEncoderLSTMNetwork(nn.Module):
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
         self.use_cuda = use_cuda
 
-        # reward broadcasted = 6x6
         self.number_lstm_cells = number_lstm_cells
 
         # input_dim = (output size cnn + broadcasted reward)
         self.lstm = nn.LSTMCell(input_dim, self.number_lstm_cells, True)
-        self.lstm.bias_ih.data.fill_(0)
-        self.lstm.bias_hh.data.fill_(0)
 
     def forward(self,x):
         x = x.view(x.size(0), -1)
-
-        # safety
-        #if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
-        #print("Abort mission!")
 
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h

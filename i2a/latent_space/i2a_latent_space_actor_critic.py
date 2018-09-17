@@ -4,9 +4,9 @@ import torch
 
 from a2c_models.a2c_policy_wrapper import logprobs_and_entropy, sample
 
-class I2ALatentSpaceActorCritic(nn.Module):
+class I2ALatentSpace_PolicyWrapper(nn.Module):
     def __init__(self, policy, imagination_core, frame_stack):
-        super(I2ALatentSpaceActorCritic, self).__init__()
+        super(I2ALatentSpace_PolicyWrapper, self).__init__()
         self.policy = policy
         self.imagination_core = imagination_core
         self.frame_stack = frame_stack
@@ -19,6 +19,7 @@ class I2ALatentSpaceActorCritic(nn.Module):
         else:
             return self.policy(inputs)
 
+    # the arguments masks and deterministic are not used but necessary due to the A2C implementation
     def act(self, observation, states, masks, deterministic=False):
         with torch.no_grad():
             value, policy_action_probs = self.policy(observation)
@@ -45,7 +46,6 @@ class I2ALatentSpaceActorCritic(nn.Module):
 
         return value, action_log_probs, dist_entropy, states
 
-    # magic, see model.py
     @property
     def state_size(self):
         return 1

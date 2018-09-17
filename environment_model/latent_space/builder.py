@@ -1,13 +1,13 @@
 
-
-
 class LatentSpaceEnvironmentBuilder():
     def __init__(self, args):
         self.args = args
         self.save_model_path = self.get_save_model_path()
         self.environment_model_name = args.env_name + "_" + args.environment_model + ".dat"
-        self.load_environment_model_dir = 'trained_models/environment_models/'
+        self.load_environment_model_dir = args.save_environment_model_dir
         self.load_environment_model_path = self.load_environment_model_dir + self.environment_model_name
+        self.frame_stack_size = 4
+        self.initial_context_size = 3
 
     def get_save_name(self):
         return '{0}_{1}'.format(self.args.env_name,
@@ -36,8 +36,8 @@ class LatentSpaceEnvironmentBuilder():
                                 obs_shape=env.observation_space.shape,
                                 state_input_channels=64,
                                 num_actions=env.action_space.n,
-                                use_cuda=self.args.cuda)#,
-                                #reward_prediction_bits=self.args.reward_prediction_bits)
+                                use_cuda=self.args.cuda,
+                                reward_prediction_bits=self.args.reward_prediction_bits)
 
         if self.args.load_environment_model:
             import torch
@@ -57,7 +57,7 @@ class LatentSpaceEnvironmentBuilder():
         from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
         from a2c_models.atari_model import AtariModel
 
-        obs_shape = (env.observation_space.shape[0] * 4,) + env.observation_space.shape[1:]
+        obs_shape = (env.observation_space.shape[0] * self.frame_stack_size,) + env.observation_space.shape[1:]
         policy = A2C_PolicyWrapper(AtariModel(obs_shape=obs_shape,
                                               action_space=env.action_space.n,
                                               use_cuda=self.args.cuda))
@@ -82,11 +82,6 @@ class LatentSpaceEnvironmentBuilder():
 
         log_path = self.get_log_path()
 
-        #from rl_visualization.logger import LogTrainEM
-        #loss_printer = LogTrainEM(log_name=log_path,
-        #                          batch_size=self.args.batch_size,
-        #                          delete_log_file=self.args.load_environment_model == False,
-        #                          viz=viz)
         from environment_model.visualizer.env_mini_pacman_logger import LoggingMiniPacmanEnvTraining
         loss_printer = LoggingMiniPacmanEnvTraining(log_name=log_path,
                                                     batch_size=self.args.batch_size,
@@ -96,10 +91,10 @@ class LatentSpaceEnvironmentBuilder():
 
     def build_optimizer(self, environment_model):
         if self.args.environment_model == "dSSM_DET":
-            from environment_model.latent_space.dSSM_DET_optimizer import dSSM_DET_Optimizer
-            optimizer_type = dSSM_DET_Optimizer
+            from environment_model.latent_space.optimizers.deterministic_optimizer import DeterministicOptimizer
+            optimizer_type = DeterministicOptimizer
         else:
-            from environment_model.latent_space.state_space_optimizer import EnvLatentSpaceOptimizer
+            from environment_model.latent_space.optimizers.variational_optimizer import EnvLatentSpaceOptimizer
             optimizer_type = EnvLatentSpaceOptimizer
 
         optimizer = optimizer_type(model=environment_model,
@@ -117,8 +112,8 @@ class LatentSpaceEnvironmentBuilder():
         data_creator = TrainingDataCreator(env=env,
                                            policy=policy,
                                            rollouts = self.args.rollout_steps,
-                                           initial_context_size = 3,
-                                           frame_stack_size = 4,
+                                           initial_context_size = self.initial_context_size,
+                                           frame_stack_size = self.frame_stack_size,
                                            sample_memory_on_gpu = False,
                                            use_cuda=self.args.cuda)
         # Model Saver
@@ -151,9 +146,9 @@ class LatentSpaceEnvironmentBuilder():
         return test_process
 
 
-    def build_rollout_policy(self, action_space, use_cuda):
+    def build_rollout_policy(self, action_space, input_shape, use_cuda):
         from i2a.rollout_policy import RolloutPolicy
-        rollout_policy = RolloutPolicy(obs_shape=(64, 25, 20), action_space=action_space)
+        rollout_policy = RolloutPolicy(obs_shape=input_shape, action_space=action_space)
 
         if use_cuda:
             rollout_policy.cuda()
@@ -177,26 +172,28 @@ class LatentSpaceEnvironmentBuilder():
         for param in environment_model.parameters():
             param.requires_grad = False
         environment_model.eval()
+        encoding_shape = environment_model.encoder.output_size()
 
-        rollout_policy = self.build_rollout_policy(action_space, args.cuda)
+        rollout_policy = self.build_rollout_policy(action_space=action_space, input_shape=environment_model.encoder.output_size(), use_cuda=args.cuda)
         for param in rollout_policy.parameters():
             param.requires_grad = True
         rollout_policy.train()
 
         from i2a.latent_space.imagination_core.latent_space_imagination_core import LatentSpaceImaginationCore
         imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
-                                                      rollout_policy=rollout_policy,
-                                                      grey_scale=args.grey_scale, frame_stack=args.num_stack)
+                                                      rollout_policy=rollout_policy)
 
         from i2a.latent_space.models.i2a_agent import I2ALatentSpace
-        from i2a.latent_space.i2a_latent_space_actor_critic import I2ALatentSpaceActorCritic
+        from i2a.latent_space.i2a_latent_space_actor_critic import I2ALatentSpace_PolicyWrapper
 
-        i2a_model = I2ALatentSpaceActorCritic(policy=I2ALatentSpace(obs_shape=obs_shape,
-                                                                    action_space=action_space,
-                                                                    imagination_core=imagination_core,
-                                                                    rollout_steps=args.i2a_rollout_steps,
-                                                                    use_cuda=args.cuda),
-                                              imagination_core=imagination_core,
-                                              frame_stack=args.num_stack)
+        i2a_model = I2ALatentSpace_PolicyWrapper(policy=I2ALatentSpace(obs_shape=obs_shape,
+                                                                       encoding_shape=encoding_shape,
+                                                                       action_space=action_space,
+                                                                       imagination_core=imagination_core,
+                                                                       rollout_steps=args.i2a_rollout_steps,
+                                                                       frame_stack=args.num_stack,
+                                                                       use_cuda=args.cuda),
+                                                 imagination_core=imagination_core,
+                                                 frame_stack=args.num_stack)
 
         return i2a_model

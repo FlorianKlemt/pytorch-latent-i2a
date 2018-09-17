@@ -25,5 +25,4 @@ def numerical_reward_to_bit_array(rewards, reward_prediction_bits, use_cuda):
             bits = [int(x) for x in list(number_str_format.format(abs(true_reward)))]
             for n in range(2, reward_prediction_bits):
                 r_true[i, j, n] = bits[n - 2]
-            # print(r_true[i,j], true_reward)
     return r_true

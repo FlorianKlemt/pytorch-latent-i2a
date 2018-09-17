@@ -32,5 +32,5 @@ class EncoderModule(nn.Module):
         return encoded
 
     def output_size(self):
-        return (self.output_channels,self.input_shape[1]/self.division_size, self.input_shape[2]/self.division_size)
+        return (self.output_channels,int(self.input_shape[1]/self.division_size), int(self.input_shape[2]/self.division_size))
 

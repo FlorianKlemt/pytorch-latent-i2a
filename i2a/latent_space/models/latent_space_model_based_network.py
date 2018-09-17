@@ -5,10 +5,11 @@ from i2a.latent_space.models.latent_space_rollout_encoder import LatentSpaceEnco
 class LatentSpaceModelBasedNetwork(torch.nn.Module):
     def __init__(self,
                  number_actions,
-                 obs_shape,
+                 encoding_shape,
                  imagination_core,
                  number_lstm_cells=256,
                  rollout_steps=5,
+                 frame_stack=4,
                  use_cuda=False):
 
         super(LatentSpaceModelBasedNetwork, self).__init__()
@@ -17,11 +18,11 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
         self.number_lstm_cells = number_lstm_cells
         self.number_actions = number_actions
         self.use_cuda = use_cuda
-        self.frame_stack = 4 #TODO
+        self.frame_stack = frame_stack
 
         self.imagination_core = imagination_core
 
-        self.encoder_cnn = LatentSpaceEncoderCNNNetwork(obs_shape=(64, 25, 20))
+        self.encoder_cnn = LatentSpaceEncoderCNNNetwork(encoding_shape=encoding_shape)
         # (output size cnn + broadcasted reward)
         self.encoder_lstm = LatentSpaceEncoderLSTMNetwork(input_dim=self.encoder_cnn.output_size + self.encoder_cnn.output_dims,
                                                           number_lstm_cells=self.number_lstm_cells,

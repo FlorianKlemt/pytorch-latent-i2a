@@ -9,14 +9,13 @@ class EnvMiniPacmanLabelsOptimizer():
                  lr, eps, weight_decay,
                  use_cuda):
         self.model = model
-        if use_cuda == True:
+        if use_cuda:
             self.model.cuda()
 
         self.reward_loss_coef = reward_loss_coef
 
         self.loss_function_reward = nn.MSELoss()
         self.loss_function_state = nn.CrossEntropyLoss()
-        #self.loss_function_state = nn.HingeEmbeddingLoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr = lr,

@@ -71,6 +71,7 @@ class ResConv(nn.Module):
         return self._output_channels
 
 
+# in "Learning and Querying Generative Models for RL" they used a size-preserving conv layer at the beginning of this module
 class PoolAndInject(nn.Module):
     def __init__(self, input_channels, size):
         super(PoolAndInject, self).__init__()

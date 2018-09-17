@@ -3,8 +3,6 @@ import numpy as np
 import torch
 import math
 from functools import reduce
-import json
-import logging
 
 def norm_col_init(weights, std=1.0):
     x = torch.randn(weights.size())

@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-from environment_model.mini_pacman.model.basic_blocks import BasicBlock, Flatten, xavier_weights_init
+from environment_model.mini_pacman.model.basic_blocks import BasicBlock
+from model_helpers.flatten import Flatten
+from model_helpers.model_initialization import xavier_weights_init_relu
 
 
 class MiniPacmanEnvModel(torch.nn.Module):
@@ -13,7 +15,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
-        self.reward_bins = torch.FloatTensor(reward_bins).type(self.FloatTensor)
+        self.reward_bins = self.FloatTensor(reward_bins)
 
         input_channels = obs_shape[0]
         W=obs_shape[1]
@@ -27,8 +29,6 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_conv2', nn.Conv2d(64, 64, kernel_size=1)),
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
-          # TODO why do they use 5 output rewards??
-          #('reward_fc', nn.Linear(64 * W * H, 1))
           ('reward_fc',    nn.Linear(64*W*H, 5)),
           ('softmax',      nn.Softmax())
         ]))
@@ -37,7 +37,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
             ('sigmoid',    nn.Sigmoid())
         ]))
 
-        self.apply(xavier_weights_init)
+        self.apply(xavier_weights_init_relu)
 
         self.train()
 
@@ -45,7 +45,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
         one_hot = torch.zeros(input_action.shape[0], self.num_actions).type(self.FloatTensor)
         # make one hot vector
         one_hot.scatter_(1, input_action, 1)
-        # breoadcast action
+        # broadcast action
         one_hot = one_hot.unsqueeze(-1).unsqueeze(-1)
         broadcasted_action = one_hot.repeat(1, 1, input_frame.shape[2], input_frame.shape[3])
 
@@ -61,8 +61,6 @@ class MiniPacmanEnvModel(torch.nn.Module):
 
         #output reward head
         reward_probability = self.reward_head(x)
-        # TODO why not just use the value of the max probability
-        # TODO is this correct??
         reward_out = torch.sum(reward_probability * self.reward_bins, 1)
 
         return image_out,reward_out

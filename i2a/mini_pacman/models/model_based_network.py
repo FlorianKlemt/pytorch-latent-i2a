@@ -1,13 +1,7 @@
 import torch
 from i2a.mini_pacman.models.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
 
-
 class ModelBasedNetwork(torch.nn.Module):
-    """
-    This class implements the model free A3CLstm architecture implemented, the code is based on
-    https://github.com/dgriff777/rl_a3c_pytorch. We also used the pretrained models if available.
-    """
-
     def __init__(self,
                  number_actions,
                  obs_shape,
@@ -15,13 +9,6 @@ class ModelBasedNetwork(torch.nn.Module):
                  number_lstm_cells=256,
                  rollout_steps=5,
                  use_cuda=False):
-        """
-        The constructor need two integers, where the num_inputs describes the number of
-        input channels and num_outputs is corresponding with the number of actions available in
-        the specific game.
-        :param num_inputs:
-        :param num_outputs:
-        """
         super(ModelBasedNetwork, self).__init__()
 
         self.rollout_steps = rollout_steps

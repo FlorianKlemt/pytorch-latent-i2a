@@ -1,10 +1,9 @@
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from i2a.utils import get_linear_dims_after_conv
 
 
-# see B.1: model free path uses identical network as the standard model-free baseline agent (withput the fc layers)
+# see B.1: model free path uses identical network as the standard model-free baseline agent (without the fc layers)
 class LatentSpaceModelFreeNetwork(nn.Module):
     def __init__(self, obs_shape, num_outputs=512):
         super(LatentSpaceModelFreeNetwork, self).__init__()

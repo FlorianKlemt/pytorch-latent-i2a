@@ -12,7 +12,6 @@ class ImaginationCore(nn.Module):
 
     def forward(self, state, action):
         if self.frame_stack > 1:
-            # TODO: check this (hopefully the last 3 elements are RGB of the last frame)
             last_frame = state[:,-1:] if self.grey_scale else state[:,-3:]
         else:
             last_frame = state

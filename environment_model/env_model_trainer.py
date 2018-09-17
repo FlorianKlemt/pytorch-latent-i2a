@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as F
 import random
 
 class EnvironmentModelTrainer():
@@ -71,14 +70,5 @@ class EnvironmentModelTrainer():
         batch_size = min(batch_size, x_samples)
         sample_memory = self.create_x_samples(x_samples)
 
-        #from rl_visualization.environment_model.test_environment_model import RenderImaginationCore
-        #import time
-        #renderer = RenderImaginationCore(False)
-
         for i_episode in range(training_episodes):
             self.train_episode(sample_memory=sample_memory, batch_size=batch_size)
-
-            #if i_episode % 500 == 0:
-            #    renderer.render_observation(sample_state[0], sample_state[0], 0, 0, 0)
-            #    renderer.render_observation(sample_next_state[0], predicted_next_state[0], sample_reward.data[0], predicted_reward.data[0], 1)
-            #    time.sleep(1)

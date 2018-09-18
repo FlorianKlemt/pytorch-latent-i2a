@@ -1,0 +1,11 @@
+\begin{thebibliography}{1}
+
+\bibitem{I2A}
+Theophane Weber, S{\'{e}}bastien Racani{\`{e}}re, David~P. Reichert, Lars
+  Buesing, Arthur Guez, Danilo~Jimenez Rezende, Adri{\`{a}}~Puigdom{\`{e}}nech
+  Badia, Oriol Vinyals, Nicolas Heess, Yujia Li, Razvan Pascanu, Peter
+  Battaglia, David Silver, and Daan Wierstra.
+\newblock Imagination-augmented agents for deep reinforcement learning.
+\newblock {\em CoRR}, abs/1707.06203, 2017.
+
+\end{thebibliography}

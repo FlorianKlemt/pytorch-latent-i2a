@@ -68,7 +68,7 @@ In contrast to this model-based reinforcement learning algorithm are using a mod
 But there are some drawbacks. If the model is imperfect the performance of model-based agents suffers. Also it is not always possible to get an exact transition model or to get an transition model at all. In real world application it is often impossible to get a good enough transition model.\\
 
 
-%$\rightarrow$ Combine model free and model based RL to get an agent which is robost against model imperfections.
+
 
 For more information about reinforcement learning see TODO
 
@@ -112,13 +112,22 @@ The advantage function push up the probability of an action from a state $s$ if 
 
 \textbf{Actor Critic policy $\pi(a | s, \theta)$ update}:
 \begin{equation}
+	policy loss = - log (\pi_\theta(a | s)) * A
+\end{equation}
+
+\begin{equation}
 	\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)
 \end{equation}
 	
 \textbf{Actor Critic value update}:
 TODO
 \begin{equation}
-	\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)
+	loss = \sum(R - V(s))^2
+\end{equation}
+
+gradient
+\begin{equation}
+	\nabla w =  2 * \sum(R - V(s))^2
 \end{equation}
 
 

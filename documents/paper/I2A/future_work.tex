@@ -1,28 +1,10 @@
-\chapter{Ausblick}
+\section{Future Work}
 
-Die in Kapitel~\ref{sec:erg_testreihen} durchgeführten Testreihen zeigen bereits, dass 3D Modelle durch ge\-krümm\-te Dreiecke genauer approximiert werden können, als durch flache Dreiecke.
-Jedoch entstehen bei besonders schmalen Dreiecken ungewollte Wölbungen auf der Oberfläche.
-Für dieses Problem sollte in einer weiterführenden Arbeit eine Lösung gefunden werden.
-Ein möglicher Ansatz besteht darin, dass bei der Approximation keine Halbkanten kollabiert werden, wenn dadurch zu schmalen Dreiecke entstehen. 
-Ebenfalls sollte bei der Energieberechnung einer Halbkante, siehe Kapitel~\ref{sec:calculation_energy_funktion}, darauf geachtet werden, dass nicht nur die kürzeste Distanz, aller Dreiecke zu dem zu löschenden Punkt beachtet wird, sondern ebenfalls die Verfälschung der Krümmung durch das Zusammenfügen der Halbkante.
 
+Um noch besser 
 
 \vspace*{0.3cm}
 
-Da endende Feature Kanten oder einzelne Feature Vertices (definiert in Kapitel~\ref{sec:feature_varianten_im_mesh}) nur sehr selten in einem 3D Modell auftauchen, wurde hier noch keine korrekte Behandlung implementiert. Dies sollte ebenfalls in einer weiterführenden Arbeit umgesetzt werden.
-
-\vspace*{0.3cm}
-
-Um noch besser Ergebnisse bei der Mesh Optimierung zu erzielen, kann die verwendete Energie Funktion (Kapitel ~\ref{sec:calculation_energy_funktion}) erweitert werden. Beispielsweise um die Energien $E_{rep}$ und $E_{spring}$ die in Kapitel~\ref{sec:energy_funktion} vorgestellt wurden.
-%- Mesh Optimierung um Spring und Erep erweitern
-
-\vspace*{0.3cm}
-
-Bei der Darstellung eines 3D Modell mit gekrümmten Dreiecken, muss von Hand eingestellt werden, wie fein die Darstellung sein soll. Wie fein ein Dreieck dargestellt werden muss, sollte jedoch automatisch durch die Krümmung der Dreiecke berechnet werden.
-
-\vspace*{0.3cm}
-
-Ein weiterer Optimierungspunkt besteht darin, dass die Approximation mit gekrümmten Dreiecken wesentlich Rechenintensiver ist, als eine Approximation mit flachen Dreiecken. Eine Parallelisierung würde hier zu einer wesentliche Beschleunigung führen. Wie in Kapitel~\ref{sec:performance_optimize} beschreiben, konnte bereits die initiale Energie Berechnung jeder Kante parallelisiert.
-Eine Parallelisierung der folgenden while Schleife, mit welcher die Halbkanten anschließend kollabiert werden, steht jedoch noch aus. 
+Bei d
 
 

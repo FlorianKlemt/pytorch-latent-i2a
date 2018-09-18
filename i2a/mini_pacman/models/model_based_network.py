@@ -1,5 +1,5 @@
 import torch
-from i2a.mini_pacman.models.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, RolloutEncoder
+from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, BasicRolloutEncoder
 
 class ModelBasedNetwork(torch.nn.Module):
     def __init__(self,
@@ -18,13 +18,13 @@ class ModelBasedNetwork(torch.nn.Module):
 
         self.imagination_core = imagination_core
 
-        self.encoder_cnn = EncoderCNNNetwork(obs_shape=obs_shape)
+        self.encoder_cnn = EncoderCNNNetwork(input_shape=obs_shape)
         # (output size cnn + broadcasted reward)
         self.encoder_lstm = EncoderLSTMNetwork(input_dim=self.encoder_cnn.output_size + self.encoder_cnn.output_dims,
                                                number_lstm_cells=self.number_lstm_cells,
                                                use_cuda=self.use_cuda)
 
-        self.rollout_encoder = RolloutEncoder(self.imagination_core,
+        self.rollout_encoder = BasicRolloutEncoder(self.imagination_core,
                                               self.encoder_cnn,
                                               self.encoder_lstm,
                                               self.rollout_steps,

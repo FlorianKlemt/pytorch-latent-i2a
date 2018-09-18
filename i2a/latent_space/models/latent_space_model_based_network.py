@@ -1,5 +1,5 @@
 import torch
-from i2a.latent_space.models.latent_space_rollout_encoder import LatentSpaceEncoderCNNNetwork, LatentSpaceEncoderLSTMNetwork, LatentSpaceRolloutEncoder
+from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, LatentSpaceRolloutEncoder
 
 
 class LatentSpaceModelBasedNetwork(torch.nn.Module):
@@ -22,9 +22,9 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
 
         self.imagination_core = imagination_core
 
-        self.encoder_cnn = LatentSpaceEncoderCNNNetwork(encoding_shape=encoding_shape)
+        self.encoder_cnn = EncoderCNNNetwork(input_shape=encoding_shape)
         # (output size cnn + broadcasted reward)
-        self.encoder_lstm = LatentSpaceEncoderLSTMNetwork(input_dim=self.encoder_cnn.output_size + self.encoder_cnn.output_dims,
+        self.encoder_lstm = EncoderLSTMNetwork(input_dim=self.encoder_cnn.output_size + self.encoder_cnn.output_dims,
                                                           number_lstm_cells=self.number_lstm_cells,
                                                           use_cuda=self.use_cuda)
 

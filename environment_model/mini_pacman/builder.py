@@ -1,3 +1,4 @@
+
 def get_save_environment_model_path(args):
     from environment_model.model_saver import save_environment_model_path
     return save_environment_model_path(args.save_environment_model_dir,
@@ -190,13 +191,13 @@ class MiniPacmanEnvironmentBuilder():
             param.requires_grad = True
         rollout_policy.train()
 
-        from i2a.imagination_core import ImaginationCore
+        from i2a.mini_pacman.imagination_core import ImaginationCore
         imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
                                            grey_scale=args.grey_scale, frame_stack=args.num_stack)
 
-        from i2a.mini_pacman.i2a_actor_critic import I2A_ActorCritic
-        from i2a.mini_pacman.models.i2a_classical_agent import I2A
-        i2a_model = I2A_ActorCritic(policy=I2A(obs_shape=obs_shape,
+        from i2a.i2a_policy_wrapper import ClassicI2A_PolicyWrapper
+        from i2a.i2a_agent import ClassicI2A
+        i2a_model = ClassicI2A_PolicyWrapper(policy=ClassicI2A(obs_shape=obs_shape,
                                                action_space=action_space,
                                                imagination_core=imagination_core,
                                                rollout_steps=args.i2a_rollout_steps,

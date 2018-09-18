@@ -179,14 +179,13 @@ class LatentSpaceEnvironmentBuilder():
             param.requires_grad = True
         rollout_policy.train()
 
-        from i2a.latent_space.imagination_core.latent_space_imagination_core import LatentSpaceImaginationCore
+        from i2a.latent_space.latent_space_imagination_core import LatentSpaceImaginationCore
         imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
                                                       rollout_policy=rollout_policy)
 
-        from i2a.latent_space.models.i2a_agent import I2ALatentSpace
-        from i2a.latent_space.i2a_latent_space_actor_critic import I2ALatentSpace_PolicyWrapper
-
-        i2a_model = I2ALatentSpace_PolicyWrapper(policy=I2ALatentSpace(obs_shape=obs_shape,
+        from i2a.i2a_agent import LatentSpaceI2A
+        from i2a.i2a_policy_wrapper import LatentSpaceI2A_PolicyWrapper
+        i2a_model = LatentSpaceI2A_PolicyWrapper(policy=LatentSpaceI2A(obs_shape=obs_shape,
                                                                        encoding_shape=encoding_shape,
                                                                        action_space=action_space,
                                                                        imagination_core=imagination_core,

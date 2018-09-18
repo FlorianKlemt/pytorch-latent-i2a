@@ -43,7 +43,7 @@ class I2A_ALGO(object):
         loss = value_loss * self.args.value_loss_coef + action_loss - dist_entropy * self.args.entropy_coef + distill_loss * self.args.distill_coef
         loss.backward()
 
-        nn.utils.clip_grad_norm(self.actor_critic.parameters(), self.args.max_grad_norm)
+        nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.args.max_grad_norm)
         self.optimizer.step()
 
         return value_loss.item(), action_loss.item(), dist_entropy.item(), distill_loss.item()

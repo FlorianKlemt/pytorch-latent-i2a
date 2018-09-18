@@ -22,8 +22,8 @@ Based on the two new information the agent again choose an action $a_t$. The loo
 
 %To maximize the received reward, the agent use the received reward signal to update it's action choosing function also called policy. The goal of the agent is to learn an optimal policy too maximize the received reward.\\
 
-The goal of the agent is to maximize the received reward, which is done by learning an optimal action choosing function called policy $\pi$ using the received reward signal.
-There exists different reinforcement learning algorithm which all follow the above described iterative learning algorithm, but differ in the update strategy for learning an optimal policy $\pi$. In the follwing different types of reinforcement learning algorithm will described in more details.
+The goal of the agent is to maximize the received reward, which is done by learning an optimal action choosing function called policy using the received reward signal.
+There exists different reinforcement learning algorithm which all follow the above described iterative learning algorithm, but differ in the update strategy for learning an optimal policy. In the follwing different types of reinforcement learning algorithm will described in more details.
 
 \subsection{Q-Learning}
 
@@ -90,35 +90,45 @@ remember that value function calculates what is the maximum expected future rewa
 Advantage-Actor-Critic is a deep reinforcement learning algorithm. Deep reinforcement learning means that the algorithm is using a neuronal network to learn the decission making function. A2C combines value based and policy based reinforcement learning and consits of two parts. A critic that measures how good the action taken is (value-based) and an actor that controls how our agent behaves (policy-based).\\
 % an \textbf{actor} and a \textbf{critic} function, both are heads of a neuronal network.\\
 
-The \textbf{actor} learns policy function $\mathnormal{\pi(s, a, \theta)}$, which decide the best action for a specific state (controls how the agent acts).\\
+The \textbf{actor} learns the policy function $\pi(a | s, \theta)$ (probability of choosing action $a$ given state $s$), which is used to decide the best action $a$ given a specific state $s$.
+The actor controls how the agent behaves.
+$\theta$ are the learnable weights of the neural network. \\
 
-The \textbf{critic} learns the value function $\mathnormal{V(s, a, w)}$, which is used for evaluatiog the policy function estimated by the actor according to the temporal difference error.
+The \textbf{critic} learns the value function $\mathnormal{V(s, w)}$, which messures how good a certain state $s$ is to be in. The value function $V$ is used to calculate the expected cumulative reward $Q(s, a)$ from following the policy $\pi$ from state $s$.
+
 \begin{equation}
-r_{t+1} + \gamma V^\pi(s_{t+1}) - V^\pi(s_t)
+	Q(s, a) = r_{t+1} + \gamma V^\pi(s_{t+1})
 \end{equation}
 
+To update the policy function, we use the \textbf{Advantage function} which tells us the improvement of a certain action compaired to the average action taken at state $s$. 
+In other words, it estimate the improvement of the true reward compared to the expected reward of the current state $s$ by using the temporal difference error:
+
+\begin{equation}
+	A(s, a) = Q(s, a) - V(s)
+\end{equation}
+
+The advantage function push up the probability of an action from a state $s$ if this action was better than the expected value.\\
+
+
+\textbf{Actor Critic policy $\pi(a | s, \theta)$ update}:
+\begin{equation}
+	\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)
+\end{equation}
+	
+\textbf{Actor Critic value update}:
+TODO
+\begin{equation}
+	\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)
+\end{equation}
+
+
 %messures how good a choosen actions is. 
-And which is used to calculate the expected cumulative reward from following the policy $\pi$ from state $s$.\\
-
-
+%And which is used to calculate the expected cumulative reward from following the policy $\pi$ from state $s$.\\
 %A critic is used for evaluating the policy function estimated by the actor according to the temporal difference (TD) error.
 
-Advantage function\\
-
-This function will tell us the improvement compared to the average the action taken at that state is. In other words, this function calculates the extra reward I get if I take this action. The extra reward is that beyond the expected value of that state.\\
-		Push up the probability of an action from a state $s$ if this action was better than the expected value
-		\begin{equation}
-		A(s, a) = Q(s, a) - V(s)		
-		A(s, a) = r + \gamma V(s') - V(s) 
-		\end{equation}
+%Advantage function
+%This function will tell us the improvement compared to the average the action taken at that state is. In other words, this function calculates the extra reward I get if I take this action. The extra reward is that beyond the expected value of that state.\\
+%		Push up the probability of an action from a state $s$ if this action was better than the expected value
 %A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)		
 		
 
-Q-value function $Q(s, a)$:\\ %$Q^{\pi_\theta}(s, a)$:\\ 
-		Expected cumulative reward from taking action $a$ in state $s$ and following the policy $\pi$
-
-Actor Critic policy update:
-	\begin{equation}
-		\mathnormal{
-		\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)}
-	\end{equation}

@@ -183,16 +183,32 @@ class LatentSpaceEnvironmentBuilder():
         imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
                                                       rollout_policy=rollout_policy)
 
-        from i2a.i2a_agent import LatentSpaceI2A
+        i2a = self.createLatentI2A(action_space, args, encoding_shape, imagination_core, obs_shape)
+
         from i2a.i2a_policy_wrapper import LatentSpaceI2A_PolicyWrapper
-        i2a_model = LatentSpaceI2A_PolicyWrapper(policy=LatentSpaceI2A(obs_shape=obs_shape,
-                                                                       encoding_shape=encoding_shape,
-                                                                       action_space=action_space,
-                                                                       imagination_core=imagination_core,
-                                                                       rollout_steps=args.i2a_rollout_steps,
-                                                                       frame_stack=args.num_stack,
-                                                                       use_cuda=args.cuda),
+        i2a_model = LatentSpaceI2A_PolicyWrapper(policy=i2a,
                                                  imagination_core=imagination_core,
                                                  frame_stack=args.num_stack)
 
         return i2a_model
+
+    def createLatentI2A(self, action_space, args, encoding_shape, imagination_core, obs_shape):
+
+        from i2a.latent_space.models.latent_space_model_free_network import LatentSpaceModelFreeNetwork
+        model_free_network = LatentSpaceModelFreeNetwork(obs_shape=obs_shape,
+                                                         num_outputs=512)
+
+        from i2a.latent_space.models.latent_space_model_based_network import LatentSpaceModelBasedNetwork
+        model_based_network = LatentSpaceModelBasedNetwork(number_actions=action_space,
+                                                           encoding_shape=encoding_shape,
+                                                           imagination_core=imagination_core,
+                                                           number_lstm_cells=256,
+                                                           rollout_steps=args.i2a_rollout_steps,
+                                                           frame_stack=args.num_stack,
+                                                           use_cuda=args.cuda)
+
+        from i2a.i2a_agent import I2A
+        i2a = I2A(model_free_network=model_free_network,
+                  model_based_network=model_based_network,
+                  action_space=action_space)
+        return i2a

@@ -195,14 +195,33 @@ class MiniPacmanEnvironmentBuilder():
         imagination_core = ImaginationCore(env_model=env_model, rollout_policy=rollout_policy,
                                            grey_scale=args.grey_scale, frame_stack=args.num_stack)
 
+
+
+        i2a = self.createClassicI2a(action_space, args,
+                                    imagination_core,
+                                    obs_shape)
+
         from i2a.i2a_policy_wrapper import ClassicI2A_PolicyWrapper
-        from i2a.i2a_agent import ClassicI2A
-        i2a_model = ClassicI2A_PolicyWrapper(policy=ClassicI2A(obs_shape=obs_shape,
-                                               action_space=action_space,
-                                               imagination_core=imagination_core,
-                                               rollout_steps=args.i2a_rollout_steps,
-                                               use_cuda=args.cuda),
-                                    rollout_policy=rollout_policy)
+        i2a_model = ClassicI2A_PolicyWrapper(policy=i2a, rollout_policy=rollout_policy)
 
         return i2a_model
+
+    def createClassicI2a(self, action_space, args, imagination_core, obs_shape):
+        from i2a.mini_pacman.models.model_free_network import ModelFreeNetwork
+        model_free_network = ModelFreeNetwork(obs_shape=obs_shape,
+                                              num_outputs=512)
+
+        from i2a.mini_pacman.models.model_based_network import ModelBasedNetwork
+        model_based_network = ModelBasedNetwork(number_actions=action_space,
+                                                obs_shape=obs_shape,
+                                                imagination_core=imagination_core,
+                                                number_lstm_cells=256,
+                                                rollout_steps=args.i2a_rollout_steps,
+                                                use_cuda=args.cuda)
+
+        from i2a.i2a_agent import I2A
+        i2a = I2A(model_free_network=model_free_network,
+                  model_based_network=model_based_network,
+                  action_space=action_space)
+        return i2a
 

@@ -57,3 +57,6 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
         model_based_result = rollout_results.view(states_shape[0], -1)
 
         return model_based_result
+
+    def output_size(self):
+        return self.number_lstm_cells * self.action_space

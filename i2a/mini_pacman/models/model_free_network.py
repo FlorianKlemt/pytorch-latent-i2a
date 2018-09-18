@@ -6,6 +6,8 @@ from i2a.utils import get_linear_dims_after_conv
 class ModelFreeNetwork(nn.Module):
     def __init__(self, obs_shape, num_outputs = 512):
         super(ModelFreeNetwork, self).__init__()
+
+        self._output_size = num_outputs;
         input_channels = obs_shape[0]
         input_dims = obs_shape[1:]
 
@@ -22,3 +24,6 @@ class ModelFreeNetwork(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+
+    def output_size(self):
+        return self._output_size

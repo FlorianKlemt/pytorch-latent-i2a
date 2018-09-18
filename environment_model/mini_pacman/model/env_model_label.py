@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
-from environment_model.mini_pacman.model.basic_blocks import BasicBlock, Flatten, xavier_weights_init
+from environment_model.mini_pacman.model.basic_blocks import BasicBlock
+from model_helpers.flatten import Flatten
+from model_helpers.model_initialization import xavier_weights_init
+
 
 class MiniPacmanEnvModelClassLabels(torch.nn.Module):
     def __init__(self, obs_shape, num_actions, reward_bins, use_cuda):
@@ -26,7 +29,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
           ('reward_fc',    nn.Linear(64*W*H, 5)),
-          ('softmax', nn.Softmax())
+          ('softmax', nn.Softmax(dim=1))
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([

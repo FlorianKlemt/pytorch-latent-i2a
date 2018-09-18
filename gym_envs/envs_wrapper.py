@@ -32,9 +32,9 @@ class FrameUIntToFloat(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
         box = self.observation_space
-        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape))
+        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape), dtype=np.float32)
 
-    def _observation(self, obs):
+    def observation(self, obs):
         frame = obs / 255.
         frame[frame < 0] = 0.
         frame[frame > 1.] = 1.
@@ -45,9 +45,9 @@ class WarpFrameGrayScale(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
         box = self.observation_space
-        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape[0], box.shape[1]))
+        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape[0], box.shape[1]), dtype=np.float32)
 
-    def _observation(self, obs):
+    def observation(self, obs):
         frame = np.dot(obs.astype('float32'), np.array([0.299, 0.587, 0.114], 'float32'))
         return frame.reshape((frame.shape[0], frame.shape[1]))
 
@@ -56,9 +56,9 @@ class ReshapeRGBChannels(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
         box = self.observation_space
-        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape[2], box.shape[0], box.shape[1]))
+        self.observation_space = gym.spaces.Box(low=0., high=1., shape=(box.shape[2], box.shape[0], box.shape[1]), dtype=np.float32)
 
-    def _observation(self, obs):
+    def observation(self, obs):
         return obs.transpose(2,0,1)
 
 

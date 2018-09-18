@@ -31,6 +31,9 @@ class RewardScaling(gym.Wrapper):
         reward *= self.scaling_factor
         return obs, reward, done, info
 
+    def reset(self, **kwargs):
+        return self.env.reset()
+
 class NegativeRewardForDying(gym.Wrapper):
     def __init__(self, env, reward_for_dying = -100):
         gym.Wrapper.__init__(self, env)

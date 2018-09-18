@@ -30,7 +30,7 @@ class MiniPacmanEnvModel(torch.nn.Module):
           ('reward_relu2', nn.ReLU()),
           ('flatten',      Flatten()),
           ('reward_fc',    nn.Linear(64*W*H, 5)),
-          ('softmax',      nn.Softmax())
+          ('softmax',      nn.Softmax(dim=1))
         ]))
         self.img_head = nn.Sequential(OrderedDict([
             ('conv1',      nn.Conv2d(64, input_channels, kernel_size=1)),        #input size is n3 of basic-block2, output is input_channels (1 or 3)

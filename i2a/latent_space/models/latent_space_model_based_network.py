@@ -4,7 +4,7 @@ from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, LatentSpa
 
 class LatentSpaceModelBasedNetwork(torch.nn.Module):
     def __init__(self,
-                 number_actions,
+                 action_space,
                  encoding_shape,
                  imagination_core,
                  number_lstm_cells=256,
@@ -16,7 +16,7 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
 
         self.rollout_steps = rollout_steps
         self.number_lstm_cells = number_lstm_cells
-        self.number_actions = number_actions
+        self.action_space = action_space
         self.use_cuda = use_cuda
         self.frame_stack = frame_stack
 
@@ -40,10 +40,10 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
         observation_initial_context = observation_initial_context.view(states_shape[0], self.frame_stack, -1, states_shape[2], states_shape[3])
         latent_space = self.rollout_encoder.imagination_core.encode(observation_initial_context)
 
-        latent_space = latent_space.repeat(self.number_actions, 1, 1, 1)
+        latent_space = latent_space.repeat(self.action_space, 1, 1, 1)
         #batchwise for all rollouts -> each rollout gets a different first action
         #the unsqueeze is needed because a inplace scatter deep inside the rollout encoder needs this dimensionality
-        actions = torch.arange(self.number_actions).long().unsqueeze(1)
+        actions = torch.arange(self.action_space).long().unsqueeze(1)
         #batchwise for all processes -> repeat the broadcasted actions for each batch
         actions = actions.repeat(states_shape[0], 1)
         if self.use_cuda:

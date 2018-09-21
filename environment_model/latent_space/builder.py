@@ -199,7 +199,7 @@ class LatentSpaceEnvironmentBuilder():
                                                          num_outputs=512)
 
         from i2a.latent_space.models.latent_space_model_based_network import LatentSpaceModelBasedNetwork
-        model_based_network = LatentSpaceModelBasedNetwork(number_actions=action_space,
+        model_based_network = LatentSpaceModelBasedNetwork(action_space=action_space,
                                                            encoding_shape=encoding_shape,
                                                            imagination_core=imagination_core,
                                                            number_lstm_cells=256,

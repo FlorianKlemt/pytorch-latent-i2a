@@ -49,18 +49,6 @@ class MiniModel(Policy):
     def state_size(self):
         return 1
 
-    def reset_parameters(self):
-        self.apply(weights_init)
-
-        relu_gain = nn.init.calculate_gain('relu')
-        self.conv1.weight.data.mul_(relu_gain)
-        self.conv2.weight.data.mul_(relu_gain)
-        self.conv3.weight.data.mul_(relu_gain)
-        self.linear1.weight.data.mul_(relu_gain)
-
-        if self.dist.__class__.__name__ == "DiagGaussian":
-            self.dist.fc_mean.weight.data.mul_(0.01)
-
     def forward(self, inputs, states=None, masks=None):
         #print("Input shape: ",inputs.shape)
         #for layer in self.modules():

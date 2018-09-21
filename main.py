@@ -13,18 +13,14 @@ from model import Policy
 from storage import RolloutStorage, I2A_RolloutStorage
 from visualize import visdom_plot
 from rl_visualization.visdom_plotter import VisdomPlotterA2C
-from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper, I2A_ActorCritic
-from a2c_models.i2a_mini_model import I2A_MiniModel
-from i2a.i2a_agent import I2A
+from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
 from rl_visualization.play_game_with_trained_model import TestPolicy
-import gym_minipacman
 import time
 import sys
 import multiprocessing as mp
 import algo
 from algo.i2a_algo import I2A_ALGO
-from i2a.i2a_factory import build_i2a_model, build_latent_space_i2a_model
 
 args = get_args()
 
@@ -57,6 +53,13 @@ def main():
 
     torch.set_num_threads(1)
 
+    if 'MiniPacman' in args.env_name:
+        from environment_model.mini_pacman.builder import MiniPacmanEnvironmentBuilder
+        builder = MiniPacmanEnvironmentBuilder(args)
+    else:
+        from environment_model.latent_space.builder import LatentSpaceEnvironmentBuilder
+        builder = LatentSpaceEnvironmentBuilder(args)
+
     if args.vis:
         from visdom import Visdom
         viz = Visdom(port=args.port)
@@ -64,11 +67,11 @@ def main():
         visdom_plotter = VisdomPlotterA2C(viz, args.algo == 'i2a')
 
     if 'MiniPacman' in args.env_name:
-        from custom_envs import make_custom_env
+        from gym_envs.envs_mini_pacman import make_custom_env
         envs = [make_custom_env(args.env_name, args.seed, i, args.log_dir, grey_scale=args.grey_scale)
             for i in range(args.num_processes)]
     elif args.algo == 'i2a' or args.train_on_200x160_pixel:
-        from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        from gym_envs.envs_ms_pacman import make_env_ms_pacman
         envs = [make_env_ms_pacman(env_id = args.env_name,
                                    seed = args.seed,
                                    rank = i,
@@ -82,11 +85,6 @@ def main():
         envs = [make_env(args.env_name, args.seed, i, args.log_dir, args.add_timestep)
                 for i in range(args.num_processes)]
 
-    #@future self: it might be tempting to move this below after the initialization of envs is finished - dont do it.
-    #              SubprovVecEnv hides the unwrapping. At least this incredibly ugly line makes the code 'dynamic' - it's something
-    if 'MiniPacman' in args.env_name:
-        em_model_reward_bins = envs[0]().unwrapped.reward_bins
-
     if args.num_processes > 1:
         envs = SubprocVecEnv(envs)
     else:
@@ -99,18 +97,12 @@ def main():
     obs_shape = (obs_shape[0] * args.num_stack, *obs_shape[1:])
 
     if args.algo == 'i2a' and 'MiniPacman' in args.env_name:
-        #build i2a model also wraps it with the A2C_PolicyWrapper
-        actor_critic = build_i2a_model(obs_shape=envs.observation_space.shape,
-                                       action_space=envs.action_space.n,
-                                       args = args,
-                                       em_model_reward_bins=em_model_reward_bins)
+        actor_critic = builder.build_i2a_model(envs, args)
     elif args.algo == 'i2a':
-        actor_critic = build_latent_space_i2a_model(obs_shape=envs.observation_space.shape,
-                                                    action_space=envs.action_space,
-                                                    args=args)
+        actor_critic = builder.build_i2a_model(envs, args)
     elif 'MiniPacman' in args.env_name:
-        #actor_critic = MiniModel(obs_shape[0], envs.action_space.n, use_cuda=args.cuda)
-        actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
+        actor_critic = builder.build_a2c_model(envs)
+        #actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
     elif args.train_on_200x160_pixel:
         from a2c_models.atari_model import AtariModel
         actor_critic = A2C_PolicyWrapper(AtariModel(obs_shape=obs_shape,

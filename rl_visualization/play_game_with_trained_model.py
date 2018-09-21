@@ -3,7 +3,6 @@ import torch
 import time
 import os
 import torch.nn.functional as F
-from custom_envs import make_custom_env, MiniFrameStack
 
 from multiprocessing import Process
 
@@ -38,10 +37,11 @@ class FrameStack(gym.Wrapper):
 
 def make_test_env(env_id, grey_scale, frame_stack):
     if 'MiniPacman' in env_id:
+        from gym_envs.envs_mini_pacman import make_custom_env
         env = make_custom_env(env_id, 42, 1, None, grey_scale=grey_scale)()
         env = FrameStack(env, frame_stack)
     elif 'MsPacman' in env_id:
-        from LatentSpaceEncoder.env_encoder import make_env_ms_pacman
+        from gym_envs.envs_ms_pacman import make_env_ms_pacman
         env = make_env_ms_pacman(env_id=env_id, seed = 42, rank=1, log_dir=None, grey_scale=False, stack_frames=frame_stack, skip_frames=4)()
     else:
         env = gym.make(env_id)
@@ -56,10 +56,7 @@ class TestEnvironment():
         self.FloatTensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
         self.env = env
         self.model = model
-        #self.model.cpu()
         saved_state = torch.load(load_path, map_location=lambda storage,loc: storage)
-        #for key, val in saved_state.items():
-        #    saved_state[key] = val.cpu()
 
         self.model.load_state_dict(saved_state)
         self.use_cuda = args.cuda
@@ -80,11 +77,9 @@ class TestEnvironment():
             value, actor = self.model(input)
             probs = F.softmax(actor, dim=1)
             action = probs.multinomial(num_samples=1)
+            action = action.item()
 
-            #_, actions, _, _, _, _ = self.model.act(input, None, None)
-            cpu_action = action.item()
-
-            self.state, reward, done, info = self.env.step(cpu_action)
+            self.state, reward, done, info = self.env.step(action)
             self.reward += reward
 
         return done

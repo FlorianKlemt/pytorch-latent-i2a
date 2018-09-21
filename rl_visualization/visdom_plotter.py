@@ -21,7 +21,6 @@ class VisdomPlotGraph():
     def __init__(self, viz, title, ylabel, legend = None,
                  running_mean_n = 250, plot_after_n_inserts = 50):
         self.viz = viz
-        # self.win = None
         self.plot_win = None
 
         if legend:

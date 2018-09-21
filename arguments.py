@@ -52,13 +52,19 @@ def get_args():
     parser.add_argument('--num-frames', type=int, default=100e6,
                         help='number of frames to train (default: 100e6)')
     parser.add_argument('--env-name', default='PongNoFrameskip-v4',
-                        help='environment to train on (default: PongNoFrameskip-v4)')
+                        help='environment to train on (default: PongNoFrameskip-v4)'
+                             'I2A envs examples: '
+                             'RegularMiniPacmanNoFrameskip-v0, '
+                             'HuntMiniPacmanNoFrameskip-v0, '
+                             'MsPacmanNoFrameskip-v0)')
     parser.add_argument('--log-dir', default='/tmp/gym/',
                         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument('--save-dir', default='./trained_models/',
                         help='directory to save agent logs (default: ./trained_models/)')
     parser.add_argument('--load-model',  action='store_true', default=False,
                         help='load existing model')
+    parser.add_argument('--load-environment-model-dir', default="trained_models/environment_models/",
+                        help='relative path to folder from which a environment model should be loaded.')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--add-timestep', action='store_true', default=False,
@@ -71,19 +77,23 @@ def get_args():
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--grey_scale', action='store_true', default=False,
                              help='True to convert to grey_scale images')
-    parser.add_argument('--use-copy-model', action='store_true', default=False,
-                        help='True to use copy model, False for standard I2A')
     parser.add_argument('--train-on-200x160-pixel', action='store_true', default=False,
-                        help='True to use copy model, False for standard I2A')
+                        help='True to use 200x160 image, False for downsampled image')
     parser.add_argument('--i2a-rollout-steps', type=int, default=2,
                         help='number of steps the imagination core rollouts in the I2A training (default: 5)')
-    parser.add_argument('--use-class-labels', action='store_true', default=False,
-                        help='True to compute rollouts on class labels')
     parser.add_argument('--no-training', action='store_true', default=False,
                         help='true to render a already trained model')
-    parser.add_argument('--latent-space-model', default='dSSM_DET',
-                        help='latent space model (default: dSSM_DET)'
-                             'models = (dSSM_DET, dSSM_VAE, sSSM)')
+    #parser.add_argument('--use-copy-model', action='store_true', default=False,
+    #                    help='True to use copy model, False for standard I2A')
+    #parser.add_argument('--use-class-labels', action='store_true', default=False,
+    #                    help='True to compute rollouts on class labels')
+    parser.add_argument('--environment-model', default='dSSM_DET',
+                        help='environment model (default: dSSM_DET)'
+                             'mini pacman models = (MiniModel, MiniModelLabels, CopyModel)'
+                             'latent space models = (dSSM_DET, dSSM_VAE, sSSM)')
+    parser.add_argument('--reward-prediction-bits', type=int, default=8,
+                             help='Only used when train with latent space model'
+                                  'bits used for reward prediction in reward head of decoder (default: 8)')
 
     args = parser.parse_args()
 
@@ -93,4 +103,6 @@ def get_args():
         args.num_frames = 0
         args.render_game = True
 
+    args.save_environment_model_dir = args.load_environment_model_dir
+    args.load_environment_model = True
     return args

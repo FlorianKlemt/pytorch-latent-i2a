@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from i2a.utils import get_linear_dims_after_conv, get_conv_output_dims
+from i2a.utils import get_conv_output_dims
 from functools import reduce
 
 class EncoderCNNNetwork(nn.Module):
-    def __init__(self, obs_shape):
+    def __init__(self, input_shape):
         super(EncoderCNNNetwork, self).__init__()
-        input_channels = obs_shape[0]
-        input_dims = obs_shape[1:]
+        input_channels = input_shape[0]
+        input_dims = input_shape[1:]
 
         self.conv1 = nn.Conv2d(input_channels, 16, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(16, 16, kernel_size=3, stride=2, padding=1)
@@ -35,20 +35,13 @@ class EncoderLSTMNetwork(nn.Module):
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
         self.use_cuda = use_cuda
 
-        # reward broadcasted = 6x6
         self.number_lstm_cells = number_lstm_cells
 
         # input_dim = (output size cnn + broadcasted reward)
         self.lstm = nn.LSTMCell(input_dim, self.number_lstm_cells, True)
-        self.lstm.bias_ih.data.fill_(0)
-        self.lstm.bias_hh.data.fill_(0)
 
     def forward(self,x):
         x = x.view(x.size(0), -1)
-
-        # safety
-        #if self.lstm_h.data.shape[0] != x.size(0) or self.lstm_c.data.shape[0] != x.size(0):
-        #print("Abort mission!")
 
         self.lstm_h, self.lstm_c = self.lstm(x, (self.lstm_h,self.lstm_c))
         x = self.lstm_h
@@ -56,8 +49,6 @@ class EncoderLSTMNetwork(nn.Module):
         return x
 
     def repackage_lstm_hidden_variables(self, batch_size):
-        #self.lstm_h = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
-        #self.lstm_c = Variable(torch.zeros(batch_size, self.number_lstm_cells)).type(self.FloatTensor)
         self.lstm_h = torch.zeros(batch_size, self.number_lstm_cells).float()
         self.lstm_c = torch.zeros(batch_size, self.number_lstm_cells).float()
         if self.use_cuda:
@@ -75,18 +66,7 @@ class RolloutEncoder():
         self.FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
 
     def imagine_future(self,input_state, start_action):
-        next_state, reward = self.imagination_core.forward(input_state, start_action)
-        imagined_states = next_state.unsqueeze(1)
-        imagined_rewards = reward.unsqueeze(1)
-
-        for i in range(self.rollout_steps-1):
-            current_state = next_state
-            action = self.imagination_core.sample(current_state)
-            next_state, reward = self.imagination_core.forward(current_state, action)
-            imagined_states = torch.cat((imagined_states, next_state.unsqueeze(1)), dim=1)
-            imagined_rewards = torch.cat((imagined_rewards, reward.unsqueeze(1)), dim=1)
-
-        return imagined_states, imagined_rewards
+        raise NotImplementedError
 
     def encode(self, imagined_states_and_rewards):
         (states, rewards) = imagined_states_and_rewards
@@ -113,3 +93,40 @@ class RolloutEncoder():
 
     def forward(self, input_state, action):
         return self.encode(self.imagine_future(input_state, action))
+
+class LatentSpaceRolloutEncoder(RolloutEncoder):
+    def __init__(self, imagination_core, encoder_network, lstm_network, rollout_steps, use_cuda):
+        super(LatentSpaceRolloutEncoder, self).__init__(imagination_core, encoder_network, lstm_network, rollout_steps, use_cuda)
+
+    def imagine_future(self,input_latent_space, start_action):
+        next_latent_state, z_prior, reward = self.imagination_core.forward(input_latent_space, start_action)
+        imagined_states = next_latent_state.unsqueeze(1)
+        imagined_rewards = reward.unsqueeze(1)
+
+        for i in range(self.rollout_steps - 1):
+            current_latent_state = next_latent_state
+            action = self.imagination_core.sample(current_latent_state)
+            next_latent_state, z_prior, reward = self.imagination_core.forward(current_latent_state, action)
+
+            imagined_states = torch.cat((imagined_states, next_latent_state.unsqueeze(1)), dim=1)
+            imagined_rewards = torch.cat((imagined_rewards, reward.unsqueeze(1)), dim=1)
+
+        return imagined_states, imagined_rewards
+
+class BasicRolloutEncoder(RolloutEncoder):
+    def __init__(self, imagination_core, encoder_network, lstm_network, rollout_steps, use_cuda):
+        super(BasicRolloutEncoder, self).__init__(imagination_core, encoder_network, lstm_network, rollout_steps, use_cuda)
+
+    def imagine_future(self,input_state, start_action):
+        next_state, reward = self.imagination_core.forward(input_state, start_action)
+        imagined_states = next_state.unsqueeze(1)
+        imagined_rewards = reward.unsqueeze(1)
+
+        for i in range(self.rollout_steps-1):
+            current_state = next_state
+            action = self.imagination_core.sample(current_state)
+            next_state, reward = self.imagination_core.forward(current_state, action)
+            imagined_states = torch.cat((imagined_states, next_state.unsqueeze(1)), dim=1)
+            imagined_rewards = torch.cat((imagined_rewards, reward.unsqueeze(1)), dim=1)
+
+        return imagined_states, imagined_rewards

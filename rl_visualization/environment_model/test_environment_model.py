@@ -168,14 +168,12 @@ def test_environment_model(env, environment_model, load_path, rollout_policy, ar
             environment_model.cuda()
 
         if args.use_latent_space:
-            from i2a.i2a_models.latent_space_imagination_core import LatentSpaceImaginationCore
+            from i2a.latent_space.latent_space_imagination_core import LatentSpaceImaginationCore
             imagination_core = LatentSpaceImaginationCore(env_model=environment_model,
-                                                          rollout_policy=rollout_policy,
-                                                          grey_scale=False,
-                                                          frame_stack=4)
+                                                          rollout_policy=rollout_policy)
             renderer = RenderImaginationCore(args.grey_scale)
         else:
-            from i2a.imagination_core import ImaginationCore
+            from i2a.mini_pacman.imagination_core import ImaginationCore
             imagination_core = ImaginationCore(env_model=environment_model,
                                                rollout_policy=rollout_policy,
                                                grey_scale = False,

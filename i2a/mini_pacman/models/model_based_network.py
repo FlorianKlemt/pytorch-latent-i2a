@@ -3,7 +3,7 @@ from i2a.rollout_encoder import EncoderCNNNetwork, EncoderLSTMNetwork, BasicRoll
 
 class ModelBasedNetwork(torch.nn.Module):
     def __init__(self,
-                 number_actions,
+                 action_space,
                  obs_shape,
                  imagination_core,
                  number_lstm_cells=256,
@@ -13,7 +13,7 @@ class ModelBasedNetwork(torch.nn.Module):
 
         self.rollout_steps = rollout_steps
         self.number_lstm_cells = number_lstm_cells
-        self.number_actions = number_actions
+        self.action_space = action_space
         self.use_cuda = use_cuda
 
         self.imagination_core = imagination_core
@@ -32,10 +32,10 @@ class ModelBasedNetwork(torch.nn.Module):
 
     def forward(self, input_state):
         # model-based side
-        states = input_state.repeat(self.number_actions, 1, 1, 1, 1)
+        states = input_state.repeat(self.action_space, 1, 1, 1, 1)
         states = states.permute(1, 0, 2, 3, 4).contiguous()
         #batchwise for all rollouts -> each rollout gets a different first action
-        actions = torch.arange(self.number_actions).long().unsqueeze(1)
+        actions = torch.arange(self.action_space).long().unsqueeze(1)
         #batchwise for all processes -> repeat the broadcasted actions for each batch
         actions = actions.repeat(input_state.shape[0], 1, 1)
         if self.use_cuda:

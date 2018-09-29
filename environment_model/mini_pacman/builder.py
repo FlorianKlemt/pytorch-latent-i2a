@@ -212,7 +212,7 @@ class MiniPacmanEnvironmentBuilder():
                                               num_outputs=512)
 
         from i2a.mini_pacman.models.model_based_network import ModelBasedNetwork
-        model_based_network = ModelBasedNetwork(number_actions=action_space,
+        model_based_network = ModelBasedNetwork(action_space=action_space,
                                                 obs_shape=obs_shape,
                                                 imagination_core=imagination_core,
                                                 number_lstm_cells=256,

@@ -120,6 +120,8 @@ Where $p(o_t | a_{t-1}, o_{t-1})$ is a bernoulli distribution:
 \end{equation}
 
 A bernoulli distribution works well because \textbf{TODO}\\
+
+%Basically we pretend that x and \hat x are both a collection of independent bernoulli probabilities (even if they are really just number in between 0 and 1).
    
 Maximizing the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$ is the same as the binary cross entropy loss between the true image and the predicted image:
 
@@ -136,3 +138,4 @@ To train the predicted reward a L2 loss is used.
  
  
 
+\subsection{Copy Model}

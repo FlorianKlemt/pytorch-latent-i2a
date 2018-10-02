@@ -136,6 +136,10 @@ Maximizing the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$ is 
 
 To train the predicted reward a L2 loss is used.
  
- 
+\subsection{Model-free baseline}
+
+For the model-free baseline a a2c architecture is used consisting of 2 convolutional layer followed by a fully connected layer and two fully connected output heads, one for the policy and one for the value function.
 
 \subsection{Copy Model}
+
+To verify that the improvement of the i2a agent not reley on the higher model complexity a copy model is used for comparison. The copy model has the same network architecture as the i2a model but instead of using a environment model a 'copy' model is used which simply returns the input observation. 

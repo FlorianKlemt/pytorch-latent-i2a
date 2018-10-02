@@ -1,9 +1,11 @@
 \section{Future Work}
 
+I2A makes use of an environment model to make better decisions by imaginating the future. If the used environment model is bad, I2A can only perform as good as its base line, so it should be worthwhile to pursue further research to create a good environment model.\\
 
-...
+Also it might be valuable to find better policies for the rollout strategy. Currently for each action one rollout is performed and the used policy imagines the future, depending on the actions it thinks the agent will make. But it might be more valuable to imagine what will happen in extrem cases.\\
 
-\vspace*{0.3cm}
-..
+Another possible precision improvement is to improve the exploration by using a reward bonus as done in ”Count-Based Exploration with Neural Density Models” \cite{CountBasedExploration}
+
+%\vspace*{0.3cm}
 
 

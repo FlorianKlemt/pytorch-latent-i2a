@@ -14,7 +14,7 @@ class EnvMiniPacmanLabelsOptimizer():
 
         self.reward_loss_coef = reward_loss_coef
 
-        self.loss_function_reward = nn.MSELoss()
+        self.loss_function_reward = nn.L1Loss()
         self.loss_function_state = nn.CrossEntropyLoss()
 
         self.optimizer = torch.optim.Adam(self.model.parameters(),

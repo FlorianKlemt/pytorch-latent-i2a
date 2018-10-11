@@ -1,8 +1,14 @@
 \section{Future Work}
 
-I2A makes use of an environment model to make better decisions by imaginating the future. If the used environment model is bad, I2A can only perform as good as its base line, so it should be worthwhile to pursue further research to create a good environment model.\\
+The main drawback of I2A is the very long training time, which leads to the problem that it can only be applied on toy problems. This problem is already addressed in the paper "Learning and Querying Fast Generative Models for Reinforcement Learning" \cite{LearningAndQueryingFasGenerativeModels} Buesing et. al., where they reduce the training time by working on a latent space representation of the observation, instead on the full observation. By doing this Buesing et. al. where able to apply I2A to the atari game MsPacman without downsampling the input image.\\
 
-Also it might be valuable to find better policies for the rollout strategy. Currently for each action one rollout is performed and the used policy imagines the future, depending on the actions it thinks the agent will make. But it might be more valuable to imagine what will happen in extrem cases.\\
+
+I2A can only benefit from the model-based path if the environment model provides relevant information. 
+%So one approach for future resarch would be to improve the used environment model.
+If the used environment model is bad, I2A can only perform as good as its base line, so it should be worthwhile to pursue further research to create a good environment model.
+This can be done by using a different environment model architecture, by applying new training approaches or by training the environment model together with the I2A agent.\\
+
+Also it might be valuable to find better policies for the rollout strategy. Currently for each action one rollout is performed and the used policy imagines the future, depending on the actions it thinks the agent will make. But it might be more valuable to imagine what will happen in extreme cases.\\
 
 Another possible precision improvement is to improve the exploration by using a reward bonus as done in ”Count-Based Exploration with Neural Density Models” \cite{CountBasedExploration}
 

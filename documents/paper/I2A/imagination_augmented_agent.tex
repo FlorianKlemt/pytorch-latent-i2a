@@ -12,7 +12,7 @@ Figure \ref{fig:i2a_architecture} shows the network architecture of the imaginat
 \begin{figure}[H] 
   \centering 
    
-  \includegraphics[width=\columnwidth]{./Images/i2a_architecture.png} 
+  \includegraphics[width=\columnwidth]{./Images/i2a_architecture.pdf} 
   \caption{Network architecture for deep reinforcement learning which combines model free and model based reinforcement learning. a) imagination core (IC) predicts the next time step conditioned on an action sampled from the rollout policy $\hat{\pi}$. b) the from the imagination core imagines trajectories of features f encoded by the rollout encoder. c) the full i2a} 
   \label{fig:i2a_architecture} 
 \end{figure}
@@ -42,6 +42,55 @@ with scaling parameter $\lambda_{dist}$.\\
 % $\lambda_{dist}$ is set to 10
 
 
+\subsection{Environment Model}
+\label{sec:env_model}
+
+The environment model predict (imagine) the next observation $\hat{o}_{t+1}$ and next reward $\hat{r}_{t+1}$, given observation $o_t$ or $\hat{o}_t$ and action $\hat{a}_t$.
+The environment model could be any kind of model that fulfills this condition, but in most cases no model of the environment is given.
+To solve this problem the environment model is also a trainable neuronal network.
+%, which is trained with enrolled pairs of (state, action) transitions made in the environment the i2a agent will act on.\\
+A trained environment model can not be assumed to be perfect, it might sometimes make wrong prediction, but this does not matter as the imagination augmented agent is robust to imperfect environment models.
+
+   
+\begin{figure}[H] 
+  \centering 
+   
+  \includegraphics[width=300px]{./Images/i2a_env.pdf}
+  \caption{Environment model. The input action is broadcasted and concatenated to the observation. A convolution neural network then processes the input and predict the next observation and the expected reward.} 
+  \label{fig:environment_model_architecture} 
+\end{figure} 
+
+Figure \ref{fig:environment_model_architecture} shows the environment model architecture.
+It gets as input the last observation $o_t$ as rgb image and a action $a$, which was selected from the rollout policy $\hat{\pi}$. The action is converted into a one-hot vector and tiled to the size of the observation.
+The tiled action is then concatenated with the input observations $o_t$.
+The stacked context has now number of channels equal to three rgb channels plus the number of possible actions.
+Given the stacked context as input a convolution neural network with two heads predicts the next observation $o_{t+1}$ and the expected reward $r_{t+1}$.\\
+
+The neuronal network is trained with transitions of the form $(o_t, a_t) \rightarrow (o_{t+1}, r_{t+1})$ generated from a pretrained model-free advantage-actor-critic policy. This is necessary because a random agent is not able to generate a representative set of states, as it sees few rewards in some of the domains.\\
+
+ 
+The observation head of the environment model is trained by maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$.
+Where $p(o_t | a_{t-1}, o_{t-1})$ is a bernoulli distribution: 
+\begin{equation} 
+   p(o_t | a_{t-1}, o_{t-1}) = x^y (1-x)^{1-y} 
+\end{equation}
+
+A bernoulli distribution works well because \textbf{TODO}\\
+
+%Basically we pretend that x and \hat x are both a collection of independent bernoulli probabilities (even if they are really just number in between 0 and 1).
+   
+Maximizing the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$ is the same as the binary cross entropy loss between the true image and the predicted image:
+
+%The loss for training the observation of the environment model is therefor the same as the binary cross entropy between the true image and the predicted image:
+   
+\begin{equation} 
+  \mathnormal{ 
+  L_{env}(x, y) = \frac{1}{N} \sum y_n log x_n + (1-y_n) log(1- x_n) 
+  %env_{loss} = Binary Cross Entropy(predicted\_image, true\_images) 
+  } 
+\end{equation}
+
+To train the predicted reward a L2 loss is used.\\
  
 \subsection{Rollout Encoder}
  
@@ -85,55 +134,6 @@ As I2A is just an architecture design it can be trained with advantage-actor-cri
 %Input: Observation $o_t$ 
 %Output:  Policy $\pi$ and value function $V$   Train with Advantage-Actor-Critic (A2C) 
 
-\subsection{Environment Model}
-\label{sec:env_model}
-
-The environment model predict (imagine) the next observation $\hat{o}_{t+1}$ and next reward $\hat{r}_{t+1}$, given observation $o_t$ or $\hat{o}_t$ and action $\hat{a}_t$.
-The environment model could be any kind of model that fulfills this condition, but in most cases no model of the environment is given.
-To solve this problem the environment model is also a trainable neuronal network.
-%, which is trained with enrolled pairs of (state, action) transitions made in the environment the i2a agent will act on.\\
-A trained environment model can not be assumed to be perfect, it might sometimes make wrong prediction, but this does not matter as the imagination augmented agent is robust to imperfect environment models.
-
-   
-\begin{figure}[H] 
-  \centering 
-   
-  \includegraphics[width=300px]{./Images/environment_model_architecture.png}
-  \caption{Environment model. The input action is broadcasted and concatenated to the observation. A convolution neural network then processes the input and predict the next observation and the expected reward.} 
-  \label{fig:environment_model_architecture} 
-\end{figure} 
-
-Figure \ref{fig:environment_model_architecture} shows the environment model architecture.
-It gets as input the last observation $o_t$ as rgb image and a action $a$, which was selected from the rollout policy $\hat{\pi}$. The action is converted into a one-hot vector and tiled to the size of the observation.
-The tiled action is then concatenated with the input observations $o_t$.
-The stacked context has now number of channels equal to three rgb channels plus the number of possible actions.
-Given the stacked context as input a convolution neural network with two heads predicts the next observation $o_{t+1}$ and the expected reward $r_{t+1}$.\\
-
-The neuronal network is trained with transitions of the form $(o_t, a_t) \rightarrow (o_{t+1}, r_{t+1})$ generated from a pretrained model-free advantage-actor-critic policy. This is necessary because a random agent is not able to generate a representative set of states, as it sees few rewards in some of the domains.\\
-
- 
-The observation head of the environment model is trained by maximize the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$.
-Where $p(o_t | a_{t-1}, o_{t-1})$ is a bernoulli distribution: 
-\begin{equation} 
-   p(o_t | a_{t-1}, o_{t-1}) = x^y (1-x)^{1-y} 
-\end{equation}
-
-A bernoulli distribution works well because \textbf{TODO}\\
-
-%Basically we pretend that x and \hat x are both a collection of independent bernoulli probabilities (even if they are really just number in between 0 and 1).
-   
-Maximizing the log likelihood of the probability $p(o_t | a_{t-1}, o_{t-1})$ is the same as the binary cross entropy loss between the true image and the predicted image:
-
-%The loss for training the observation of the environment model is therefor the same as the binary cross entropy between the true image and the predicted image:
-   
-\begin{equation} 
-  \mathnormal{ 
-  L_{env}(x, y) = \frac{1}{N} \sum y_n log x_n + (1-y_n) log(1- x_n) 
-  %env_{loss} = Binary Cross Entropy(predicted\_image, true\_images) 
-  } 
-\end{equation}
-
-To train the predicted reward a L2 loss is used.\\
  
 \subsection{Model-free baseline}
 

@@ -3,8 +3,6 @@
 Deep reinforcement learning is an active research area in artificial intelligence, where a reinforcement learning agent, learns to solve a given problem by interacting with its environment and maximizing the received reward.
 This technique is also known as model-free reinforcement learning. 
 One drawback of this approach is, that the agent is not able to imagine what will happen in the future, which leads to bad performance in planning intensive tasks.
-%Model-based approaches model the environment as a markov decision process, which allows to predict into the future without actually performing an action.
-%Model-based approaches are using a model how the environment works to maximize the received reward, which allows the agent to predict into the future without actually performing an action and choose based on planning the optimal action.
 Model-based approaches are using a model of the environment,  modeling the transitions between states in the environment, to maximize the received reward. This allows the agent to predict into the future without actually performing an action and to choose the optimal action.
 However in real world applications it is usually very hard, if even possible, to get a sufficiently good model to solve a given problem.\\
 
@@ -14,7 +12,7 @@ To choose the best possible action, I2A imagines for each possible action how th
 I2A works directly on an observed image of the environment, with no additional information given, except the reward signal.\\
 
 The goal of this guided research is to analyze the results of Weber et al. in terms of performance, drawbacks and reproducibility.
-For this we implemented an own imagination-augmented agent and trained it on the same test environment as Weber et al. did.\\\
+For this we implemented an own imagination-augmented agent and trained it on the same test environment as Weber et al. did.\\
 
 We will first give a short overview over current reinforcement learning algorithms, followed by a detailed explanation of the imagination-augmented agent algorithm and the used test environments. Then the reproduced results will be presented and compared with the results of the paper. In the last part the drawbacks of the algorithm and possible future work will be discussed.
 

@@ -12,11 +12,8 @@ Reinforcement Learning refers to a kind of Machine Learning method in which an a
 
 
 Figure \ref{fig:reinforcement_learning} shows the interaction of the agent with the environment, where the environment refers to the object the agent is acting on. As initial state the agent receives the observation $o_t$ of the environment at time $t = 0$. The observation $o_t$ can be the complete state of the environment, or just a subset of it.
-%(For example when learning the movement of a roberter the observation could be the view from the robot onto the environment.)
 The agent then, based on the observation $o_t$, performs an action $a_t$ in the environment, chosen from a set of possible actions (e.g. moving to the right or moving to the left). After performing the action $a_t$ the agent receives the new observation $o_{t+1}$ of the environment and also the reward signal $r_{t+1}$ which evaluates how good the chosen action was.
 Based on the new information the agent again chooses an action $a_t$. The loop continues until the environment sends a termination state.\\
-
-%To maximize the received reward, the agent use the received reward signal to update it's action choosing function also called policy. The goal of the agent is to learn an optimal policy too maximize the received reward.\\
 
 The goal of the agent is to maximize the received reward, which is done by learning an optimal action choosing function called policy, using the received reward signal.
 There exist different reinforcement learning algorithms, which all follow the iterative learning algorithm described above, but differ in the update strategy for learning an optimal policy. In the following a short overview over different types of reinforcement learning algorithms will be given.\\
@@ -25,28 +22,16 @@ There exist different reinforcement learning algorithms, which all follow the it
 
 Q-learning is a reinforcement learning algorithm  introduced by Watkins \cite{QLearning} in 1989. 
 For any finite markov decision process, Q-learning finds a policy that maximizes the expected total reward over all following steps, starting from the current state.
-%Q-Learning is guarantee to converge to an optimal solution TODO ref.\\
 To do so Q-Learning learns a Q-table, which contains for each state-action pair $(s, a)$ a Q-value representing the expected future reward for taking the action $a$ in state $s$. 
 By iteratively updating the Q-value function with the Bellman Equation, the Q-value function will converge to the optimal Q-value function \cite{QLearningProof}.\\
 
 The Bellman Equation 
-
-%To calculate the Q-value function, the Bellman equation is used, which states that each state can be represented by the previouse state:\\
 
 \begin{equation} \label{eq:bellman_eq1}
 Q_{\pi} (s_t, a_t) =\mathbb{E}_{s_{t+1}} [r + \gamma Q_\pi(s_{t+1}, a_{t+1}) | s_t, a_t]
 \end{equation}
 
 states, that the Q-value for the state-action pair $(s_t, a_t)$ is equal to the expectation of the received reward $r$, of taking action $a$ in state $s$, plus the discounted future reward the agent will get by following the policy $\pi$ from the next state onwards, where $\gamma$ refers to the discount factor.\\
-
-%By iteratively update the Q-value function with the Bellman Equation the Q-value function will converge to the optimal Q-value function and will learn to choose the optimal actions. \\
-
-
-%\begin{equation}
-%v(s) = \mathbb{E} [R_{t+1} + \gamma v(S_{t+1}) | S_t = s]
-%\end{equation}
-
-%$\mathbb{E}$ in the above equation refers to the expectation, while $\gamma$ refers to the discount factor. We can re-write it in the form of Q-value:
 
 
 The optimal Q-value, denoted as $Q^* (s_t, a_t)$ can be expressed as:
@@ -56,52 +41,34 @@ Q^* (s_t, a_t) = \mathbb{E}_{s_{t+1}} [r + \gamma \max_{a_{t+1}} Q^*(s_{t+1}, a_
 
 After the agent has converged to the optimal policy $Q^* (s_t, a_t)$ it is able to to choose in each possible state the optimal action.\\
 
-%The goal is to maximize the Q-value.
-
-%To receive our goal to maximize the expected reward, we want to find a function which calculates the maximum expected future reward, for each action at each state. So when we in a certain state we can simple ask this function about the expected reward for each possible action we can take and choose the best one.
-
-%Value based methods: where we learn a value function that will map each state action pair to a value. The action with the biggest value is the best action to take for each state.
-
-%The base idear behind reinforcement learning is the Bellman Equation. By iteratively update the Q-value function the Q-value function will converge to the optimal Q-value function and will learn to choose the optimal actions. 
-
-%Q-Learning is an off-policy, model-free RL algorithm based on the Bellman Equation:
-
 
 \subsection{Value-based versus policy-based reinforcement learning methods}
 
 
-
 Value-based methods are learning a value function, which maps state-action pairs directly to values. The best action in a certain state can then be found by taking the action with the biggest value. 
-\textbf{TODO explane greedy policy strategy.}
-An example of a value-based method is the Q-learning method mentioned in the previous section.
+The policy is therefore the action choosing strategy, if the action is always taken by choosing the action with the biggest value the strategy is called greedy.
+However if the agent always chooses the greediest action, it will soon get stuck in a local minima and will never be able to find the optimal policy. 
+To find the optimal policy the agent needs to explore as many states as possible. 
+Thats the reason why usually an $\epsilon$-greedy policy is used, which chooses with a probability of $\epsilon$ a random action, exploration, and otherwise a greedy action, exploitation.
+An example of a value-based method is the Q-learning method mentioned in the previous section.\\
+
 Policy-based methods, in contrast to value-based methods, optimize the policy directly without using a value function.
 The main problem of policy-based methods is to find a good score function to compute how good a policy is. An example of a policy-based method is reinforcement learning with policy gradient.\\
 
-%TODO:   what is the policy in value-based RL? maybe try to close the connection with the help of explaining what on and off policy learning means.\\
-
-%Value based methods (Q-learning, Deep Q-learning): where we learn a value function that will map each state action pair to a value. Thanks to these methods, we find the best action to take for each state-the action with the biggest value. This works well when you have a finite set of actions.\\
-
-%Policy based methods (REINFORCE with Policy Gradients): where we directly optimize the policy without using a value function. This is useful when the action space is continuous or stochastic. The main problem is finding a good score function to compute how good a policy is. We use total rewards of the episode.
 
 \subsection{Model-free versus model-based reinforcement learning}
 
 Model-free reinforcement learning maps observations of the environment directly to values or actions.
-%Observations of the environment map directly to values or actions	
 In contrast to this, model-based reinforcement learning algorithms are using a model of the environment to simulate the dynamics of the environment. The model knows the transition probability $T(s_{t+1} | s_t, a_t)$ to the next state $s_{t+1}$ given the current state $s_t$ and the current action $a_t$. By taking this model into account, adverse consequences of trial-and error can be avoided, also the performance of the agent can be increased by increasing the amount of internal simulations.
 But there are some drawbacks. If the model is imperfect the performance of model-based agents suffers. Also it is not always possible to get an exact transition model or to get a transition model at all, especially in real world applications.\\
 
 
 
-
-%For more information about reinforcement learning see TODO
-
-
 \subsection{Deep Q network}
 
 In the paper "Human-level control through deep reinforcement learning" Mnih et al. \cite{dqn} introduce the first reinforcement learning algorithm which uses a neuronal network as a function approximator for the Q-value function. Reinforcement learning algorithms, which are using a neuronal network as function approximator, are also called deep reinforcement learning.\\
-%Deep reinforcement learning means that the algorithm is using a neuronal network to learn the decission making function.
 
-The approximated target values are:
+The approximated target values are
 
 \begin{equation} \label{eq:1}
 y = r + \gamma \max_{a_{t+1}} Q(s_{t+1}, a_{t+1}; \theta_i^-)
@@ -113,11 +80,6 @@ The network parameters $\theta_i$ can than be optimized by minimizing the loss b
 L_i(\theta_i) = \mathbb{E}_{s, a, r}[(\mathbb{E}_{s_{t+1}} [ y | s, a] - Q(s, a; \theta_i))^2]
 \end{equation}
 
-%The Q-value update function looks than as follow:
-%\begin{equation}
-%Q (s_t, a_t; \theta) = \mathbb{E}_{s_{t+1}} [r + \gamma \max_{a'} Q(s_{t+1}, a_{t+1}) | s_t, a_t; \theta^-]
-%r_j + \gamma \max_{a'} Q(s{t+1}, a'; \theta^-)
-%\end{equation}
 
 For more details see the paper \cite{dqn}.\\
 
@@ -128,7 +90,6 @@ For more details see the paper \cite{dqn}.\\
 
 Mnih et al. introduce in the paper "Asynchronous Methods for Deep Reinforcement Learning" \cite{A3C} the deep reinforcement learning algorithm asynchronous advantage-actor-critic (A3C). Shortly after introducing A3C, Mnih et al. published a synchronous, deterministic variant of A3C called advantage-actor-critic (A2C) which gives equal performance.
 A2C combines value-based and policy-based reinforcement learning and consists of two parts. A critic which measures how good a taken action is (value-based) and an actor which controls how the agent behaves (policy-based).\\
-% an \textbf{actor} and a \textbf{critic} function, both are heads of a neuronal network.\\
 
 The \textbf{actor} learns the policy function $\pi(a | s, \theta)$, probability of choosing action $a$ given state $s$, which is used to decide the best action $a$ given a specific state $s$.
 The actor controls how the agent behaves.
@@ -142,44 +103,31 @@ $\phi$ are the learnable weights of the neural network.
 \end{equation}
 
 To update the policy function, the \textbf{Advantage function} is used which tells the improvement of a certain action compared to the average action taken at state $s$. 
-In other words, it estimates the improvement of the true reward compared to the expected reward of the current state $s$ by using the temporal difference error:\\
-
-TODO:   why use advantage not just discounted reward. mention bias reduction.
+In other words, it estimates the improvement of the true reward compared to the expected reward of the current state $s$ by using the temporal difference error:
 
 \begin{equation}
 	A(s, a) = Q(s, a) - V(s)
 \end{equation}
 
 The advantage function pushes up the probability of an action from a state $s$ if this action was better than the expected value.
-This leads to more stability of the learning algorithm and reduces the variance.\\
+This leads to more stability of the learning algorithm and reduces the variance of the estimate, which improves the sample efficience of the algorithm.\\
 
-The \textbf{policy $\pi(a | s, \theta)$ loss} function is therefore:
-%\textbf{policy $\pi(a | s, \theta)$ loss}: 
+To learn an optimal policy, we minimize the \textbf{policy $\pi(a | s, \theta)$ loss} function
 
 \begin{equation}
 	loss_\pi = - log (\pi_\theta(a | s)) * A
 \end{equation}
 
-Which leads to the \textbf{policy $\pi(a | s, \theta)$ gradient} function:
+The \textbf{gradient} of the \textbf{policy $\pi(a | s, \theta)$} loss is therefore
 
 \begin{equation}
 	\nabla \theta = A \nabla_\theta log \pi_\theta (a | s)
 \end{equation}
 	
-To learn the value function we minimize the \textbf{value $V(s, w)$ loss}:
+To learn the value function we minimize the \textbf{value $V(s, w)$ loss}
 
 \begin{equation}
 	loss_V = \sum(R - V(s))^2
 \end{equation}
 
-
-%messures how good a choosen actions is. 
-%And which is used to calculate the expected cumulative reward from following the policy $\pi$ from state $s$.\\
-%A critic is used for evaluating the policy function estimated by the actor according to the temporal difference (TD) error.
-
-%Advantage function
-%This function will tell us the improvement compared to the average the action taken at that state is. In other words, this function calculates the extra reward I get if I take this action. The extra reward is that beyond the expected value of that state.\\
-%		Push up the probability of an action from a state $s$ if this action was better than the expected value
-%A^{\pi_\theta} = Q^{\pi_\theta}(s, a) - V^{\pi_\theta}(s)		
-		
 

@@ -1,6 +1,6 @@
 \section{Results}
 
-This section shows the results of the environment model and the i2a implementation. Also it shows the performance of i2a over the model-free baseline and the copy model.
+This section shows the results of the environment model and the i2a implementation. Also it shows the performance of i2a over the model-free baseline and the copy model.\\
 
 %In the following the performance of I2A over the model-free baseline and the copy model is shown. Also the predicted rollouts of the environment model.
 
@@ -8,14 +8,55 @@ This section shows the results of the environment model and the i2a implementati
 
 Our trained environment model is an imperfect model, which is in most cases able to predict a few steps into the future, but it is bad at predicting far into the future.\\
 
-
+\begin{comment}
 \begin{figure}[H] 
   \centering   
   \includegraphics[width=\columnwidth]{./Images/env_model_rollouts.png}
   \caption{Environment model rollouts, top true observations, bottom predicted observations, rollout steps from left to right} 
   \label{fig:environment_model_rollouts} 
 \end{figure} 
+\end{comment}
 
+
+\begin{figure}[H] 
+    \centering
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_0.png}
+  		\caption*{\footnotesize rollout step: 0} 
+  		\label{fig:rollout_0} 
+    \end{subfigure}
+	\hspace{0mm}%~ %add       
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_1.png}
+  		\caption*{\footnotesize rollout step: 1} 
+  		\label{fig:rollout_1}
+    \end{subfigure} 
+    \hspace{0mm}%~ %add        
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_2.png}
+  		\caption*{\footnotesize rollout step: 2} 
+  		\label{fig:rollout_2}
+    \end{subfigure} 
+    \hspace{0mm}%~ %add         
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_3.png}
+  		\caption*{\footnotesize rollout step: 3} 
+  		\label{fig:rollout_3}
+    \end{subfigure} 
+    \hspace{0mm}%~ %add         
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_4.png}
+  		\caption*{\footnotesize rollout step: 4} 
+  		\label{fig:rollout_4}
+    \end{subfigure} 
+    \hspace{0mm}%~ %add         
+    \begin{subfigure}[b]{0.16\textwidth}
+        \includegraphics[width=\textwidth]{./Images/env_model_rollout_5.png}
+  		\caption*{\footnotesize rollout step: 5} 
+  		\label{fig:rollout_5}
+    \end{subfigure} 
+    \caption{Environment model rollouts, top true observations, bottom predicted observations, rollout steps from left to right}\label{fig:environment_model_rollouts}
+\end{figure}
 
 Figure \ref{fig:environment_model_rollouts} shows the true next observations in the upper row and the predicted next observations in the lower row. From left to right it shows the rollout steps, the prediction is always based on the previous rollout step. In the beginning the prediction is quite good but the errors accumulate, leading to prediction errors like the one in rollout step 3 of figure \ref{fig:environment_model_rollouts}. The environment model is unsure where the ghost, the red points, are moving and as a result it predicts the ghost at two positions.\\
 
@@ -82,7 +123,7 @@ As baseline for our implementation we used the a2c reinforcement learning pytorc
 \end{figure}
 
 Figure \ref{fig:mini_pacman_regular_rewards} shows our training results for the reinforcement learning task MiniPacman Regular.
-The a2c baseline is clearly outperformed by the copy model and the i2a model and in the begining the i2a model also outperformce the copy model, but after 60 million frames the difference between the i2a model and the copy model gets smaller.
+The a2c baseline is clearly outperformed by the copy model and the i2a model and in the begining the i2a model also outperforms the copy model, but after 60 million frames the difference between the i2a model and the copy model gets smaller.
 It is therefore possible that the performance improvement corresponds mainly on the parameter increasement and not on the imagined rollouts.
 Our results do not contradict the results of the original i2a paper which also have no improvement of i2a over the copy model in the mode "Regular" as shown in figure \ref{fig:mini_pacman_regular_original_rewards}.
 %The results of the original i2a paper have no improvement of i2a over the copy model in the mode "Regular" as shown in figure \ref{fig:mini_pacman_regular_original_rewards}.

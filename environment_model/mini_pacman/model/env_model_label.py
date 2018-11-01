@@ -21,9 +21,9 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
         H=obs_shape[2]
         self.conv1 = nn.Conv2d(input_channels+self.num_actions, 64, kernel_size=1, stride=1, padding=0)    #input size is channels of input frame +1 for the broadcasted action
         self.basic_block1 = BasicBlock(num_inputs=64,n1=16,n2=32,n3=64,W=W,H=H,use_cuda=use_cuda)
-        self.basic_block2 = BasicBlock(num_inputs=128, n1=16, n2=32, n3=64, W=W, H=H,use_cuda=use_cuda)
+        self.basic_block2 = BasicBlock(num_inputs=64, n1=16, n2=32, n3=64, W=W, H=H,use_cuda=use_cuda)
         self.reward_head = nn.Sequential(OrderedDict([
-          ('reward_conv1', nn.Conv2d(192, 64, kernel_size=1)),  #input size is n3 of basic-block2
+          ('reward_conv1', nn.Conv2d(64, 64, kernel_size=1)),  #input size is n3 of basic-block2
           ('reward_relu1', nn.ReLU()),
           ('reward_conv2', nn.Conv2d(64, 64, kernel_size=1)),
           ('reward_relu2', nn.ReLU()),
@@ -33,7 +33,7 @@ class MiniPacmanEnvModelClassLabels(torch.nn.Module):
         ]))
 
         self.img_head = nn.Sequential(OrderedDict([
-            ('conv', nn.Conv2d(192, input_channels, kernel_size=1))
+            ('conv', nn.Conv2d(64, input_channels, kernel_size=1))
         ]))
 
         self.apply(xavier_weights_init)

@@ -102,6 +102,7 @@ def get_args():
     if args.no_training:
         args.num_frames = 0
         args.render_game = True
+        args.load_model = True
 
     args.save_environment_model_dir = args.load_environment_model_dir
     args.load_environment_model = True

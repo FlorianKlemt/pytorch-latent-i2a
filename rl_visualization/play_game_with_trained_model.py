@@ -70,7 +70,9 @@ class TestEnvironment():
 
     def step(self):
         with torch.no_grad():
-            input = torch.from_numpy(self.state).float().unsqueeze(0)
+            input = torch.from_numpy(self.state).float()
+            if len(input.shape)==3: #if batch-dimension is missing
+                input = input.unsqueeze(0)
             if self.use_cuda:
                 input = input.cuda()
 

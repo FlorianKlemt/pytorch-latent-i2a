@@ -35,13 +35,6 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-try:
-    os.makedirs(args.log_dir)
-except OSError:
-    files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
-
 
 def main():
     print("#######")
@@ -52,6 +45,14 @@ def main():
         mp.set_start_method('spawn')
 
     torch.set_num_threads(1)
+
+    try:
+        os.makedirs(args.log_dir)
+    except OSError:
+        files = glob.glob(os.path.join(args.log_dir, '*.monitor.csv'))
+        for f in files:
+            if os.path.isfile(f):
+                os.remove(f)
 
     if 'MiniPacman' in args.env_name:
         from environment_model.mini_pacman.builder import MiniPacmanEnvironmentBuilder

@@ -40,8 +40,8 @@ class ModelBasedNetwork(torch.nn.Module):
         actions = actions.repeat(input_state.shape[0], 1, 1)
         if self.use_cuda:
             actions = actions.cuda()
-        # compute rollout encoder final results
 
+        # compute rollout encoder final results
         states_shape = states.shape
         batch_size = states_shape[0] * states_shape[1]
         states = states.view(batch_size, states_shape[2], states_shape[3], states_shape[4])

@@ -48,8 +48,8 @@ class LatentSpaceModelBasedNetwork(torch.nn.Module):
         actions = actions.repeat(states_shape[0], 1)
         if self.use_cuda:
             actions = actions.cuda()
-        # compute rollout encoder final results
 
+        # compute rollout encoder final results
         self.rollout_encoder.lstm_network.repackage_lstm_hidden_variables(batch_size=latent_space.shape[0])
         rollout_results = self.rollout_encoder.forward(latent_space, actions)
 

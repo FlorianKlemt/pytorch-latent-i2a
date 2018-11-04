@@ -33,9 +33,7 @@ class MiniModel(Policy):
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 
-        #num_outputs = action_space
         self.critic_linear = nn.Linear(256, 1)
-        #self.actor_linear = nn.Linear(256, num_outputs)
 
         self.apply(weights_init)
 
@@ -50,17 +48,10 @@ class MiniModel(Policy):
         return 1
 
     def forward(self, inputs, states=None, masks=None):
-        #print("Input shape: ",inputs.shape)
-        #for layer in self.modules():
-        #    if isinstance(layer, nn.Linear):
-        #        print(layer.weight.shape)
-
         x = F.relu(self.conv1(inputs))
 
         x = F.relu(self.conv2(x))
 
         x = x.view(-1, self.linear_input_size)
         x = F.relu(self.linear1(x))
-
-        #return self.critic_linear(x), self.actor_linear(x), states
         return x, x, states

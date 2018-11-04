@@ -22,7 +22,6 @@ class AtariModel(nn.Module):
 
         self.linear_input_size = get_linear_dims_after_conv(
             [self.conv1, self.conv2, self.conv3, self.conv4], input_dims)
-        # self.linear_input_size = 16*8*8
 
         init_ = lambda m: init(m,
                                nn.init.orthogonal_,

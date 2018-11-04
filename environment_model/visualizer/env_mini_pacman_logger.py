@@ -29,7 +29,6 @@ class LoggingMiniPacmanEnvTraining():
         reward_loss = reward_loss.item()
 
         next_state_prediction, reward_prediction = prediction
-        # TODO fix for bit array
         self.reward_prediction = reward_prediction.detach().cpu().view(-1).numpy()[0]
 
         (state, action, next_state, reward) = sample

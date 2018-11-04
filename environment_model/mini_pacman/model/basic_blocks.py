@@ -17,7 +17,6 @@ class PoolAndInject(torch.nn.Module):
     def forward(self,input):
         x = F.relu(self.pool(input))   #max-pool
         x = x.repeat(1, 1, self.W, self.H)  #tile
-        #return torch.cat((x, input), 1)
         return x + input
 
 
@@ -42,5 +41,4 @@ class BasicBlock(torch.nn.Module):
         right_side = F.relu(self.right_conv2(F.relu(self.right_conv1(x))))
         x = torch.cat((left_side,right_side),1)
         x = F.relu(self.conv3(x))
-        #return torch.cat((x, input), 1)
         return x + input

@@ -82,31 +82,6 @@ class SSM(nn.Module):
                 r_out[i] = r
         return r_out
 
-        '''r_out = torch.cuda.FloatTensor(sampled_r.shape[0], sampled_r.shape[1]).fill_(0)
-        for i in range(sampled_r.shape[0]):
-            for j in range(sampled_r.shape[1]):
-                r = 0
-                if sampled_r[i,j,0] == 1:
-                    r_out[i,j] = 0
-                else:
-                    for k in range(2,sampled_r.shape[2]):
-                        r += int(math.pow(2,sampled_r.shape[2]-1-k)) if sampled_r[i,j,k]==1 else 0
-                    if sampled_r[i,j,1] == 1:
-                        r = -r
-                    r_out[i,j] = r
-        '''
-
-    '''def get_numerical_reward_2(self):
-        reward_bernoulli = Bernoulli(logits=reward_logits)
-        sampled_r = reward_bernoulli.sample()
-
-        r_out = torch.cuda.FloatTensor(sampled_r.shape[0], sampled_r.shape[1]).fill_(0)
-        r_out[sampled_r[:, :, 0] == 1] = 0
-        for i in range(2, 6):
-            r_out[sampled_r[:, :, i] == 1] = int(math.pow(2,sampled_r.shape[2]-1-k))
-  
-        r_out[sampled_r[:, :, 1] == 1] *= -1'''
-
 
     def decode(self, latent_space, z_prior):
         return self.decoder(latent_space, z_prior)

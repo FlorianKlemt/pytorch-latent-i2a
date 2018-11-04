@@ -21,8 +21,8 @@ def get_args():
                         help='gae parameter (default: 0.95)')
     parser.add_argument('--entropy-coef', type=float, default=0.01,
                         help='entropy term coefficient (default: 0.01)')
-    parser.add_argument('--distill-coef', type=float, default=0.01,
-                        help='entropy term coefficient (default: 0.01)')
+    parser.add_argument('--distill-coef', type=float, default=10,
+                        help='distill term coefficient only used for i2a (default: 10)')
     parser.add_argument('--value-loss-coef', type=float, default=0.5,
                         help='value loss coefficient (default: 0.5)')
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument('--log-interval', type=int, default=10,
                         help='log interval, one log per n updates (default: 10)')
     parser.add_argument('--save-interval', type=int, default=100,
-                        help='save interval, one save per n updates (default: 10)')
+                        help='save interval, one save per n updates (default: 100)')
     parser.add_argument('--vis-interval', type=int, default=100,
                         help='vis interval, one log per n updates (default: 100)')
     parser.add_argument('--render-game',  action='store_true', default=False,
@@ -82,11 +82,7 @@ def get_args():
     parser.add_argument('--i2a-rollout-steps', type=int, default=2,
                         help='number of steps the imagination core rollouts in the I2A training (default: 5)')
     parser.add_argument('--no-training', action='store_true', default=False,
-                        help='true to render a already trained model')
-    #parser.add_argument('--use-copy-model', action='store_true', default=False,
-    #                    help='True to use copy model, False for standard I2A')
-    #parser.add_argument('--use-class-labels', action='store_true', default=False,
-    #                    help='True to compute rollouts on class labels')
+                        help='true to render an already trained model')
     parser.add_argument('--environment-model', default='dSSM_DET',
                         help='environment model (default: dSSM_DET)'
                              'mini pacman models = (MiniModel, MiniModelLabels, CopyModel)'

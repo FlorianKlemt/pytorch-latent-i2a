@@ -22,9 +22,9 @@ def compute_size_preserving_conv_paddings(kernel_sizes):
     return conv_paddings
 
 
-#From the paper "Learning and Querying Generative Models for RL" (https://arxiv.org/pdf/1802.03006.pdf):
-#Definition of the basic convolutional stack conv_stack: kernel size parameters k1, k2, k3
-#  and channel parameters c1, c2, c3. Strides are always 1x1.
+# From the paper "Learning and Querying Generative Models for RL" (https://arxiv.org/pdf/1802.03006.pdf):
+# Definition of the basic convolutional stack conv_stack: kernel size parameters k1, k2, k3
+# and channel parameters c1, c2, c3. Strides are always 1x1.
 class ConvStack(nn.Module):
     def __init__(self,input_channels, kernel_sizes, output_channels):
         super(ConvStack, self).__init__()
@@ -46,11 +46,11 @@ class ConvStack(nn.Module):
         return x
 
 
-#The channel sizes and kernel sizes of this block are fixed in the paper.
+# The channel sizes and kernel sizes of this block are fixed in the paper.
 class ResConv(nn.Module):
     def __init__(self, input_channels):
         super(ResConv, self).__init__()
-        #paddings are not given in the paper, but it does not make sense otherwise (can't compute state + intermediate_result in forward)
+        # paddings are not given in the paper, but it does not make sense otherwise (can't compute state + intermediate_result in forward)
         kernel_sizes = [3,5,3]
         self._output_channels = 64
         conv_paddings = compute_size_preserving_conv_paddings(kernel_sizes=kernel_sizes)
@@ -77,7 +77,7 @@ class PoolAndInject(nn.Module):
         super(PoolAndInject, self).__init__()
         assert(len(size)==2)
         self.W, self.H = size
-        #padding is not given in the paper, but it is not size-preserving otherwise
+        # padding is not given in the paper, but it is not size-preserving otherwise
         self.conv = nn.Conv2d(in_channels=input_channels, out_channels=32, kernel_size=3, stride=1, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=(self.W, self.H))
 

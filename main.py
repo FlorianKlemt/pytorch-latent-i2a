@@ -103,7 +103,6 @@ def main():
         actor_critic = builder.build_i2a_model(envs, args)
     elif 'MiniPacman' in args.env_name:
         actor_critic = builder.build_a2c_model(envs)
-        #actor_critic = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=obs_shape, action_space=envs.action_space.n, use_cuda=args.cuda))
     elif args.train_on_200x160_pixel:
         from a2c_models.atari_model import AtariModel
         actor_critic = A2C_PolicyWrapper(AtariModel(obs_shape=obs_shape,
@@ -263,11 +262,6 @@ def main():
             # A really ugly way to save a model to CPU
             save_model = actor_critic
             torch.save(save_model.state_dict(), os.path.join(save_path, args.env_name + ".pt"))
-            #if args.cuda:
-            #    save_model = copy.deepcopy(actor_critic).cpu()
-            #save_model = [save_model,
-            #                hasattr(envs, 'ob_rms') and envs.ob_rms or None]
-            #torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
 
         if j % args.log_interval == 0:
             end = time.time()

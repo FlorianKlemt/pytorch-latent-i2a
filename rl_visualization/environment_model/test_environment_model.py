@@ -70,8 +70,6 @@ class RenderImaginationCore():
         frame_data[frame_data < 0] = 0
         frame_data[frame_data > 255] = 255
         frame_data = frame_data.astype(np.uint8)
-        #cv2.putText(frame_data, reward_text, (20, 720), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
-        #cv2.putText(frame_data, step_text, (20, 680), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 2)
 
         if not self.grey_scale:
             frame_data = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
@@ -207,33 +205,3 @@ class TestEnvironmentModel():
     def stop(self):
         self.p.terminate()
 
-'''
-### Begin Main ###
-use_cuda = True
-#root_dir = '/home/flo/Dokumente/I2A_GuidedResearch/pytorch-a2c-ppo-acktr/trained_models/environment_models/'    #os.path.dirname(os.path.realpath(sys.argv[0]))
-
-
-env_name = "RegularMiniPacmanNoFrameskip-v0"
-env = make_custom_env(env_name, seed=1, rank=1, log_dir=None, grey_scale=True)()
-
-# small model which only predicts one reward
-EMModel = MiniPacmanEnvModel
-
-environment_model = EMModel(obs_shape=env.observation_space.shape,
-                                num_actions=env.action_space.n,
-                                reward_bins=env.unwrapped.reward_bins,
-                                use_cuda=use_cuda)
-saved_state = torch.load("../../trained_models/environment_models/RegularMiniPacman_EnvModel_0.dat", map_location=lambda storage, loc: storage)
-environment_model.load_state_dict(saved_state)
-
-rollout_policy = A2C_PolicyWrapper(I2A_MiniModel(obs_shape=env.observation_space.shape, action_space=env.action_space.n, use_cuda=use_cuda))
-if use_cuda:
-    environment_model.cuda()
-    rollout_policy.cuda()
-
-imagination_core = ImaginationCore(env_model=environment_model, rollout_policy=rollout_policy)
-#imagination_core = ImaginationCore(num_inputs=4, action_space=env.action_space.n,
-#                                             em_model_reward_bins=em_model_reward_bins, use_cuda=use_cuda, require_grad=False)    #no policy grads required for this
-
-play_with_imagination_core(imagination_core, env=env, use_cuda=use_cuda)
-'''

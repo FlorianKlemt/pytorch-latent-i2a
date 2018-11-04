@@ -6,15 +6,11 @@ def get_args():
     args_parser.add_argument('--save-environment-model-dir', default="trained_models/environment_models/",
                              help='relative path to folder from which a environment model should be loaded.')
     args_parser.add_argument('--no-policy-model-loading', action='store_true', default=False,
-                             help='use trained policy model for environment model training')
+                             help='use NO pretrained policy model for environment model training')
     args_parser.add_argument('--load-policy-model-dir', default='trained_models/a2c/',
                              help='directory to save agent logs (default: trained_models/a2c)')
     args_parser.add_argument('--env-name', default='RegularMiniPacmanNoFrameskip-v0',
                              help='environment to train on (default: RegularMiniPacmanNoFrameskip-v0)')
-    #args_parser.add_argument('--latent-space-model', default='dSSM_DET',
-    #                         help='latent space model used if env is not MiniPacman'
-    #                              '(default: dSSM_DET)'
-    #                              'latent-space-models = (None, dSSM_DET, dSSM_VAE, sSSM)')
     args_parser.add_argument('--environment-model', default='dSSM_DET',
                              help='environment model (default: dSSM_DET)'
                                   'mini pacman models = (MiniModel, MiniModelLabels)'
@@ -22,14 +18,10 @@ def get_args():
     args_parser.add_argument('--skip-frames', type=int, default=4,
                              help='Only used when train with latent space model'
                                   'skip frames (default: 4)')
-    #args_parser.add_argument('--use-class-labels', action='store_true', default=False,
-    #                         help='Only used when train with mini pacman'
-    #                              'true to use pixelwise cross-entropy-loss and make'
-    #                              'the color of each pixel a classification task')
     args_parser.add_argument('--render', action='store_true', default=False,
                              help='starts an progress that play and render games with the current model')
     args_parser.add_argument('--no-training', action='store_true', default=False,
-                             help='true to render a already trained env model')
+                             help='true to render a already trained env model, sets load-environment-model and render to True')
     args_parser.add_argument('--no-cuda', action='store_true', default=False,
                              help='disables CUDA training')
     args_parser.add_argument('--no-vis', action='store_true', default=False,
@@ -57,7 +49,7 @@ def get_args():
     args_parser.add_argument('--eps', type=float, default=1e-8,
                              help='RMSprop optimizer epsilon (default: 1e-8)')
     args_parser.add_argument('--weight-decay', type=float, default=0.05,
-                             help='weight decay (default: 0)')
+                             help='weight decay (default: 0.05)')
     args_parser.add_argument('--reward-loss-coef', type=float, default=0.01,
                              help='reward loss coef (default: 0.01)')
     args_parser.add_argument('--env-model-images-save-path', default=None, help='path to save images of rendering')
@@ -70,6 +62,7 @@ def get_args():
 
     if args.no_training:
         args.render = True
+        args.load_environment_model = True
 
     return args
 
@@ -104,7 +97,6 @@ def main():
         trainer.train(batch_size = args.batch_size,
                       training_episodes = args.num_episodes,
                       sample_memory_size = 1000)
-        #trainer.train_overfit_on_x_samples(1000000, x_samples=100)
 
     if args.render:
         test_process.stop()

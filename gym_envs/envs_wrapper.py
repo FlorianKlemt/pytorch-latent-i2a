@@ -10,7 +10,6 @@ class EncoderFrameStack(gym.Wrapper):
         self.frames = collections.deque(maxlen=self.num_frames)
         shp = env.observation_space.shape
         self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames*shp[0], *shp[1:]), dtype=np.float32)
-        #self.observation_space = spaces.Box(low=low, high=high, shape=(num_frames, *shp), dtype=np.float32)
 
     def reset(self):
         self.frames.clear()

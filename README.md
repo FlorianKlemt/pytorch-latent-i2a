@@ -19,7 +19,7 @@ To cite our work please use the following bibtex:
 ```
 
 # Requires:
-* Python 3
+* Python 3 (tested on python 3.5)
 * [PyTorch](http://pytorch.org/), tested with version 0.4.1
 * [Visdom](https://github.com/facebookresearch/visdom)
 * To use MiniPacman environments you also need to download and install the gym-minipacman repo [MiniPacman](https://github.com/FlorianKlemt/gym-minipacman).

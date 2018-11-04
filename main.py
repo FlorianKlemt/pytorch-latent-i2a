@@ -11,7 +11,6 @@ from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.vec_normalize import VecNormalize
 from model import Policy
 from storage import RolloutStorage, I2A_RolloutStorage
-from visualize import visdom_plot
 from rl_visualization.visdom_plotter import VisdomPlotterA2C
 from a2c_models.a2c_policy_wrapper import A2C_PolicyWrapper
 
@@ -285,12 +284,6 @@ def main():
 
             print(info)
         if args.vis and j % args.vis_interval == 0:
-            try:
-                # Sometimes monitor doesn't properly flush the outputs
-                win = visdom_plot(viz, win, args.log_dir, args.env_name,
-                                  args.algo, args.num_frames)
-            except IOError:
-                pass
             frames = j*args.num_processes*args.num_steps
             visdom_plotter.plot(frames)
 

@@ -34,8 +34,8 @@ def get_args():
                              help='save model each n episodes (default: 10)')
     args_parser.add_argument('--batch-size', type=int, default=100,
                              help='batch size (default: 100)')
-    args_parser.add_argument('--sample-memory-size', type=int, default=50,
-                             help='sample memory size (default: 50)')
+    args_parser.add_argument('--sample-memory-size', type=int, default=1000,
+                             help='sample memory size (default: 1000)')
     args_parser.add_argument('--rollout-steps', type=int, default=10,
                              help='Only used when train with latent space model'
                                   'train with x rollouts (default: 10)')
@@ -96,7 +96,7 @@ def main():
         trainer = builder.build_environment_model_trainer(env, policy, environment_model)
         trainer.train(batch_size = args.batch_size,
                       training_episodes = args.num_episodes,
-                      sample_memory_size = 1000)
+                      sample_memory_size = args.sample_memory_size)
 
     if args.render:
         test_process.stop()

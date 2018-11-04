@@ -50,7 +50,7 @@ class EnvironmentModelTrainer():
               sample_memory_size = 1000):
         from collections import deque
         print("create training data")
-        create_n_samples = min(batch_size * 2, sample_memory_size)
+        create_n_samples = min(batch_size * 10, sample_memory_size)
         sample_memory = deque(maxlen = sample_memory_size)
         sample_memory.extend(self.training_data_creator.create(create_n_samples))
 

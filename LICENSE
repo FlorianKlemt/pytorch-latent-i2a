@@ -1,3 +1,8 @@
+Copyright (c) 2018 Florian Klemt and Angela Denninger
+
+
+This repo is based on a fork of https://github.com/ikostrikov/pytorch-a2c-ppo-acktr featuring the following license:
+
 MIT License
 
 Copyright (c) 2017 Ilya Kostrikov

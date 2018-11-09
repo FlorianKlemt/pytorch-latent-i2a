@@ -25,7 +25,7 @@ class BasicBlock(torch.nn.Module):
         super(BasicBlock, self).__init__()
         self.pool_and_inject = PoolAndInject(W,H,use_cuda)
 
-        input_channels = num_inputs# + num_inputs
+        input_channels = num_inputs
         # pool-and-inject layer is size-preserving therefore num_inputs is the input to conv1
         self.left_conv1 = nn.Conv2d(input_channels, n1, kernel_size=1)
         self.left_conv2 = nn.Conv2d(n1, n1, kernel_size=9, padding=4)

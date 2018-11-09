@@ -24,12 +24,12 @@ class MiniModel(Policy):
     def __init__(self, num_inputs, action_space, use_cuda):     #use_cuda is not used and for compatibility reasons (I2A needs the use_cuda parameter)
         super(MiniModel, self).__init__()
 
-        self.dist = Categorical(256, action_space)       #übernimmmt actor linear
+        self.dist = Categorical(256, action_space)
 
         self.conv1 = nn.Conv2d(num_inputs, 16, 3, stride=1) #17x17
         self.conv2 = nn.Conv2d(16, 16, 3, stride=2) #8x8
 
-        self.linear_input_size = 16*8*8 #never trust the output in the error message (for some reason eg. 6 batches are drawn together if size is 6144)
+        self.linear_input_size = 16*8*8
 
         self.linear1 = nn.Linear(self.linear_input_size, 256)
 

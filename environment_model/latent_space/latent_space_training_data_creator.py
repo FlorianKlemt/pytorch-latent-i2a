@@ -32,7 +32,7 @@ class TrainingDataCreator:
 
     def _stack_frame(self, state):
         # shape frame stack: (1, rgb * stack, w, h)
-        # 3 channels for rgb -> remove oldes frame (3 channels) and add state
+        # 3 channels for rgb -> remove old frame (3 channels) and add state
         self.frame_stack = torch.cat((self.frame_stack[:, 3:], state), dim=1)
 
     def _initial_steps(self, min=1, max=100):

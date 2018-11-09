@@ -53,7 +53,6 @@ class A2C_PolicyWrapper(nn.Module):
 
         return value, action_log_probs, dist_entropy, states
 
-    # magic, see model.py
     @property
     def state_size(self):
         return 1

@@ -21,7 +21,7 @@ class ClipAtariFrameSizeTo200x160(gym.ObservationWrapper):
         return frame[:, :self.height, :self.width]
 
 class RewardScaling(gym.Wrapper):
-    def __init__(self, env, scaling_factor=0.1):    #0.1 is good for MsPacman
+    def __init__(self, env, scaling_factor=0.1):    #0.1 is good for MsPacman (all ingame rewards are multiples of 10)
         gym.Wrapper.__init__(self, env)
         self.scaling_factor = scaling_factor
 
@@ -60,7 +60,7 @@ def custom_make_atari(env_id, skip_frames = 1):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
-    env = SkipFramesEnv(env, skip=skip_frames)   #TODO: maybe 2 skip
+    env = SkipFramesEnv(env, skip=skip_frames)
     return env
 
 

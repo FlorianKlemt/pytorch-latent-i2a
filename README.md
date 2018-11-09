@@ -18,6 +18,8 @@ To cite our work please use the following bibtex:
 }
 ```
 
+If you have any questions or suggestions write us under florian.klemt@tum.de or angela.denninger@googlemail.com.
+ 
 # Requires:
 * Python 3 (tested on python 3.5)
 * [PyTorch](http://pytorch.org/), tested with version 0.4.1

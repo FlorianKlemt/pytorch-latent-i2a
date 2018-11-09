@@ -49,7 +49,7 @@ class SSM(nn.Module):
                                                num_actions=num_actions,
                                                use_cuda=use_cuda)
         else:
-            assert False #lol
+            assert False
 
     def encode(self, observation):
         encoding_t2 = self.encoder(observation[:,-1]) # t0
@@ -133,7 +133,7 @@ class SSM(nn.Module):
         state = self.encode(observation_initial_context)
         # iterate over T actions, but pass action t for all batches simultaneously
         for action in action_list.transpose_(0, 1):
-            # get nect latent space
+            # get next latent space
             mu_prior, sigma_prior = self.prior_z(state, action)
             state_transition_z, decoder_z = self.get_prior(mu_prior, sigma_prior)
             next_state_prediction = self.state_transition(state, action, state_transition_z)
